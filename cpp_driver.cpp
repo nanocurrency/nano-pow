@@ -62,22 +62,22 @@ namespace cpp_pow_driver
 			for (auto i (0); i < thread_count; ++i)
 			{
 				threads.emplace_back ([&, i] ()
-									  {
-										  auto fill_ratio (1.0 / thread_count);
-										  context.fill (environment.slab, environment.items, nonce, fill_ratio * environment.items, environment.items * i);
-										  fill_time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ();
-										  while (error)
-										  {
-											  auto begin (environment.next_value.fetch_add (stepping));
-											  auto solution (context.search (environment.slab, environment.items, nonce, stepping, begin));
-											  if (solution[0] != 0 && solution[1] != 0)
-											  {
-												  auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());
-												  std::cerr << boost::str (boost::format ("Solution: %1%,%2% solution ms: %3% fill ms %4%\n") % to_string_hex (solution [0]) % to_string_hex (solution [1]) % std::to_string (search_time) % std::to_string (fill_time / thread_count));
-												  error = false;
-											  }
-										  }
-									  });
+				{
+					auto fill_ratio (1.0 / thread_count);
+					context.fill (environment.slab, environment.items, nonce, fill_ratio * environment.items, environment.items * i);
+					fill_time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ();
+					while (error)
+					{
+						auto begin (environment.next_value.fetch_add (stepping));
+						auto solution (context.search (environment.slab, environment.items, nonce, stepping, begin));
+						if (solution[0] != 0 && solution[1] != 0)
+						{
+							auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());
+							std::cerr << boost::str (boost::format ("Solution: %1%,%2% solution ms: %3% fill ms %4%\n") % to_string_hex (solution [0]) % to_string_hex (solution [1]) % std::to_string (search_time) % std::to_string (fill_time / thread_count));
+							error = false;
+						}
+					}
+				});
 			}
 			for (auto & i: threads)
 			{
