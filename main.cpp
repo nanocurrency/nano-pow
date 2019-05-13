@@ -1,5 +1,6 @@
 #include <boost/program_options.hpp>
 
+#include <cpp_driver.hpp>
 #include <gtest/gtest.h>
 
 namespace {
@@ -65,7 +66,7 @@ int main (int argc, char **argv)
 			}
 			case driver::cpp:
 			{
-				assert (false);
+				result = cpp_pow_driver::main (argc, argv);
 				break;
 			}
 		}

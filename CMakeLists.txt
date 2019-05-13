@@ -26,7 +26,9 @@ add_subdirectory (googletest/googletest)
 include_directories (googletest/googletest/include)
 
 add_executable (ssp_pow_driver
-	gtest.cpp
+	cpp_driver.cpp
+	cpp_driver.hpp
+	gtest_driver.cpp
 	include/ssp_pow/pow.hpp
 	main.cpp)
 

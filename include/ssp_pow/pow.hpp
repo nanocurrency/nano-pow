@@ -1,6 +1,6 @@
 #pragma once
 
-#include <crypto/highwayhash/highwayhash/sip_hash.h>
+#include <highwayhash/highwayhash/sip_hash.h>
 
 #include <array>
 #include <atomic>
