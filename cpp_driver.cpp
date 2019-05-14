@@ -17,10 +17,10 @@
 
 namespace cpp_pow_driver
 {
-	std::string to_string_hex (uint64_t value_a)
+	std::string to_string_hex (uint32_t value_a)
 	{
 		std::stringstream stream;
-		stream << std::hex << std::noshowbase << std::setw (16) << std::setfill ('0');
+		stream << std::hex << std::noshowbase << std::setw (8) << std::setfill ('0');
 		stream << value_a;
 		return stream.str ();
 	}
@@ -41,7 +41,7 @@ namespace cpp_pow_driver
 	};
 	void perf_test ()
 	{
-		ssp_pow::context context (48);
+		ssp_pow::context context (44);
 		std::cerr << "Initializing...\n";
 		environment environment (8ULL * 1024 * 1024);
 		memset (environment.slab, 0, environment.memory ());
@@ -63,12 +63,18 @@ namespace cpp_pow_driver
 			{
 				threads.emplace_back ([&, i] ()
 				{
-					auto fill_ratio (1.0 / thread_count);
-					context.fill (environment.slab, environment.items, nonce, fill_ratio * environment.items, environment.items * i);
-					fill_time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ();
+					uint64_t last_fill (0xffffffff00000000ULL);
 					while (error)
 					{
 						auto begin (environment.next_value.fetch_add (stepping));
+						auto fill (begin & last_fill);
+						if (fill != last_fill)
+						{
+							last_fill = fill;
+							auto fill_ratio (1.0 / thread_count);
+							context.fill (environment.slab, environment.items, nonce, fill_ratio * environment.items, environment.items * i);
+							fill_time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ();
+						}
 						auto solution (context.search (environment.slab, environment.items, nonce, stepping, begin));
 						if (solution[0] != 0 && solution[1] != 0)
 						{

@@ -53,22 +53,22 @@ public:
 		assert (((size_a & mask) == 0) && "Slab size is not a power of 2");
 		return item_a & mask;
 	}
-	std::array<uint64_t, 2> search (uint32_t * const slab_a, size_t const size_a, void const * const nonce_a, uint64_t const count = std::numeric_limits<uint64_t>::max (), uint64_t const begin = 0)
+	std::array<uint32_t, 2> search (uint32_t * const slab_a, size_t const size_a, void const * const nonce_a, uint32_t const count = std::numeric_limits<uint64_t>::max (), uint32_t const begin = 0)
 	{
 		auto incomplete (true);
-		std::array<uint64_t, 2> result = { 0, 0 };
-		for (uint64_t current (begin), end (current + count); incomplete && current < end; ++current)
+		std::array<uint32_t, 2> result = { 0, 0 };
+		for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 		{
 			result [0] = current;
 			auto hash_l (hash (nonce_a, current | lhs_or_mask));
 			result [1] = slab_a [slot (size_a, 0 - hash_l)];
 			incomplete = reduce (hash_l + hash (nonce_a, result [1] & rhs_and_mask)) != 0;
 		}
-		return incomplete ? std::array<uint64_t, 2> ({ 0, 0 }) : result;
+		return incomplete ? std::array<uint32_t, 2> ({ 0, 0 }) : result;
 	}
-	void fill (uint32_t * const slab_a, size_t const size_a, void const * const nonce_a, uint64_t const count, uint64_t const begin = 0)
+	void fill (uint32_t * const slab_a, size_t const size_a, void const * const nonce_a, uint32_t const count, uint32_t const begin = 0)
 	{
-		for (uint64_t current (begin), end (current + count); current < end; ++current)
+		for (uint32_t current (begin), end (current + count); current < end; ++current)
 		{
 			slab_a [slot (size_a, hash (nonce_a, current & rhs_and_mask))] = current;
 		}
