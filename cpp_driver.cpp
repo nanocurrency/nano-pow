@@ -83,13 +83,13 @@ namespace cpp_pow_driver
 							fill_time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ();
 						}
 						auto solution (context.search (environment.slab, environment.items, nonce, stepping, begin));
-						if (solution[0] != 0 && solution[1] != 0)
+						if (solution != 0)
 						{
 							auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());
 							solution_time += search_time;
-							auto lhs (solution[0]);
+							auto lhs (solution >> 32);
 							auto lhs_hash (ssp_pow::hash (nonce, lhs | context.lhs_or_mask));
-							auto rhs (solution[1]);
+							auto rhs (solution & 0xffffffffULL);
 							auto rhs_hash (ssp_pow::hash (nonce, rhs & context.rhs_and_mask));
 							auto sum (lhs_hash + rhs_hash);
 							std::cerr << boost::str (boost::format ("%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6% fill ms %7%\n") % to_string_hex (lhs_hash) % to_string_hex (lhs) % to_string_hex (rhs_hash) % to_string_hex (rhs) % to_string_hex64 (sum) % std::to_string (search_time) % std::to_string (fill_time / thread_count));
