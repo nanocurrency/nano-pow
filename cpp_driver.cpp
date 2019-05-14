@@ -24,6 +24,13 @@ namespace cpp_pow_driver
 		stream << value_a;
 		return stream.str ();
 	}
+	std::string to_string_hex64 (uint64_t value_a)
+	{
+		std::stringstream stream;
+		stream << std::hex << std::noshowbase << std::setw (16) << std::setfill ('0');
+		stream << value_a;
+		return stream.str ();
+	}
 	class environment
 	{
 	public:
@@ -80,7 +87,12 @@ namespace cpp_pow_driver
 						{
 							auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());
 							solution_time += search_time;
-							std::cerr << boost::str (boost::format ("Solution: %1%,%2% solution ms: %3% fill ms %4%\n") % to_string_hex (solution [0]) % to_string_hex (solution [1]) % std::to_string (search_time) % std::to_string (fill_time / thread_count));
+							auto lhs (solution[0]);
+							auto lhs_hash (ssp_pow::hash (nonce, lhs | context.lhs_or_mask));
+							auto rhs (solution[1]);
+							auto rhs_hash (ssp_pow::hash (nonce, rhs & context.rhs_and_mask));
+							auto sum (lhs_hash + rhs_hash);
+							std::cerr << boost::str (boost::format ("%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6% fill ms %7%\n") % to_string_hex (lhs_hash) % to_string_hex (lhs) % to_string_hex (rhs_hash) % to_string_hex (rhs) % to_string_hex64 (sum) % std::to_string (search_time) % std::to_string (fill_time / thread_count));
 							error = false;
 						}
 					}
