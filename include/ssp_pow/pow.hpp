@@ -1,5 +1,6 @@
 #pragma once
 
+#include <BLAKE2/sse/blake2.h>
 #include <highwayhash/highwayhash/sip_hash.h>
 
 #include <array>
@@ -7,9 +8,23 @@
 
 namespace ssp_pow
 {
-uint64_t hash (void const * const nonce_a, uint64_t const item_a)
+uint64_t sip_hash (void const * const nonce_a, uint64_t const item_a)
 {
 	return highwayhash::SipHash (*reinterpret_cast<highwayhash::HH_U64 const (*) [2]> (nonce_a), reinterpret_cast<char const *> (&item_a), sizeof (item_a));
+}
+uint64_t blake2_hash (void const * const nonce_a, uint64_t const item_a)
+{
+	uint64_t result;
+	blake2b_state state;
+	blake2b_init (&state, sizeof (result));
+	blake2b_update (&state, nonce_a, sizeof (uint64_t) * 2);
+	blake2b_update (&state, &item_a, sizeof (item_a));
+	blake2b_final (&state, &result, sizeof (result));
+	return result;
+}
+uint64_t hash (void const * const nonce_a, uint64_t const item_a)
+{
+	return blake2_hash (nonce_a, item_a);
 }
 class context
 {

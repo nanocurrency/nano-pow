@@ -1,13 +1,15 @@
 #include <boost/program_options.hpp>
 
 #include <cpp_driver.hpp>
+#include <opencl_driver.hpp>
 #include <gtest/gtest.h>
 
 namespace {
 enum class driver
 {
 	gtest,
-	cpp
+	cpp,
+	opencl
 };
 std::ostream & operator << (std::ostream & os, driver const & obj)
 {
@@ -18,6 +20,9 @@ std::ostream & operator << (std::ostream & os, driver const & obj)
 			break;
 		case driver::cpp:
 			os << "cpp";
+			break;
+		case driver::opencl:
+			os << "opencl";
 			break;
 	}
 	return os;
@@ -33,6 +38,10 @@ std::istream & operator >> (std::istream & is, driver & obj)
 	else if (text == "cpp")
 	{
 		obj = driver::cpp;
+	}
+	else if (text == "opencl")
+	{
+		obj = driver::opencl;
 	}
 	return is;
 }
@@ -67,6 +76,11 @@ int main (int argc, char **argv)
 			case driver::cpp:
 			{
 				result = cpp_pow_driver::main (argc, argv);
+				break;
+			}
+			case driver::opencl:
+			{
+				result = opencl_pow_driver::main (argc, argv);
 				break;
 			}
 		}

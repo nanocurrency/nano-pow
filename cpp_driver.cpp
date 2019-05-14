@@ -4,8 +4,6 @@
 
 #include <boost/format.hpp>
 
-#include <highwayhash/highwayhash/sip_hash.h>
-
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -43,14 +41,16 @@ namespace cpp_pow_driver
 	};
 	void perf_test ()
 	{
-		ssp_pow::context context (54);
+		ssp_pow::context context (48);
 		std::cerr << "Initializing...\n";
-		environment environment (128ULL * 1024 * 1024);
+		environment environment (8ULL * 1024 * 1024);
 		memset (environment.slab, 0, environment.memory ());
 		std::cerr << "Starting...\n";
 		
-		highwayhash::HH_U64 nonce[2] = { 0, 0 };
-		for (; nonce [0] < 16; ++nonce[0])
+		uint64_t nonce[2] = { 0, 0 };
+		std::atomic<unsigned> solution_time (0);
+		auto nonce_count (16);
+		for (; nonce [0] < nonce_count; ++nonce[0])
 		{
 			environment.next_value = 0;
 			std::atomic<bool> error (true);
@@ -73,6 +73,7 @@ namespace cpp_pow_driver
 						if (solution[0] != 0 && solution[1] != 0)
 						{
 							auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());
+							solution_time += search_time;
 							std::cerr << boost::str (boost::format ("Solution: %1%,%2% solution ms: %3% fill ms %4%\n") % to_string_hex (solution [0]) % to_string_hex (solution [1]) % std::to_string (search_time) % std::to_string (fill_time / thread_count));
 							error = false;
 						}
@@ -84,6 +85,8 @@ namespace cpp_pow_driver
 				i.join ();
 			}
 		}
+		solution_time = solution_time / nonce_count;
+		std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (solution_time));
 	}
 	
 int main (int argc, char **argv)

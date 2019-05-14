@@ -25,13 +25,24 @@ include_directories (siphash PUBLIC highwayhash)
 add_subdirectory (googletest/googletest)
 include_directories (googletest/googletest/include)
 
+add_library (blake2
+	BLAKE2/sse/blake2-config.h
+	BLAKE2/sse/blake2-impl.h
+	BLAKE2/sse/blake2.h
+	BLAKE2/sse/blake2b.c)
+
+target_compile_definitions(blake2 PRIVATE -D__SSE2__)
+
 add_executable (ssp_pow_driver
 	cpp_driver.cpp
 	cpp_driver.hpp
 	gtest_driver.cpp
 	include/ssp_pow/pow.hpp
-	main.cpp)
+	main.cpp
+	opencl_driver.cpp
+	opencl_driver.hpp)
 
 target_link_libraries (ssp_pow_driver
+	blake2
 	Boost::program_options
 	gtest)
