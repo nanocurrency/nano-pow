@@ -8,11 +8,11 @@
 
 namespace ssp_pow
 {
-uint64_t sip_hash (void const * const nonce_a, uint64_t const item_a)
+inline uint64_t sip_hash (void const * const nonce_a, uint64_t const item_a)
 {
 	return highwayhash::SipHash (*reinterpret_cast<highwayhash::HH_U64 const (*) [2]> (nonce_a), reinterpret_cast<char const *> (&item_a), sizeof (item_a));
 }
-uint64_t blake2_hash (void const * const nonce_a, uint64_t const item_a)
+inline uint64_t blake2_hash (void const * const nonce_a, uint64_t const item_a)
 {
 	uint64_t result;
 	blake2b_state state;
@@ -22,7 +22,7 @@ uint64_t blake2_hash (void const * const nonce_a, uint64_t const item_a)
 	blake2b_final (&state, &result, sizeof (result));
 	return result;
 }
-uint64_t hash (void const * const nonce_a, uint64_t const item_a)
+inline uint64_t hash (void const * const nonce_a, uint64_t const item_a)
 {
 	return blake2_hash (nonce_a, item_a);
 }

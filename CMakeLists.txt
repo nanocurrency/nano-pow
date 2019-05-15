@@ -16,6 +16,11 @@ find_package (Boost 1.67.0 REQUIRED COMPONENTS program_options)
 
 include_directories (${Boost_INCLUDE_DIR})
 
+if (APPLE)
+	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
+	SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINK_FLAGS}" )
+endif ()
+
 add_library (siphash
 	highwayhash/highwayhash/sip_hash.cc
 	highwayhash/highwayhash/sip_hash.h)
