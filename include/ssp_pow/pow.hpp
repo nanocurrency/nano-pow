@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cassert>
+#include <limits>
+
 #include <BLAKE2/sse/blake2.h>
 #include <highwayhash/highwayhash/sip_hash.h>
 
@@ -50,7 +53,7 @@ public:
 		assert (((size_a & mask) == 0) && "Slab size is not a power of 2");
 		return item_a & mask;
 	}
-	uint64_t search (uint32_t * const slab_a, size_t const size_a, void const * const nonce_a, uint32_t const count = std::numeric_limits<uint64_t>::max (), uint32_t const begin = 0)
+	uint64_t search (uint32_t * const slab_a, size_t const size_a, void const * const nonce_a, uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0)
 	{
 		auto incomplete (true);
 		uint32_t lhs;
