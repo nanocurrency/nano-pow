@@ -42,6 +42,7 @@ add_executable (ssp_pow_driver
 	cpp_driver.cpp
 	cpp_driver.hpp
 	gtest_driver.cpp
+	include/ssp_pow/hash.hpp
 	include/ssp_pow/pow.hpp
 	main.cpp
 	opencl_driver.cpp

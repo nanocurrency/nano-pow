@@ -1,6 +1,7 @@
 #include <cpp_driver.hpp>
 
 #include <ssp_pow/pow.hpp>
+#include <ssp_pow/hash.hpp>
 
 #include <boost/format.hpp>
 
@@ -48,16 +49,14 @@ namespace cpp_pow_driver
 	};
 	void perf_test ()
 	{
-		ssp_pow::context context (44);
 		std::cerr << "Initializing...\n";
 		environment environment (8ULL * 1024 * 1024);
 		memset (environment.slab, 0, environment.memory ());
 		std::cerr << "Starting...\n";
 		
-		uint64_t nonce[2] = { 0, 0 };
 		std::atomic<unsigned> solution_time (0);
 		auto nonce_count (16);
-		for (; nonce [0] < nonce_count; ++nonce[0])
+		for (auto j (0UL); j < nonce_count; ++j)
 		{
 			environment.next_value = 0;
 			std::atomic<bool> error (true);
@@ -70,6 +69,9 @@ namespace cpp_pow_driver
 			{
 				threads.emplace_back ([&, i] ()
 				{
+					std::array <uint64_t, 2> nonce = { j, 0 };
+					ssp_pow::blake2_hash hash (nonce);
+					ssp_pow::context<ssp_pow::blake2_hash> context (hash, 48);
 					uint64_t last_fill (0xffffffff00000000ULL);
 					while (error)
 					{
@@ -79,18 +81,18 @@ namespace cpp_pow_driver
 						{
 							last_fill = fill;
 							auto fill_ratio (1.0 / thread_count);
-							context.fill (environment.slab, environment.items, nonce, fill_ratio * environment.items, environment.items * i);
+							context.fill (environment.slab, environment.items, fill_ratio * environment.items, environment.items * i);
 							fill_time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ();
 						}
-						auto solution (context.search (environment.slab, environment.items, nonce, stepping, begin));
+						auto solution (context.search (environment.slab, environment.items, stepping, begin));
 						if (solution != 0)
 						{
 							auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());
 							solution_time += search_time;
 							auto lhs (solution >> 32);
-							auto lhs_hash (ssp_pow::hash (nonce, lhs | context.lhs_or_mask));
+							auto lhs_hash (hash (lhs | context.lhs_or_mask));
 							auto rhs (solution & 0xffffffffULL);
-							auto rhs_hash (ssp_pow::hash (nonce, rhs & context.rhs_and_mask));
+							auto rhs_hash (hash (rhs & context.rhs_and_mask));
 							auto sum (lhs_hash + rhs_hash);
 							std::cerr << boost::str (boost::format ("%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6% fill ms %7%\n") % to_string_hex (lhs_hash) % to_string_hex (lhs) % to_string_hex (rhs_hash) % to_string_hex (rhs) % to_string_hex64 (sum) % std::to_string (search_time) % std::to_string (fill_time / thread_count));
 							error = false;

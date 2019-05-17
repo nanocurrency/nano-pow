@@ -1,5 +1,6 @@
 #include <opencl_driver.hpp>
 
+#include <ssp_pow/hash.hpp>
 #include <ssp_pow/pow.hpp>
 
 #include <boost/format.hpp>
@@ -641,8 +642,9 @@ int opencl_pow_driver::main(int argc, char **argv)
 	uint64_t computed_difficulty (0);
 	unsigned thread_count (1024);
 	size_t work_size[] = { thread_count, 0, 0 };
-	ssp_pow::context ctx (52);
 	std::array <uint64_t, 2> nonce = { 0, 0 };
+	ssp_pow::blake2_hash hash (nonce);
+	ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, 52);
 	/*while ((ctx.difficulty (&nonce, result) == 0) && !error)
 	{
 		result = rand.next ();
