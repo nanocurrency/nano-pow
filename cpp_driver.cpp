@@ -67,11 +67,11 @@ namespace cpp_pow_driver
 			auto thread_count (4);
 			for (auto i (0); i < thread_count; ++i)
 			{
+				std::array <uint64_t, 2> nonce = { j, 0 };
+				ssp_pow::blake2_hash hash (nonce);
+				ssp_pow::context<ssp_pow::blake2_hash> context (hash, 48);
 				threads.emplace_back ([&, i] ()
 				{
-					std::array <uint64_t, 2> nonce = { j, 0 };
-					ssp_pow::blake2_hash hash (nonce);
-					ssp_pow::context<ssp_pow::blake2_hash> context (hash, 48);
 					uint64_t last_fill (0xffffffff00000000ULL);
 					while (error)
 					{
@@ -108,10 +108,54 @@ namespace cpp_pow_driver
 		solution_time = solution_time / nonce_count;
 		std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (solution_time));
 	}
-	
-int main (int argc, char **argv)
-{
-	perf_test ();
-	return 0;
-}
+	void perf_test2 ()
+	{
+		std::cerr << "Initializing...\n";
+		environment environment (8ULL * 1024 * 1024);
+		memset (environment.slab, 0, environment.memory ());
+		std::cerr << "Starting...\n";
+		
+		std::atomic<unsigned> solution_time (0);
+		auto nonce_count (16);
+		for (auto j (0UL); j < nonce_count; ++j)
+		{
+			auto start (std::chrono::system_clock::now ());
+			std::vector<std::thread> threads;
+			auto thread_count (4);
+			for (auto i (0); i < thread_count; ++i)
+			{
+				std::array <uint64_t, 2> nonce = { j, 0 };
+				ssp_pow::blake2_hash hash (nonce);
+				ssp_pow::context<ssp_pow::blake2_hash> context (hash, 48);
+				ssp_pow::generator<ssp_pow::blake2_hash> generator (context);
+				unsigned ticket (generator.ticket);
+				threads.emplace_back ([&, i] ()
+				{
+					generator.find (environment.slab, environment.items, ticket, i, thread_count);
+					if (i == 0)
+					{
+						auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());
+						solution_time += search_time;
+						auto lhs (generator.result >> 32);
+						auto lhs_hash (hash (lhs | context.lhs_or_mask));
+						auto rhs (generator.result & 0xffffffffULL);
+						auto rhs_hash (hash (rhs & context.rhs_and_mask));
+						auto sum (lhs_hash + rhs_hash);
+						std::cerr << boost::str (boost::format ("%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6%\n") % to_string_hex (lhs_hash) % to_string_hex (lhs) % to_string_hex (rhs_hash) % to_string_hex (rhs) % to_string_hex64 (sum) % std::to_string (search_time));
+					}
+				});
+			}
+			for (auto & i: threads)
+			{
+				i.join ();
+			}
+		}
+		solution_time = solution_time / nonce_count;
+		std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (solution_time));
+	}
+	int main (int argc, char **argv)
+	{
+		perf_test2 ();
+		return 0;
+	}
 }

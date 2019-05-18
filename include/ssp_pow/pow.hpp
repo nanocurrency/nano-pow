@@ -1,12 +1,13 @@
 #pragma once
 
+#include <atomic>
 #include <cassert>
 #include <limits>
 
 namespace ssp_pow
 {
 template <typename T>
-class context
+class context final
 {
 public:
 	context (T & hash_a, unsigned difficulty_a) :
@@ -55,5 +56,40 @@ public:
 			slab_a [slot (size_a, hash (current & rhs_and_mask))] = current;
 		}
 	}
+};
+template <typename T>
+class generator
+{
+public:
+	generator (ssp_pow::context<T> & context_a) :
+	context (context_a)
+	{
+	}
+	void find (uint32_t * const slab_a, size_t const size_a, unsigned ticket_a, unsigned thread, unsigned total_threads)
+	{
+		uint32_t last_fill (~0);
+		while (ticket == ticket_a)
+		{
+			auto current_l (current.fetch_add (stepping));
+			if (current_l >> 32 != last_fill)
+			{
+				last_fill = current_l >> 32;
+				context.fill (slab_a, size_a, size_a / total_threads, last_fill * size_a + thread * (size_a / total_threads));
+			}
+			auto result_l (context.search (slab_a, size_a, stepping, current_l));
+			if (result_l != 0)
+			{
+				if (ticket.fetch_add (1) == ticket_a)
+				{
+					result = result_l;
+				}
+			}
+		}
+	}
+	std::atomic<uint64_t> result { 0 };
+	std::atomic<uint64_t> current { 0 };
+	std::atomic<unsigned> ticket { 0 };
+	uint32_t stepping { 65535 };
+	ssp_pow::context<T> context;
 };
 }
