@@ -19,16 +19,32 @@ public:
 	T & hash;
 	uint64_t const threshold;
 	static uint64_t constexpr lhs_or_mask { 0x1ULL << 63 };
-	static uint64_t constexpr rhs_and_mask { ~lhs_or_mask };
+	static uint64_t constexpr rhs_and_mask { 0x7fff'ffff };
 public:
 	uint64_t reduce (uint64_t const item_a) const
 	{
 		return item_a & threshold;
 	}
+	uint64_t reverse (uint64_t const item_a) const
+	{
+		auto result (item_a);
+		result = ((result >>  1) & 0x5555555555555555) | ((result & 0x5555555555555555) <<  1);
+		result = ((result >>  2) & 0x3333333333333333) | ((result & 0x3333333333333333) <<  2);
+		result = ((result >>  4) & 0x0F0F0F0F0F0F0F0F) | ((result & 0x0F0F0F0F0F0F0F0F) <<  4);
+		result = ((result >>  8) & 0x00FF00FF00FF00FF) | ((result & 0x00FF00FF00FF00FF) <<  8);
+		result = ((result >> 16) & 0x0000FFFF0000FFFF) | ((result & 0x0000FFFF0000FFFF) << 16);
+		result = ( result >> 32                      ) | ( result                       << 32);
+		return result;
+	}
 	uint64_t difficulty (uint64_t const solution_a) const
 	{
 		auto sum (hash ((solution_a >> 32) | lhs_or_mask) + hash (solution_a & rhs_and_mask));
-		return (reduce (sum) == 0) ? 0 - sum : 0;
+		uint64_t result (0);
+		if (reduce (sum) == 0)
+		{
+			result = reverse (~sum);
+		}
+		return result;
 	}
 	uint64_t slot (size_t const size_a, uint64_t const item_a) const
 	{
