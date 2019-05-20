@@ -269,7 +269,7 @@ static void ucharcpy (uchar * dst, uchar const * src, size_t count)
 	}
 }
 
-void printstate (blake2b_state * S)
+static void printstate (blake2b_state * S)
 {
 	printf ("%lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu ", S->h[0], S->h[1], S->h[2], S->h[3], S->h[4], S->h[5], S->h[6], S->h[7], S->t[0], S->t[1], S->f[0], S->f[1]);
 	for (int i = 0; i < 256; ++i)
@@ -351,21 +351,73 @@ static void ucharcpyglb (uchar * dst, __global uchar const * src, size_t count)
 	}
 }
 
-__kernel void nano_work (__global ulong const * attempt, __global ulong * result_a, __global uchar const * item_a, __global ulong const * difficulty_a)
+static ulong slot (ulong const size_a, ulong const item_a)
 {
-	int const thread = get_global_id (0);
-	uchar item_l [32];
-	ucharcpyglb (item_l, item_a, 32);
-	ulong attempt_l = *attempt + thread;
+	ulong mask = size_a - 1;
+	return item_a & mask;
+}
+
+static ulong reduce (ulong const item_a, ulong threshold_a)
+{
+	return item_a & threshold_a;
+}
+
+static ulong hash (blake2b_state const * state_a, ulong const item_a)
+{
+	ulong result;
+	blake2b_state state_l = *state_a;
+	blake2b_update (&state_l, (uchar *)&item_a, sizeof (item_a));
+	blake2b_final (&state_l, (uchar *)&result, sizeof (result));
+	return result;
+}
+
+static ulong search (__global uint * const slab_a, ulong const size_a, blake2b_state const * state_a, uint const count, uint const begin, ulong const threshold_a)
+{
+	bool incomplete = true;
+	uint lhs, rhs;
+	for (uint current = begin, end = current + count; incomplete && current < end; ++current)
+	{
+		lhs = current;
+		ulong hash_l = hash (state_a, current | (0x1ULL << 63));
+		rhs = slab_a [slot (size_a, 0 - hash_l)];
+		incomplete = reduce (hash_l + hash (state_a, rhs & 0x7fffffff), threshold_a) != 0;
+	}
+	return incomplete ? 0 : (((ulong) (lhs)) << 32) | rhs;
+}
+
+static void fill (__global uint * const slab_a, ulong const size_a, blake2b_state const * state_a, uint const count, uint const begin)
+{
+	for (uint current = begin, end = current + count; current < end; ++current)
+	{
+		slab_a [slot (size_a, hash (state_a, current & 0x7fffffff))] = current;
+	}
+}
+
+__kernel void find (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global uchar * const nonce_a, __global uint * const current, __global uint * const ticket, uint total_threads)
+{
 	blake2b_state state;
 	blake2b_init (&state, sizeof (ulong));
-	blake2b_update (&state, (uchar *) &attempt_l, sizeof (ulong));
-	blake2b_update (&state, item_l, 32);
-	ulong result;
-	blake2b_final (&state, (uchar *) &result, sizeof (result));
-	if (result >= *difficulty_a)
+	blake2b_update (&state, nonce_a, sizeof (ulong) * 2);
+	uint const thread = get_global_id (0);
+	uint ticket_l = *ticket;
+	barrier (CLK_GLOBAL_MEM_FENCE);
+	uint last_fill (~0);
+	while (*ticket == ticket_a)
 	{
-		*result_a = attempt_l;
+		ulong current_l = atomic_add (current, stepping);
+		if (current_l >> 32 != last_fill)
+		{
+			last_fill = current_l >> 32;
+			fill (slab_a, size_a, size_a / total_threads, last_fill * size_a + thread * (size_a / total_threads));
+		}
+		ulong result_l = context.search (slab_a, size_a, stepping, current_l);
+		if (result_l != 0)
+		{
+			if (atomic_add (ticket, 1) == ticket_l)
+			{
+				*result_a = result_l;
+			}
+		}
 	}
 }
 )%%%";
@@ -481,18 +533,59 @@ void opencl_environment::dump (std::ostream & stream)
 	}
 }
 
+class kernel
+{
+public:
+	kernel (cl_device_id device_a, cl_context context_a, cl_program program_a)
+	{
+		cl_int error;
+		kernel_m = clCreateKernel (program_a, "find", &error);
+		result_buffer = clCreateBuffer (context_a, 0, sizeof (uint64_t *), nullptr, &error);
+		slab_buffer = clCreateBuffer (context_a, 0, sizeof (uint64_t *), nullptr, &error);
+		nonce_buffer = clCreateBuffer (context_a, 0, sizeof (uint8_t *), nullptr, &error);
+		current_buffer = clCreateBuffer (context_a, 0, sizeof (uint32_t *), nullptr, &error);
+		ticket_buffer = clCreateBuffer (context_a, 0, sizeof (uint32_t *), nullptr, &error);
+		queue = clCreateCommandQueue (context_a, device_a, 0, &error);
+	}
+	void operator () (uint32_t total_threads)
+	{
+		bool error (false);
+		size_t work_size[] = { total_threads, 0, 0 };
+		error |= clSetKernelArg (kernel_m, 0, sizeof (result_buffer), &result_buffer);
+		error |= clSetKernelArg (kernel_m, 1, sizeof (slab_buffer), &slab_buffer);
+		error |= clSetKernelArg (kernel_m, 2, sizeof (uint64_t), &size);
+		error |= clSetKernelArg (kernel_m, 3, sizeof (nonce_buffer), &nonce_buffer);
+		error |= clSetKernelArg (kernel_m, 3, sizeof (current_buffer), &current_buffer);
+		error |= clSetKernelArg (kernel_m, 4, sizeof (ticket_buffer), &ticket_buffer);
+		error |= clSetKernelArg (kernel_m, 5, sizeof (total_threads), &total_threads);
+		error |= clEnqueueWriteBuffer (queue, current_buffer, false, 0, sizeof (uint32_t), 0, 0, nullptr, nullptr);
+		error |= clEnqueueNDRangeKernel (queue, kernel_m, 1, nullptr, work_size, nullptr, 0, nullptr, nullptr);
+		error |= clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, nullptr);
+		error |= clFinish (queue);
+		assert (!error);
+	}
+	bool error () const
+	{
+		return kernel_m == nullptr || result_buffer == nullptr || slab_buffer == nullptr || current_buffer == nullptr || ticket_buffer == nullptr;
+	}
+	uint64_t result;
+	cl_command_queue queue;
+	cl_kernel kernel_m;
+	size_t size;
+	cl_mem result_buffer;
+	cl_mem slab_buffer;
+	cl_mem nonce_buffer;
+	cl_mem current_buffer;
+	cl_mem ticket_buffer;
+	uint32_t ticket;
+};
+
 int opencl_pow_driver::main(int argc, char **argv)
 {
 	bool error_a (false);
 	opencl_environment environment (error_a);
 	cl_context context;
-	cl_mem attempt_buffer;
-	cl_mem result_buffer;
-	cl_mem item_buffer;
-	cl_mem difficulty_buffer;
 	cl_program program;
-	cl_kernel kernel;
-	cl_command_queue queue;
 	auto & platform (environment.platforms[0]);
 	std::array<cl_device_id, 1> selected_devices;
 	selected_devices[0] = platform.devices[1];
@@ -506,207 +599,47 @@ int opencl_pow_driver::main(int argc, char **argv)
 	error_a |= createContextError != CL_SUCCESS;
 	if (!error_a)
 	{
-		cl_int queue_error (0);
-		queue = clCreateCommandQueue (context, selected_devices[0], 0, &queue_error);
-		error_a |= queue_error != CL_SUCCESS;
+		cl_int program_error (0);
+		char const * program_data (opencl_program.data ());
+		size_t program_length (opencl_program.size ());
+		program = clCreateProgramWithSource (context, 1, &program_data, &program_length, &program_error);
+		error_a |= program_error != CL_SUCCESS;
 		if (!error_a)
 		{
-			cl_int attempt_error (0);
-			attempt_buffer = clCreateBuffer (context, 0, sizeof (uint64_t), nullptr, &attempt_error);
-			error_a |= attempt_error != CL_SUCCESS;
+			auto clBuildProgramError (clBuildProgram (program, static_cast<cl_uint> (selected_devices.size ()), selected_devices.data (), "", nullptr, nullptr));
+			error_a |= clBuildProgramError != CL_SUCCESS;
 			if (!error_a)
 			{
-				cl_int result_error (0);
-				result_buffer = clCreateBuffer (context, 0, sizeof (uint64_t), nullptr, &result_error);
-				error_a |= result_error != CL_SUCCESS;
-				if (!error_a)
+				std::array <uint64_t, 2> nonce = { 0, 0 };
+				ssp_pow::blake2_hash hash (nonce);
+				ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, 52);
+				kernel kernel (selected_devices[0], context, program);
+				if (!kernel.error ())
 				{
-					cl_int item_error (0);
-					size_t item_size (sizeof (uint64_t) * 2);
-					item_buffer = clCreateBuffer (context, 0, item_size, nullptr, &item_error);
-					error_a |= item_error != CL_SUCCESS;
-					if (!error_a)
-					{
-						cl_int difficulty_error (0);
-						difficulty_buffer = clCreateBuffer (context, 0, sizeof (uint64_t), nullptr, &difficulty_error);
-						error_a |= difficulty_error != CL_SUCCESS;
-						if (!error_a)
-						{
-							cl_int program_error (0);
-							char const * program_data (opencl_program.data ());
-							size_t program_length (opencl_program.size ());
-							program = clCreateProgramWithSource (context, 1, &program_data, &program_length, &program_error);
-							error_a |= program_error != CL_SUCCESS;
-							if (!error_a)
-							{
-								auto clBuildProgramError (clBuildProgram (program, static_cast<cl_uint> (selected_devices.size ()), selected_devices.data (), "-D __APPLE__", nullptr, nullptr));
-								error_a |= clBuildProgramError != CL_SUCCESS;
-								if (!error_a)
-								{
-									cl_int kernel_error (0);
-									kernel = clCreateKernel (program, "nano_work", &kernel_error);
-									error_a |= kernel_error != CL_SUCCESS;
-									if (!error_a)
-									{
-										cl_int arg0_error (clSetKernelArg (kernel, 0, sizeof (attempt_buffer), &attempt_buffer));
-										error_a |= arg0_error != CL_SUCCESS;
-										if (!error_a)
-										{
-											cl_int arg1_error (clSetKernelArg (kernel, 1, sizeof (result_buffer), &result_buffer));
-											error_a |= arg1_error != CL_SUCCESS;
-											if (!error_a)
-											{
-												cl_int arg2_error (clSetKernelArg (kernel, 2, sizeof (item_buffer), &item_buffer));
-												error_a |= arg2_error != CL_SUCCESS;
-												if (!error_a)
-												{
-													cl_int arg3_error (clSetKernelArg (kernel, 3, sizeof (difficulty_buffer), &difficulty_buffer));
-													error_a |= arg3_error != CL_SUCCESS;
-													if (!error_a)
-													{
-													}
-													else
-													{
-														std::cerr << (boost::str (boost::format ("Bind argument 3 error %1%") % arg3_error));
-													}
-												}
-												else
-												{
-													std::cerr << (boost::str (boost::format ("Bind argument 2 error %1%") % arg2_error));
-												}
-											}
-											else
-											{
-												std::cerr << (boost::str (boost::format ("Bind argument 1 error %1%") % arg1_error));
-											}
-										}
-										else
-										{
-											std::cerr << (boost::str (boost::format ("Bind argument 0 error %1%") % arg0_error));
-										}
-									}
-									else
-									{
-										std::cerr << (boost::str (boost::format ("Create kernel error %1%") % kernel_error));
-									}
-								}
-								else
-								{
-									std::cerr << (boost::str (boost::format ("Build program error %1%") % clBuildProgramError));
-									for (auto i (selected_devices.begin ()), n (selected_devices.end ()); i != n; ++i)
-									{
-										size_t log_size (0);
-										clGetProgramBuildInfo (program, *i, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
-										std::vector<char> log (log_size);
-										clGetProgramBuildInfo (program, *i, CL_PROGRAM_BUILD_LOG, log.size (), log.data (), nullptr);
-										std::cerr << (log.data ());
-									}
-								}
-							}
-							else
-							{
-								std::cerr << (boost::str (boost::format ("Create program error %1%") % program_error));
-							}
-						}
-						else
-						{
-							std::cerr << (boost::str (boost::format ("Difficulty buffer error %1%") % difficulty_error));
-						}
-					}
-					else
-					{
-						std::cerr << (boost::str (boost::format ("Item buffer error %1%") % item_error));
-					}
-				}
-				else
-				{
-					std::cerr << (boost::str (boost::format ("Result buffer error %1%") % result_error));
+					kernel (1024);
 				}
 			}
 			else
 			{
-				std::cerr << (boost::str (boost::format ("Attempt buffer error %1%") % attempt_error));
+				std::cerr << (boost::str (boost::format ("Build program error %1%") % clBuildProgramError));
+				for (auto i (selected_devices.begin ()), n (selected_devices.end ()); i != n; ++i)
+				{
+					size_t log_size (0);
+					clGetProgramBuildInfo (program, *i, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
+					std::vector<char> log (log_size);
+					clGetProgramBuildInfo (program, *i, CL_PROGRAM_BUILD_LOG, log.size (), log.data (), nullptr);
+					std::cerr << (log.data ());
+				}
 			}
 		}
 		else
 		{
-			std::cerr << (boost::str (boost::format ("Unable to create command queue %1%") % queue_error));
+			std::cerr << (boost::str (boost::format ("Create program error %1%") % program_error));
 		}
 	}
 	else
 	{
 		std::cerr << (boost::str (boost::format ("Unable to create context %1%") % createContextError));
 	}
-	bool error (false);
-	uint64_t result (0);
-	uint64_t computed_difficulty (0);
-	unsigned thread_count (1024);
-	size_t work_size[] = { thread_count, 0, 0 };
-	std::array <uint64_t, 2> nonce = { 0, 0 };
-	ssp_pow::blake2_hash hash (nonce);
-	ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, 52);
-	/*while ((ctx.difficulty (&nonce, result) == 0) && !error)
-	{
-		result = rand.next ();
-		cl_int write_error1 = clEnqueueWriteBuffer (queue, attempt_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, nullptr);
-		if (write_error1 == CL_SUCCESS)
-		{
-			cl_int write_error2 = clEnqueueWriteBuffer (queue, item_buffer, false, 0, sizeof (nano::uint256_union), root_a.bytes.data (), 0, nullptr, nullptr);
-			if (write_error2 == CL_SUCCESS)
-			{
-				cl_int write_error3 = clEnqueueWriteBuffer (queue, difficulty_buffer, false, 0, sizeof (uint64_t), &difficulty_a, 0, nullptr, nullptr);
-				if (write_error3 == CL_SUCCESS)
-				{
-					cl_int enqueue_error = clEnqueueNDRangeKernel (queue, kernel, 1, nullptr, work_size, nullptr, 0, nullptr, nullptr);
-					if (enqueue_error == CL_SUCCESS)
-					{
-						cl_int read_error1 = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, nullptr);
-						if (read_error1 == CL_SUCCESS)
-						{
-							cl_int finishError = clFinish (queue);
-							if (finishError == CL_SUCCESS)
-							{
-							}
-							else
-							{
-								error = true;
-								logger.always_log (boost::str (boost::format ("Error finishing queue %1%") % finishError));
-							}
-						}
-						else
-						{
-							error = true;
-							logger.always_log (boost::str (boost::format ("Error reading result %1%") % read_error1));
-						}
-					}
-					else
-					{
-						error = true;
-						logger.always_log (boost::str (boost::format ("Error enqueueing kernel %1%") % enqueue_error));
-					}
-				}
-				else
-				{
-					error = true;
-					logger.always_log (boost::str (boost::format ("Error writing item %1%") % write_error3));
-				}
-			}
-			else
-			{
-				error = true;
-				logger.always_log (boost::str (boost::format ("Error writing item %1%") % write_error2));
-			}
-		}
-		else
-		{
-			error = true;
-			logger.always_log (boost::str (boost::format ("Error writing attempt %1%") % write_error1));
-		}
-	}
-	boost::optional<uint64_t> value;
-	if (!error)
-	{
-		value = result;
-	}*/
 	return 0;
 }
