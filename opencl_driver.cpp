@@ -393,24 +393,26 @@ static void fill (__global uint * const slab_a, ulong const size_a, blake2b_stat
 	}
 }
 
-__kernel void find (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global uchar * const nonce_a, __global uint * const current, __global uint * const ticket, uint total_threads)
+__kernel void find (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, __global uint * const current, __global uint * const ticket, uint total_threads, uint stepping_a, ulong threshold_a)
 {
+	printf ("Entering\n");
+	ulong nonce_l[2] = { nonce_a[0], nonce_a[1] };
 	blake2b_state state;
 	blake2b_init (&state, sizeof (ulong));
-	blake2b_update (&state, nonce_a, sizeof (ulong) * 2);
+	blake2b_update (&state, (uchar const *)nonce_l, sizeof (ulong) * 2);
 	uint const thread = get_global_id (0);
 	uint ticket_l = *ticket;
 	barrier (CLK_GLOBAL_MEM_FENCE);
-	uint last_fill (~0);
-	while (*ticket == ticket_a)
+	uint last_fill = ~0;
+	while (*ticket == ticket_l)
 	{
-		ulong current_l = atomic_add (current, stepping);
+		ulong current_l = atomic_add (current, stepping_a);
 		if (current_l >> 32 != last_fill)
 		{
 			last_fill = current_l >> 32;
-			fill (slab_a, size_a, size_a / total_threads, last_fill * size_a + thread * (size_a / total_threads));
+			fill (slab_a, size_a, &state, size_a / total_threads, last_fill * size_a + thread * (size_a / total_threads));
 		}
-		ulong result_l = context.search (slab_a, size_a, stepping, current_l);
+		ulong result_l = search (slab_a, size_a, &state, stepping_a, current_l, threshold_a);
 		if (result_l != 0)
 		{
 			if (atomic_add (ticket, 1) == ticket_l)
@@ -536,7 +538,8 @@ void opencl_environment::dump (std::ostream & stream)
 class kernel
 {
 public:
-	kernel (cl_device_id device_a, cl_context context_a, cl_program program_a)
+	kernel (uint64_t threshold_a, cl_device_id device_a, cl_context context_a, cl_program program_a) :
+	threshold (threshold_a)
 	{
 		cl_int error;
 		kernel_m = clCreateKernel (program_a, "find", &error);
@@ -550,24 +553,28 @@ public:
 	void operator () (uint32_t total_threads)
 	{
 		bool error (false);
+		int32_t code;
 		size_t work_size[] = { total_threads, 0, 0 };
-		error |= clSetKernelArg (kernel_m, 0, sizeof (result_buffer), &result_buffer);
-		error |= clSetKernelArg (kernel_m, 1, sizeof (slab_buffer), &slab_buffer);
-		error |= clSetKernelArg (kernel_m, 2, sizeof (uint64_t), &size);
-		error |= clSetKernelArg (kernel_m, 3, sizeof (nonce_buffer), &nonce_buffer);
-		error |= clSetKernelArg (kernel_m, 3, sizeof (current_buffer), &current_buffer);
-		error |= clSetKernelArg (kernel_m, 4, sizeof (ticket_buffer), &ticket_buffer);
-		error |= clSetKernelArg (kernel_m, 5, sizeof (total_threads), &total_threads);
-		error |= clEnqueueWriteBuffer (queue, current_buffer, false, 0, sizeof (uint32_t), 0, 0, nullptr, nullptr);
-		error |= clEnqueueNDRangeKernel (queue, kernel_m, 1, nullptr, work_size, nullptr, 0, nullptr, nullptr);
-		error |= clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, nullptr);
-		error |= clFinish (queue);
+		error |= code = clSetKernelArg (kernel_m, 0, sizeof (result_buffer), &result_buffer);
+		error |= code = clSetKernelArg (kernel_m, 1, sizeof (slab_buffer), &slab_buffer);
+		error |= code = clSetKernelArg (kernel_m, 2, sizeof (uint64_t), &size);
+		error |= code = clSetKernelArg (kernel_m, 3, sizeof (nonce_buffer), &nonce_buffer);
+		error |= code = clSetKernelArg (kernel_m, 4, sizeof (current_buffer), &current_buffer);
+		error |= code = clSetKernelArg (kernel_m, 5, sizeof (ticket_buffer), &ticket_buffer);
+		error |= code = clSetKernelArg (kernel_m, 6, sizeof (total_threads), &total_threads);
+		error |= code = clSetKernelArg (kernel_m, 7, sizeof (uint32_t), &stepping);
+		error |= code = clSetKernelArg (kernel_m, 8, sizeof (uint64_t), &threshold);
+		error |= code = clEnqueueNDRangeKernel (queue, kernel_m, 1, nullptr, work_size, nullptr, 0, nullptr, nullptr);
+		error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, nullptr);
+		error |= code = clFinish (queue);
 		assert (!error);
 	}
 	bool error () const
 	{
 		return kernel_m == nullptr || result_buffer == nullptr || slab_buffer == nullptr || current_buffer == nullptr || ticket_buffer == nullptr;
 	}
+	uint32_t stepping { 65535 };
+	uint64_t threshold;
 	uint64_t result;
 	cl_command_queue queue;
 	cl_kernel kernel_m;
@@ -612,11 +619,11 @@ int opencl_pow_driver::main(int argc, char **argv)
 			{
 				std::array <uint64_t, 2> nonce = { 0, 0 };
 				ssp_pow::blake2_hash hash (nonce);
-				ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, 52);
-				kernel kernel (selected_devices[0], context, program);
+				ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, 32);
+				kernel kernel (ctx.threshold, selected_devices[0], context, program);
 				if (!kernel.error ())
 				{
-					kernel (1024);
+					kernel (1);
 				}
 			}
 			else
