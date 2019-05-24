@@ -12,6 +12,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories (${CMAKE_SOURCE_DIR})
 include_directories (${CMAKE_SOURCE_DIR}/include)
 
+if (BOOST_ROOT)
+	list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
+endif ()
+
 find_package (Boost 1.67.0 REQUIRED COMPONENTS program_options)
 
 include_directories (${Boost_INCLUDE_DIR})
@@ -19,6 +23,11 @@ include_directories (${Boost_INCLUDE_DIR})
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
 	SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINK_FLAGS}" )
+else ()
+	set (PLATFORM_LINK_FLAGS "-static-libgcc -static-libstdc++")
+	find_package (OpenCL REQUIRED)
+	include_directories (${OpenCL_INCLUDE_DIRS})
+	link_directories (${OpenCL_LIBRARY})
 endif ()
 
 add_library (siphash
@@ -51,4 +60,5 @@ add_executable (ssp_pow_driver
 target_link_libraries (ssp_pow_driver
 	blake2
 	Boost::program_options
-	gtest)
+	gtest
+	${OpenCL_LIBRARY})

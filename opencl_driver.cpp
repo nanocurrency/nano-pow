@@ -6,17 +6,7 @@
 #include <boost/format.hpp>
 
 #include <array>
-#include <iostream>
 #include <string>
-#include <vector>
-
-#ifdef __APPLE__
-#define CL_SILENCE_DEPRECATION
-#include <OpenCL/opencl.h>
-#else
-#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
-#include <CL/cl.h>
-#endif
 
 std::string opencl_program = R"%%%(
 enum blake2b_constant
@@ -378,7 +368,7 @@ static ulong search (__global uint * const slab_a, ulong const size_a, blake2b_s
 	for (uint current = begin, end = current + count; incomplete && current < end; ++current)
 	{
 		lhs = current;
-		ulong hash_l = hash (state_a, current | (0x1ULL << 63));
+		ulong hash_l = hash (state_a, current | (0x1UL << 63));
 		rhs = slab_a [slot (size_a, 0 - hash_l)];
 		incomplete = reduce (hash_l + hash (state_a, rhs & 0x7fffffff), threshold_a) != 0;
 	}
@@ -393,7 +383,7 @@ static void fill (__global uint * const slab_a, ulong const size_a, blake2b_stat
 	}
 }
 
-__kernel void find (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, __global uint * const current, __global uint * const ticket, uint total_threads, uint stepping_a, ulong threshold_a)
+__kernel void find (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, __global uint * const current, __global uint * const ticket, uint const total_threads, uint const stepping_a, ulong const threshold_a)
 {
 	printf ("Entering\n");
 	ulong nonce_l[2] = { nonce_a[0], nonce_a[1] };
@@ -417,6 +407,7 @@ __kernel void find (__global ulong * result_a, __global uint * const slab_a, ulo
 		{
 			if (atomic_add (ticket, 1) == ticket_l)
 			{
+				printf ("%lu\n", result_l);
 				*result_a = result_l;
 			}
 		}
@@ -424,21 +415,7 @@ __kernel void find (__global ulong * result_a, __global uint * const slab_a, ulo
 }
 )%%%";
 
-class opencl_platform
-{
-public:
-	cl_platform_id platform;
-	std::vector<cl_device_id> devices;
-};
-class opencl_environment
-{
-public:
-	opencl_environment (bool &);
-	void dump (std::ostream & stream);
-	std::vector<opencl_platform> platforms;
-};
-
-opencl_environment::opencl_environment (bool & error_a)
+opencl_pow_driver::opencl_environment::opencl_environment (bool & error_a)
 {
 	cl_uint platformIdCount = 0;
 	clGetPlatformIDs (0, nullptr, &platformIdCount);
@@ -460,7 +437,7 @@ opencl_environment::opencl_environment (bool & error_a)
 	}
 }
 
-void opencl_environment::dump (std::ostream & stream)
+void opencl_pow_driver::opencl_environment::dump (std::ostream & stream)
 {
 	auto index (0);
 	size_t device_count (0);
@@ -543,11 +520,15 @@ public:
 	{
 		cl_int error;
 		kernel_m = clCreateKernel (program_a, "find", &error);
-		result_buffer = clCreateBuffer (context_a, 0, sizeof (uint64_t *), nullptr, &error);
-		slab_buffer = clCreateBuffer (context_a, 0, sizeof (uint64_t *), nullptr, &error);
-		nonce_buffer = clCreateBuffer (context_a, 0, sizeof (uint8_t *), nullptr, &error);
-		current_buffer = clCreateBuffer (context_a, 0, sizeof (uint32_t *), nullptr, &error);
-		ticket_buffer = clCreateBuffer (context_a, 0, sizeof (uint32_t *), nullptr, &error);
+		result_buffer = clCreateBuffer (context_a, CL_MEM_WRITE_ONLY, sizeof (uint64_t), nullptr, &error); // 0
+		slab_buffer = clCreateBuffer (context_a, CL_MEM_READ_ONLY, sizeof (uint64_t), nullptr, &error); // 1
+		size_buffer = clCreateBuffer (context_a, CL_MEM_READ_ONLY, sizeof (uint64_t), nullptr, &error); // 2
+		nonce_buffer = clCreateBuffer (context_a, CL_MEM_READ_ONLY, sizeof (uint64_t), nullptr, &error); // 3
+		current_buffer = clCreateBuffer (context_a, CL_MEM_READ_ONLY, sizeof (uint32_t), nullptr, &error); // 4
+		ticket_buffer = clCreateBuffer (context_a, CL_MEM_READ_ONLY, sizeof (uint32_t), nullptr, &error); // 5
+		total_threads_buffer = clCreateBuffer (context_a, CL_MEM_READ_ONLY, sizeof (uint32_t), nullptr, &error); // 6
+		stepping_buffer = clCreateBuffer (context_a, CL_MEM_READ_ONLY, sizeof (uint32_t), nullptr, &error); // 7
+		threshold_buffer = clCreateBuffer (context_a, CL_MEM_READ_ONLY, sizeof (uint64_t), nullptr, &error); // 8
 		queue = clCreateCommandQueue (context_a, device_a, 0, &error);
 	}
 	void operator () (uint32_t total_threads)
@@ -557,13 +538,23 @@ public:
 		size_t work_size[] = { total_threads, 0, 0 };
 		error |= code = clSetKernelArg (kernel_m, 0, sizeof (result_buffer), &result_buffer);
 		error |= code = clSetKernelArg (kernel_m, 1, sizeof (slab_buffer), &slab_buffer);
-		error |= code = clSetKernelArg (kernel_m, 2, sizeof (uint64_t), &size);
+		error |= code = clSetKernelArg (kernel_m, 2, sizeof (size_buffer), &size_buffer);
 		error |= code = clSetKernelArg (kernel_m, 3, sizeof (nonce_buffer), &nonce_buffer);
 		error |= code = clSetKernelArg (kernel_m, 4, sizeof (current_buffer), &current_buffer);
 		error |= code = clSetKernelArg (kernel_m, 5, sizeof (ticket_buffer), &ticket_buffer);
-		error |= code = clSetKernelArg (kernel_m, 6, sizeof (total_threads), &total_threads);
-		error |= code = clSetKernelArg (kernel_m, 7, sizeof (uint32_t), &stepping);
-		error |= code = clSetKernelArg (kernel_m, 8, sizeof (uint64_t), &threshold);
+		error |= code = clSetKernelArg (kernel_m, 6, sizeof (uint32_t), &total_threads_buffer);
+		error |= code = clSetKernelArg (kernel_m, 7, sizeof (uint32_t), &stepping_buffer);
+		error |= code = clSetKernelArg (kernel_m, 8, sizeof (threshold_buffer), &threshold_buffer);
+
+		error |= code = clEnqueueWriteBuffer (queue, slab_buffer, false, 0, sizeof (uint64_t), &slab, 0, nullptr, nullptr); // 1
+		error |= code = clEnqueueWriteBuffer (queue, size_buffer, false, 0, sizeof (uint64_t), &size, 0, nullptr, nullptr); // 2
+		error |= code = clEnqueueWriteBuffer (queue, nonce_buffer, false, 0, sizeof (uint64_t), &nonce, 0, nullptr, nullptr); // 3
+		error |= code = clEnqueueWriteBuffer (queue, current_buffer, false, 0, sizeof (uint32_t), &current, 0, nullptr, nullptr); // 4
+		error |= code = clEnqueueWriteBuffer (queue, ticket_buffer, false, 0, sizeof (uint32_t), &ticket, 0, nullptr, nullptr); // 5
+		error |= code = clEnqueueWriteBuffer (queue, total_threads_buffer, false, 0, sizeof (uint32_t), &total_threads, 0, nullptr, nullptr); // 6
+		error |= code = clEnqueueWriteBuffer (queue, stepping_buffer, false, 0, sizeof (uint32_t), &stepping, 0, nullptr, nullptr); // 7
+		error |= code = clEnqueueWriteBuffer (queue, threshold_buffer, false, 0, sizeof (uint64_t), &threshold, 0, nullptr, nullptr); // 8
+
 		error |= code = clEnqueueNDRangeKernel (queue, kernel_m, 1, nullptr, work_size, nullptr, 0, nullptr, nullptr);
 		error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, nullptr);
 		error |= code = clFinish (queue);
@@ -573,29 +564,36 @@ public:
 	{
 		return kernel_m == nullptr || result_buffer == nullptr || slab_buffer == nullptr || current_buffer == nullptr || ticket_buffer == nullptr;
 	}
-	uint32_t stepping { 65535 };
-	uint64_t threshold;
-	uint64_t result;
+	uint64_t result; // 0
 	cl_command_queue queue;
 	cl_kernel kernel_m;
-	size_t size;
-	cl_mem result_buffer;
-	cl_mem slab_buffer;
-	cl_mem nonce_buffer;
-	cl_mem current_buffer;
-	cl_mem ticket_buffer;
-	uint32_t ticket;
+	cl_mem result_buffer; // 0
+	cl_mem slab_buffer; // 1
+	cl_mem size_buffer; // 2
+	cl_mem nonce_buffer; // 3
+	cl_mem current_buffer; // 4
+	cl_mem ticket_buffer; // 5
+	cl_mem total_threads_buffer; // 6
+	cl_mem stepping_buffer; // 7
+	cl_mem threshold_buffer; // 8
+	uint64_t slab; // 1
+	uint64_t size; // 2
+	uint64_t nonce; // 3
+	uint32_t current; // 4
+	uint32_t ticket; // 5
+	uint32_t stepping { 65535 }; // 7
+	uint64_t threshold; // 8
 };
 
-int opencl_pow_driver::main(int argc, char **argv)
+int opencl_pow_driver::main(int argc, char **argv, unsigned short platform_id, unsigned short device_id)
 {
 	bool error_a (false);
 	opencl_environment environment (error_a);
 	cl_context context;
 	cl_program program;
-	auto & platform (environment.platforms[0]);
+	auto & platform (environment.platforms[platform_id]);
 	std::array<cl_device_id, 1> selected_devices;
-	selected_devices[0] = platform.devices[1];
+	selected_devices[0] = platform.devices[device_id];
 	cl_context_properties contextProperties[] = {
 		CL_CONTEXT_PLATFORM,
 		reinterpret_cast<cl_context_properties> (platform.platform),

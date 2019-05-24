@@ -16,6 +16,11 @@
 
 #include <sys/mman.h>
 
+#ifndef MAP_NOCACHE
+/* No MAP_NOCACHE on Linux */
+#define MAP_NOCACHE (0)
+#endif
+
 namespace cpp_pow_driver
 {
 	std::string to_string_hex (uint32_t value_a)

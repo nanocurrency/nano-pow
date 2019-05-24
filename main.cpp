@@ -52,7 +52,10 @@ int main (int argc, char **argv)
 	boost::program_options::options_description description ("Command line options");
 	description.add_options ()
 	("help", "Print out options")
-	("driver", boost::program_options::value<driver> ()->default_value (driver::gtest), "Specify which test driver to use");
+	("driver", boost::program_options::value<driver> ()->default_value (driver::gtest), "Specify which test driver to use")
+	("platform", boost::program_options::value<std::string> (), "Defines the <platform> for OpenCL driver")
+	("device", boost::program_options::value<std::string> (), "Defines <device> for OpenCL driver")
+	("dump", "Dumping OpenCL information");
 	boost::program_options::variables_map vm;
 	int result (1);
 	try
@@ -80,8 +83,46 @@ int main (int argc, char **argv)
 			}
 			case driver::opencl:
 			{
-				result = opencl_pow_driver::main (argc, argv);
+				unsigned short platform (0);
+				auto platform_it = vm.find ("platform");
+				if (platform_it != vm.end ())
+				{
+					try
+					{
+						platform = boost::lexical_cast<unsigned short> (platform_it->second.as<std::string> ());
+					}
+					catch (boost::bad_lexical_cast &)
+					{
+						std::cerr << "Invalid platform id\n";
+						result = -1;
+					}
+				}
+				unsigned short device (0);
+				auto device_it = vm.find ("device");
+				if (device_it != vm.end ())
+				{
+					try
+					{
+						device = boost::lexical_cast<unsigned short> (device_it->second.as<std::string> ());
+					}
+					catch (boost::bad_lexical_cast &)
+					{
+						std::cerr << "Invalid device id\n";
+						result = -1;
+					}
+				}
+				result = opencl_pow_driver::main (argc, argv, platform, device);
 				break;
+			}
+		}
+		if (vm.count ("dump"))
+		{
+			std::cout << "Dumping OpenCL information" << std::endl;
+			bool error (false);
+			opencl_pow_driver::opencl_environment environment (error);
+			if (!error)
+			{
+				environment.dump (std::cout);
 			}
 		}
 	}
