@@ -106,7 +106,7 @@ public:
 	std::atomic<uint64_t> result { 0 };
 	std::atomic<uint64_t> current { 0 };
 	std::atomic<unsigned> ticket { 0 };
-	uint32_t stepping { 65535 };
+	uint32_t stepping { 1024 };
 	ssp_pow::context<T> context;
 };
 }

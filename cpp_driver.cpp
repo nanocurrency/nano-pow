@@ -55,68 +55,7 @@ namespace cpp_pow_driver
 	void perf_test ()
 	{
 		std::cerr << "Initializing...\n";
-		environment environment (8ULL * 1024 * 1024);
-		memset (environment.slab, 0, environment.memory ());
-		std::cerr << "Starting...\n";
-		
-		std::atomic<unsigned> solution_time (0);
-		auto nonce_count (16);
-		for (auto j (0UL); j < nonce_count; ++j)
-		{
-			environment.next_value = 0;
-			std::atomic<bool> error (true);
-			std::atomic<unsigned> fill_time (0);
-			auto stepping (65535);
-			auto start (std::chrono::system_clock::now ());
-			std::vector<std::thread> threads;
-			auto thread_count (4);
-			for (auto i (0); i < thread_count; ++i)
-			{
-				std::array <uint64_t, 2> nonce = { j, 0 };
-				ssp_pow::blake2_hash hash (nonce);
-				ssp_pow::context<ssp_pow::blake2_hash> context (hash, 48);
-				threads.emplace_back ([&, i] ()
-				{
-					uint64_t last_fill (0xffffffff00000000ULL);
-					while (error)
-					{
-						auto begin (environment.next_value.fetch_add (stepping));
-						auto fill (begin & last_fill);
-						if (fill != last_fill)
-						{
-							last_fill = fill;
-							auto fill_ratio (1.0 / thread_count);
-							context.fill (environment.slab, environment.items, fill_ratio * environment.items, environment.items * i);
-							fill_time += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ();
-						}
-						auto solution (context.search (environment.slab, environment.items, stepping, begin));
-						if (solution != 0)
-						{
-							auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());
-							solution_time += search_time;
-							auto lhs (solution >> 32);
-							auto lhs_hash (hash (lhs | context.lhs_or_mask));
-							auto rhs (solution & 0xffffffffULL);
-							auto rhs_hash (hash (rhs & context.rhs_and_mask));
-							auto sum (lhs_hash + rhs_hash);
-							std::cerr << boost::str (boost::format ("%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6% fill ms %7%\n") % to_string_hex (lhs_hash) % to_string_hex (lhs) % to_string_hex (rhs_hash) % to_string_hex (rhs) % to_string_hex64 (sum) % std::to_string (search_time) % std::to_string (fill_time / thread_count));
-							error = false;
-						}
-					}
-				});
-			}
-			for (auto & i: threads)
-			{
-				i.join ();
-			}
-		}
-		solution_time = solution_time / nonce_count;
-		std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (solution_time));
-	}
-	void perf_test2 ()
-	{
-		std::cerr << "Initializing...\n";
-		environment environment (8ULL * 1024 * 1024);
+		environment environment (4ULL * 1024 * 1024);
 		memset (environment.slab, 0, environment.memory ());
 		std::cerr << "Starting...\n";
 		
@@ -131,7 +70,7 @@ namespace cpp_pow_driver
 			{
 				std::array <uint64_t, 2> nonce = { j, 0 };
 				ssp_pow::blake2_hash hash (nonce);
-				ssp_pow::context<ssp_pow::blake2_hash> context (hash, 48);
+				ssp_pow::context<ssp_pow::blake2_hash> context (hash, 44);
 				ssp_pow::generator<ssp_pow::blake2_hash> generator (context);
 				unsigned ticket (generator.ticket);
 				threads.emplace_back ([&, i] ()
@@ -160,7 +99,7 @@ namespace cpp_pow_driver
 	}
 	int main (int argc, char **argv)
 	{
-		perf_test2 ();
+		perf_test ();
 		return 0;
 	}
 }
