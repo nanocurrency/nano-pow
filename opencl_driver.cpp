@@ -598,13 +598,13 @@ int opencl_pow_driver::main(int argc, char **argv, unsigned short platform_id, u
 			{
 				std::array <uint64_t, 2> nonce = { 0, 0 };
 				ssp_pow::blake2_hash hash (nonce);
-				ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, 36);
-				ssp_pow::generator<ssp_pow::blake2_hash> generator (ctx);
-				size_t slab_size (262144ULL);
-				auto slab (reinterpret_cast <uint32_t *> (malloc (slab_size * sizeof (uint32_t))));
-				auto start1 (std::chrono::system_clock::now ());
-				generator.find (slab, slab_size, 0, 0, 1);
-				printf ("Result: %llx %llx, %lld\n", generator.result.load (), ctx.difficulty (generator.result.load ()), std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::system_clock::now () - start1).count ());
+				ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, 44);
+				//ssp_pow::generator<ssp_pow::blake2_hash> generator (ctx);
+				size_t slab_size (4ULL * 1024 * 1024);
+				//auto slab (reinterpret_cast <uint32_t *> (malloc (slab_size * sizeof (uint32_t))));
+				//auto start1 (std::chrono::system_clock::now ());
+				//generator.find (slab, slab_size, 0, 0, 1);
+				//printf ("Result: %llx %llx, %lld\n", generator.result.load (), ctx.difficulty (generator.result.load ()), std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::system_clock::now () - start1).count ());
 				kernel kernel (slab_size, selected_devices[0], context, program);
 				if (!kernel.error ())
 				{
