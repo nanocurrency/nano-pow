@@ -4,6 +4,7 @@
 #include <ssp_pow/hash.hpp>
 
 #include <boost/format.hpp>
+#include <boost/program_options.hpp>
 
 #include <atomic>
 #include <cstdint>
@@ -52,10 +53,10 @@ namespace cpp_pow_driver
 		uint32_t * const slab;
 		std::atomic<uint64_t> next_value { 0 };
 	};
-	void perf_test ()
+	void perf_test (unsigned difficulty, unsigned lookup)
 	{
 		std::cerr << "Initializing...\n";
-		environment environment (4ULL * 1024 * 1024);
+		environment environment (1ULL << lookup);
 		memset (environment.slab, 0, environment.memory ());
 		std::cerr << "Starting...\n";
 		
@@ -70,7 +71,7 @@ namespace cpp_pow_driver
 			{
 				std::array <uint64_t, 2> nonce = { j, 0 };
 				ssp_pow::blake2_hash hash (nonce);
-				ssp_pow::context<ssp_pow::blake2_hash> context (hash, 44);
+				ssp_pow::context<ssp_pow::blake2_hash> context (hash, difficulty);
 				ssp_pow::generator<ssp_pow::blake2_hash> generator (context);
 				unsigned ticket (generator.ticket);
 				threads.emplace_back ([&, i] ()
@@ -97,9 +98,15 @@ namespace cpp_pow_driver
 		solution_time = solution_time / nonce_count;
 		std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (solution_time));
 	}
-	int main (int argc, char **argv)
+	int main (boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup)
 	{
-		perf_test ();
+		unsigned threads (std::thread::hardware_concurrency ());
+		auto threads_opt (vm.find ("threads"));
+		if (threads_opt != vm.end ())
+		{
+			threads = threads_opt->second.as <unsigned> ();
+		}
+		perf_test (difficulty, lookup);
 		return 0;
 	}
 }

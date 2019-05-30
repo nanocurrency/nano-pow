@@ -3,7 +3,9 @@
 #include <ssp_pow/hash.hpp>
 #include <ssp_pow/pow.hpp>
 
+#include <boost/endian/arithmetic.hpp>
 #include <boost/format.hpp>
+#include <boost/program_options.hpp>
 
 #include <algorithm>
 #include <array>
@@ -486,16 +488,25 @@ void opencl_pow_driver::opencl_environment::dump (std::ostream & stream)
 					break;
 			}
 			stream << '\t' << device_type_string << std::endl;
+			
 			size_t compilerAvailableCount = 0;
 			clGetDeviceInfo (*j, CL_DEVICE_COMPILER_AVAILABLE, 0, nullptr, &compilerAvailableCount);
 			std::vector<uint8_t> compilerAvailableInfo (compilerAvailableCount);
 			clGetDeviceInfo (*j, CL_DEVICE_COMPILER_AVAILABLE, compilerAvailableCount, compilerAvailableInfo.data (), 0);
 			stream << '\t' << "Compiler available: " << (compilerAvailableInfo[0] ? "true" : "false") << std::endl;
+			
+			size_t globalMemSizeCount = 0;
+			clGetDeviceInfo (*j, CL_DEVICE_GLOBAL_MEM_SIZE, 0, nullptr, &globalMemSizeCount);
+			std::vector<uint8_t> globalMemSizeInfo (globalMemSizeCount);
+			clGetDeviceInfo (*j, CL_DEVICE_GLOBAL_MEM_SIZE, globalMemSizeCount, globalMemSizeInfo.data (), 0);
+			uint64_t globalMemSize (boost::endian::little_to_native (*reinterpret_cast <uint64_t *> (globalMemSizeInfo.data ())));
+			stream << '\t' << "Global mem size: " << globalMemSize << std::endl;
+			
 			size_t computeUnitsAvailableCount = 0;
 			clGetDeviceInfo (*j, CL_DEVICE_MAX_COMPUTE_UNITS, 0, nullptr, &computeUnitsAvailableCount);
 			std::vector<uint8_t> computeUnitsAvailableInfo (computeUnitsAvailableCount);
 			clGetDeviceInfo (*j, CL_DEVICE_MAX_COMPUTE_UNITS, computeUnitsAvailableCount, computeUnitsAvailableInfo.data (), 0);
-			uint64_t computeUnits (computeUnitsAvailableInfo[0] | (computeUnitsAvailableInfo[1] << 8) | (computeUnitsAvailableInfo[2] << 16) | (computeUnitsAvailableInfo[3] << 24));
+			uint32_t computeUnits (boost::endian::little_to_native (*reinterpret_cast <uint32_t *> (computeUnitsAvailableInfo.data ())));
 			stream << '\t' << "Compute units available: " << computeUnits << std::endl;
 		}
 	}
@@ -515,12 +526,12 @@ public:
 		nonce_buffer = clCreateBuffer (context_a, CL_MEM_READ_WRITE, sizeof (uint64_t) * 2, nullptr, &error);
 		queue = clCreateCommandQueue (context_a, device_a, 0, &error);
 	}
-	uint64_t operator () (std::array<uint64_t, 2> nonce_a, uint64_t threshold_a)
+	uint64_t operator () (std::array<uint64_t, 2> nonce_a, uint64_t threshold_a, unsigned search_threads)
 	{
 		uint64_t result (0);
 		bool error (false);
 		int32_t code;
-		uint32_t stepping (1024);
+		uint32_t stepping (256);
 		
 		error |= code = clSetKernelArg (search, 0, sizeof (result_buffer), &result_buffer);
 		error |= code = clSetKernelArg (search, 1, sizeof (slab_buffer), &slab_buffer);
@@ -543,7 +554,6 @@ public:
 		while (!error && result == 0)
 		{
 			error |= code = clSetKernelArg (search, 5, sizeof (uint32_t), &current);
-			uint32_t search_threads (1024);
 			current += search_threads * stepping;
 			size_t search_size[] = { search_threads, 0, 0 };
 			error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, search_size, nullptr, 0, nullptr, nullptr);
@@ -566,8 +576,21 @@ public:
 	cl_mem nonce_buffer;
 };
 
-int opencl_pow_driver::main(int argc, char **argv, unsigned short platform_id, unsigned short device_id)
+int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup, unsigned short platform_id, unsigned short device_id)
 {
+	unsigned threads (1024);
+	try
+	{
+		auto threads_opt (vm.find ("threads"));
+		if (threads_opt != vm.end ())
+		{
+			threads = threads_opt->second.as <unsigned> ();
+		}
+	}
+	catch (boost::program_options::error const & err)
+	{
+		std::cerr << err.what () << std::endl;
+	}
 	bool error_a (false);
 	opencl_environment environment (error_a);
 	cl_context context;
@@ -598,9 +621,9 @@ int opencl_pow_driver::main(int argc, char **argv, unsigned short platform_id, u
 			{
 				std::array <uint64_t, 2> nonce = { 0, 0 };
 				ssp_pow::blake2_hash hash (nonce);
-				ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, 44);
+				ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, difficulty);
 				//ssp_pow::generator<ssp_pow::blake2_hash> generator (ctx);
-				size_t slab_size (4ULL * 1024 * 1024);
+				size_t slab_size (1ULL << lookup);
 				//auto slab (reinterpret_cast <uint32_t *> (malloc (slab_size * sizeof (uint32_t))));
 				//auto start1 (std::chrono::system_clock::now ());
 				//generator.find (slab, slab_size, 0, 0, 1);
@@ -609,8 +632,8 @@ int opencl_pow_driver::main(int argc, char **argv, unsigned short platform_id, u
 				if (!kernel.error ())
 				{
 					auto start2 (std::chrono::system_clock::now ());
-					auto result (kernel (nonce, ctx.threshold));
-					printf ("Result: %llx %llx, %lld\n", result, ctx.difficulty (result), std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::system_clock::now () - start2).count ());
+					auto result (kernel (nonce, ctx.threshold, threads));
+					printf ("Result: %016llx %llx, %lld\n", result, ctx.difficulty (result), std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::system_clock::now () - start2).count ());
 				}
 			}
 			else

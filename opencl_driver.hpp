@@ -11,9 +11,11 @@
 #include <CL/cl.h>
 #endif
 
+#include <boost/program_options.hpp>
+
 namespace opencl_pow_driver
 {
-	int main (int argc, char **argv, unsigned short platform_id = 0, unsigned short device_id = 0);
+	int main (boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup, unsigned short platform_id = 0, unsigned short device_id = 0);
 
 	class opencl_platform
 	{
