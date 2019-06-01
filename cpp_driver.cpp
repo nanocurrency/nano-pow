@@ -49,13 +49,14 @@ namespace cpp_pow_driver
 		{
 			return items * sizeof (uint32_t);
 		};
-		size_t const items { 1024ULL * 1024 };
+		size_t const items { 1024ULL * 1024 }; // hold 1M items
 		uint32_t * const slab;
 		std::atomic<uint64_t> next_value { 0 };
 	};
 	void perf_test (unsigned difficulty, unsigned lookup)
 	{
 		std::cerr << "Initializing...\n";
+        std::cerr << boost::str (boost::format ("Lookup Size: %d MB\n") % std::to_string(1ULL << lookup-20));
 		environment environment (1ULL << lookup);
 		memset (environment.slab, 0, environment.memory ());
 		std::cerr << "Starting...\n";
@@ -86,7 +87,14 @@ namespace cpp_pow_driver
 						auto rhs (generator.result & 0xffffffffULL);
 						auto rhs_hash (hash (rhs & context.rhs_and_mask));
 						auto sum (lhs_hash + rhs_hash);
-						std::cerr << boost::str (boost::format ("%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6%\n") % to_string_hex (lhs_hash) % to_string_hex (lhs) % to_string_hex (rhs_hash) % to_string_hex (rhs) % to_string_hex64 (sum) % std::to_string (search_time));
+						std::cerr << boost::str (boost::format (
+                                    "%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6%\n") 
+                                % to_string_hex (lhs_hash) 
+                                % to_string_hex (lhs) 
+                                % to_string_hex (rhs_hash) 
+                                % to_string_hex (rhs) 
+                                % to_string_hex64 (sum) 
+                                % std::to_string (search_time));
 					}
 				});
 			}
