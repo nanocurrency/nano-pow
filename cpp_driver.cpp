@@ -53,7 +53,7 @@ namespace cpp_pow_driver
 		uint32_t * const slab;
 		std::atomic<uint64_t> next_value { 0 };
 	};
-	void perf_test (unsigned difficulty, unsigned lookup)
+	void perf_test (unsigned difficulty, unsigned lookup, unsigned thread_count)
 	{
 		std::cerr << "Initializing...\n";
 		environment environment (1ULL << lookup);
@@ -66,7 +66,6 @@ namespace cpp_pow_driver
 		{
 			auto start (std::chrono::system_clock::now ());
 			std::vector<std::thread> threads;
-			auto thread_count (4);
 			for (auto i (0); i < thread_count; ++i)
 			{
 				std::array <uint64_t, 2> nonce = { j, 0 };
@@ -106,7 +105,7 @@ namespace cpp_pow_driver
 		{
 			threads = threads_opt->second.as <unsigned> ();
 		}
-		perf_test (difficulty, lookup);
+		perf_test (difficulty, lookup, threads);
 		return 0;
 	}
 }

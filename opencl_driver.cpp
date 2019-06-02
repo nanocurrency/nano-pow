@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <string>
 
 std::string opencl_program = R"%%%(
