@@ -55,7 +55,7 @@ int main (int argc, char **argv)
 	("driver", boost::program_options::value<driver> ()->default_value (driver::gtest), "Specify which test driver to use")
 	("difficulty", boost::program_options::value<unsigned> ()->default_value (52), "Solution difficulty 1-64 default: 52")
 	("threads", boost::program_options::value<unsigned> (), "Number of device threads to use to find solution")
-	("lookup", "Scale of lookup table. Table contains 2^N entries, N defaults to (difficulty/2)")
+	("lookup", boost::program_options::value<unsigned> (), "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2)")
 	("platform", boost::program_options::value<std::string> (), "Defines the <platform> for OpenCL driver")
 	("device", boost::program_options::value<std::string> (), "Defines <device> for OpenCL driver")
 	("dump", "Dumping OpenCL information");
