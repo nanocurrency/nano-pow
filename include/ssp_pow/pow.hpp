@@ -47,25 +47,51 @@ public:
 		}
 		return result;
 	}
+
+    /**
+     * Maps item_a to an index within the memory region.
+     * @param size_a size of memory region in bytes. Must be a power of 2
+     * @param item_a value that needs to be pigeonholed into an index/slot.
+     *        Naively is (item_a % size_a), but using bitmasking for efficiency.
+     */
 	uint64_t slot (size_t const size_a, uint64_t const item_a) const
 	{
 		auto mask (size_a - 1);
 		assert (((size_a & mask) == 0) && "Slab size is not a power of 2");
 		return item_a & mask;
 	}
+
+    /**
+     *
+     * @param slab_a pointer to memory region
+     * @param size_a size of memory region
+     */
 	uint64_t search (uint32_t * const slab_a, size_t const size_a, uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0)
 	{
 		auto incomplete (true);
 		uint32_t lhs, rhs;
 		for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 		{
-			lhs = current;
+			lhs = current; // All the preimages have the same MSB. This is to save 4 bytes per element
 			auto hash_l (hash (current | lhs_or_mask));
 			rhs = slab_a [slot (size_a, 0 - hash_l)];
+            // if the reduce is 0, then we found a solution!
 			incomplete = reduce (hash_l + hash (rhs & rhs_and_mask)) != 0;
 		}
 		return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 	}
+
+    /**
+     * Populates memory with `count` pre-images
+     *
+     * basically does:
+     *     slab_a[hash(x) % size_a] = x
+     *
+     * @param slab_a pointer to memory region
+     * @param size_a size of memory region
+     * @param count How many slots in slab_a to fill
+     * @param begin starting value to hash
+     */
 	void fill (uint32_t * const slab_a, size_t const size_a, uint32_t const count, uint32_t const begin = 0)
 	{
 		for (uint32_t current (begin), end (current + count); current < end; ++current)
@@ -84,18 +110,25 @@ public:
 	}
 	void find (uint32_t * const slab_a, size_t const size_a, unsigned ticket_a, unsigned thread, unsigned total_threads)
 	{
-		uint32_t last_fill (~0);
-		while (ticket == ticket_a)
+		uint32_t last_fill (~0); // 0xFFFFFFFF
+		while (ticket == ticket_a) // job identifier, if we're still working on this job
 		{
-			auto current_l (current.fetch_add (stepping));
-			if (current_l >> 32 != last_fill)
+			auto current_l (current.fetch_add (stepping)); // local
+			if (current_l >> 32 != last_fill) // top half of current_l
 			{
+                // fill the memory with 1/threads preimages
+                // i.e. this thread's fair share.
+				auto allowance (size_a / total_threads);
 				last_fill = current_l >> 32;
-				context.fill (slab_a, size_a, size_a / total_threads, last_fill * size_a + thread * (size_a / total_threads));
+				context.fill (slab_a, size_a,
+					allowance,
+					last_fill * size_a + thread * allowance );
 			}
 			auto result_l (context.search (slab_a, size_a, stepping, current_l));
 			if (result_l != 0)
 			{
+                // solution found!
+                // Increment the job counter, and set the results to the found preimage
 				if (ticket.fetch_add (1) == ticket_a)
 				{
 					result = result_l;
@@ -106,7 +139,7 @@ public:
 	std::atomic<uint64_t> result { 0 };
 	std::atomic<uint64_t> current { 0 };
 	std::atomic<unsigned> ticket { 0 };
-	uint32_t stepping { 1024 };
+	static uint32_t constexpr stepping { 1024 };
 	ssp_pow::context<T> context;
 };
 }

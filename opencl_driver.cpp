@@ -11,6 +11,7 @@
 #include <array>
 #include <chrono>
 #include <string>
+#include <chrono>
 
 std::string opencl_program = R"%%%(
 enum blake2b_constant
