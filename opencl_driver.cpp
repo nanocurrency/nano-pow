@@ -553,20 +553,19 @@ public:
 		error |= code = clEnqueueNDRangeKernel (queue, fill, 1, nullptr, fill_size, nullptr, 0, nullptr, nullptr);
 		error |= code = clFinish (queue);
 		size_t search_size[] = { search_threads, 0, 0 };
-		std::array <cl_event, 4> events;
+		std::array <cl_event, 2> events;
 		error |= code = clSetKernelArg (search, 5, sizeof (uint32_t), &current);
 		current += search_threads * stepping;
-		error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, search_size, nullptr, 0, nullptr, &events[0]);
-		error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[1]);
+		error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, search_size, nullptr, 0, nullptr, nullptr);
+		error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[0]);
 		while (!error && result == 0)
 		{
 			error |= code = clSetKernelArg (search, 5, sizeof (uint32_t), &current);
 			current += search_threads * stepping;
-			error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, search_size, nullptr, 0, nullptr, &events[2]);
-			error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[3]);
-			error |= clWaitForEvents(2, &events[0]);
-			events[0] = events[2];
-			events[1] = events[3];
+			error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, search_size, nullptr, 0, nullptr, nullptr);
+			error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[1]);
+			error |= clWaitForEvents(1, &events[0]);
+			events[0] = events[1];
 		}
 		error |= code = clFinish (queue);
 		assert (!error);
