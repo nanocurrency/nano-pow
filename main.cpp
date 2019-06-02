@@ -72,7 +72,11 @@ int main (int argc, char **argv)
 		{
 			lookup = lookup_opt->second.as <unsigned> ();
 		}
-		if (vm.count ("dump"))
+		if (vm.count ("help"))
+		{
+			std::cout << description << std::endl;
+		}
+		else if (vm.count ("dump"))
 		{
 			std::cout << "Dumping OpenCL information" << std::endl;
 			bool error (false);
