@@ -59,6 +59,6 @@ add_executable (ssp_pow_driver
 
 target_link_libraries (ssp_pow_driver
 	blake2
-	boost_program_options
+	${Boost_LIBRARIES}
 	gtest
 	${OpenCL_LIBRARY})
