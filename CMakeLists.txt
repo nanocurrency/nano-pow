@@ -16,7 +16,7 @@ if (BOOST_ROOT)
 	list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 endif ()
 
-find_package (Boost 1.67.0 REQUIRED COMPONENTS program_options)
+find_package (Boost 1.65.0 REQUIRED COMPONENTS program_options)
 
 include_directories (${Boost_INCLUDE_DIR})
 
