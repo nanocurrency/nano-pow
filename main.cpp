@@ -56,6 +56,7 @@ int main (int argc, char **argv)
 	("difficulty", boost::program_options::value<unsigned> ()->default_value (52), "Solution difficulty 1-64 default: 52")
 	("threads", boost::program_options::value<unsigned> (), "Number of device threads to use to find solution")
 	("lookup", boost::program_options::value<unsigned> (), "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2)")
+	("count", boost::program_options::value<unsigned> ()->default_value (16), "Specify how many problems to solve, default 16")
 	("platform", boost::program_options::value<std::string> (), "Defines the <platform> for OpenCL driver")
 	("device", boost::program_options::value<std::string> (), "Defines <device> for OpenCL driver")
 	("dump", "Dumping OpenCL information");
@@ -65,7 +66,8 @@ int main (int argc, char **argv)
 	{
 		boost::program_options::store (boost::program_options::parse_command_line (argc, argv, description), vm);
 		boost::program_options::notify (vm);
-		auto difficulty (vm.find ("difficulty")->second.as<unsigned>());
+		auto difficulty (vm.find ("difficulty")->second.as<unsigned> ());
+		auto count (vm.find ("count")->second.as<unsigned> ());
 		auto lookup (difficulty / 2);
 		auto lookup_opt (vm.find ("lookup"));
 		if (lookup_opt != vm.end ())
@@ -99,7 +101,7 @@ int main (int argc, char **argv)
 				}
 				case driver::cpp:
 				{
-					result = cpp_pow_driver::main (vm, difficulty, lookup);
+					result = cpp_pow_driver::main (vm, difficulty, lookup, count);
 					break;
 				}
 				case driver::opencl:
@@ -132,7 +134,7 @@ int main (int argc, char **argv)
 							result = -1;
 						}
 					}
-					result = opencl_pow_driver::main (vm, difficulty, lookup, platform, device);
+					result = opencl_pow_driver::main (vm, difficulty, lookup, count, platform, device);
 					break;
 				}
 			}

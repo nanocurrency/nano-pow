@@ -528,6 +528,13 @@ public:
 		nonce_buffer = clCreateBuffer (context_a, CL_MEM_READ_WRITE, sizeof (uint64_t) * 2, nullptr, &error);
 		queue = clCreateCommandQueue (context_a, device_a, 0, &error);
 	}
+	~kernel ()
+	{
+		if (slab_buffer)
+		{
+			clReleaseMemObject (slab_buffer);
+		}
+	}
 	uint64_t operator () (std::array<uint64_t, 2> nonce_a, uint64_t threshold_a, unsigned search_threads)
 	{
 		uint64_t result (0);
@@ -585,7 +592,7 @@ public:
 	cl_mem nonce_buffer;
 };
 
-int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup, unsigned short platform_id, unsigned short device_id)
+int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup, unsigned problem_count, unsigned short platform_id, unsigned short device_id)
 {
 	unsigned threads (1024);
 	try
@@ -628,22 +635,30 @@ int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned
 			error_a |= clBuildProgramError != CL_SUCCESS;
 			if (!error_a)
 			{
-				std::array <uint64_t, 2> nonce = { 0, 0 };
-				ssp_pow::blake2_hash hash (nonce);
-				ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, difficulty);
-				//ssp_pow::generator<ssp_pow::blake2_hash> generator (ctx);
-				size_t slab_size (1ULL << lookup);
-				//auto slab (reinterpret_cast <uint32_t *> (malloc (slab_size * sizeof (uint32_t))));
-				//auto start1 (std::chrono::system_clock::now ());
-				//generator.find (slab, slab_size, 0, 0, 1);
-				//printf ("Result: %llx %llx, %lld\n", generator.result.load (), ctx.difficulty (generator.result.load ()), std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::system_clock::now () - start1).count ());
-				kernel kernel (slab_size, selected_devices[0], context, program);
-				if (!kernel.error ())
+				std::atomic<unsigned> solution_time (0);
+				for (auto j (0UL); j < problem_count; ++j)
 				{
-					auto start2 (std::chrono::system_clock::now ());
-					auto result (kernel (nonce, ctx.threshold, threads));
-					printf ("Result: %016llx %llx, %lld\n", result, ctx.difficulty (result), std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::system_clock::now () - start2).count ());
+					std::array <uint64_t, 2> nonce = { j, 0 };
+					ssp_pow::blake2_hash hash (nonce);
+					ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, difficulty);
+					size_t slab_size (1ULL << lookup);
+					kernel kernel (slab_size, selected_devices[0], context, program);
+					if (!kernel.error ())
+					{
+						auto start2 (std::chrono::system_clock::now ());
+						auto result (kernel (nonce, ctx.threshold, threads));
+						auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start2).count ());
+						solution_time += search_time;
+						printf ("Result: %016llx %llx, search %lld ms\n", result, ctx.difficulty (result), search_time);
+					}
+					else
+					{
+						std::cerr << "Kernel error\n";
+						break;
+					}
 				}
+				solution_time = solution_time / problem_count;
+				std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (solution_time));
 			}
 			else
 			{

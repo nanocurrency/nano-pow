@@ -53,7 +53,7 @@ namespace cpp_pow_driver
 		uint32_t * const slab;
 		std::atomic<uint64_t> next_value { 0 };
 	};
-	void perf_test (unsigned difficulty, unsigned lookup, unsigned thread_count)
+	void perf_test (unsigned difficulty, unsigned lookup, unsigned problem_count, unsigned thread_count)
 	{
 		std::cerr << "Initializing...\n";
 		std::cerr << boost::str (boost::format ("Lookup Size: %d MB\n") % std::to_string (1ULL << (lookup - 20)));
@@ -62,8 +62,7 @@ namespace cpp_pow_driver
 		std::cerr << "Starting...\n";
 		
 		std::atomic<unsigned> solution_time (0);
-		auto nonce_count (16);
-		for (auto j (0UL); j < nonce_count; ++j)
+		for (auto j (0UL); j < problem_count; ++j)
 		{
 			auto start (std::chrono::system_clock::now ());
 			std::vector<std::thread> threads;
@@ -102,10 +101,10 @@ namespace cpp_pow_driver
 				i.join ();
 			}
 		}
-		solution_time = solution_time / nonce_count;
+		solution_time = solution_time / problem_count;
 		std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (solution_time));
 	}
-	int main (boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup)
+	int main (boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup, unsigned problem_count)
 	{
 		unsigned threads (std::thread::hardware_concurrency ());
 		auto threads_opt (vm.find ("threads"));
@@ -113,7 +112,7 @@ namespace cpp_pow_driver
 		{
 			threads = threads_opt->second.as <unsigned> ();
 		}
-		perf_test (difficulty, lookup, threads);
+		perf_test (difficulty, lookup, problem_count, threads);
 		return 0;
 	}
 }
