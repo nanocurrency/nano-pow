@@ -653,7 +653,7 @@ int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned
 					}
 					else
 					{
-						std::cerr << "Kernel error\n";
+						std::cerr << "Kernel error (average solution time will be wrong)" << std::endl;
 						break;
 					}
 				}
