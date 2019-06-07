@@ -635,7 +635,7 @@ int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned
 			error_a |= clBuildProgramError != CL_SUCCESS;
 			if (!error_a)
 			{
-				std::atomic<unsigned> solution_time (0);
+				unsigned solution_time (0);
 				for (auto j (0UL); j < problem_count; ++j)
 				{
 					std::array <uint64_t, 2> nonce = { j, 0 };
