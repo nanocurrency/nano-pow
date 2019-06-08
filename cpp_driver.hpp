@@ -4,5 +4,5 @@
 
 namespace cpp_pow_driver
 {
-int main (boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup);
+int main (boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup, unsigned count);
 }
