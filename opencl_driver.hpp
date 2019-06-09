@@ -8,6 +8,7 @@
 #include <OpenCL/opencl.h>
 #else
 #define CL_TARGET_OPENCL_VERSION 120
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <CL/cl.h>
 #endif
 
@@ -27,7 +28,7 @@ namespace opencl_pow_driver
 	class opencl_environment
 	{
 	public:
-		opencl_environment (bool &);
+		opencl_environment ();
 		void dump (std::ostream & stream);
 		std::vector<opencl_platform> platforms;
 	};

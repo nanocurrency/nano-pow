@@ -66,7 +66,7 @@ namespace cpp_pow_driver
 		{
 			auto start (std::chrono::system_clock::now ());
 			std::vector<std::thread> threads;
-			for (auto i (0); i < thread_count; ++i)
+			for (auto i (0U); i < thread_count; ++i)
 			{
 				std::array <uint64_t, 2> nonce = { j, 0 };
 				ssp_pow::blake2_hash hash (nonce);

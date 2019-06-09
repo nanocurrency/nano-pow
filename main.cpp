@@ -81,12 +81,8 @@ int main (int argc, char **argv)
 		else if (vm.count ("dump"))
 		{
 			std::cout << "Dumping OpenCL information" << std::endl;
-			bool error (false);
-			opencl_pow_driver::opencl_environment environment (error);
-			if (!error)
-			{
-				environment.dump (std::cout);
-			}
+			opencl_pow_driver::opencl_environment environment;
+			environment.dump (std::cout);
 		}
 		else
 		{

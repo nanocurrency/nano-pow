@@ -408,7 +408,7 @@ __kernel void fill (__global uint * const slab_a, ulong const size_a, __global u
 }
 )%%%";
 
-opencl_pow_driver::opencl_environment::opencl_environment (bool & error_a)
+opencl_pow_driver::opencl_environment::opencl_environment ()
 {
 	cl_uint platformIdCount = 0;
 	clGetPlatformIDs (0, nullptr, &platformIdCount);
@@ -534,6 +534,14 @@ public:
 		{
 			clReleaseMemObject (slab_buffer);
 		}
+		if (result_buffer)
+		{
+			clReleaseMemObject (result_buffer);
+		}
+		if (nonce_buffer)
+		{
+			clReleaseMemObject (nonce_buffer);
+		}
 	}
 	uint64_t operator () (std::array<uint64_t, 2> nonce_a, uint64_t threshold_a, unsigned search_threads)
 	{
@@ -608,7 +616,7 @@ int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned
 		std::cerr << err.what () << std::endl;
 	}
 	bool error_a (false);
-	opencl_environment environment (error_a);
+	opencl_environment environment;
 	cl_context context;
 	cl_program program;
 	auto & platform (environment.platforms[platform_id]);
@@ -649,7 +657,7 @@ int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned
 						auto result (kernel (nonce, ctx.threshold, threads));
 						auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start2).count ());
 						solution_time += search_time;
-						printf ("Result: %016llx %llx, search %lld ms\n", result, ctx.difficulty (result), search_time);
+						printf ("Result: %016lx %lx, search %ld ms\n", result, ctx.difficulty (result), search_time);
 					}
 					else
 					{
