@@ -58,7 +58,7 @@ public:
 
 	/**
 	 * Maps item_a to an index within the memory region.
-	 * @param size_a size of memory region in bytes. Must be a power of 2
+	 *
 	 * @param item_a value that needs to be pigeonholed into an index/slot.
 	 *        Naively is (item_a % size_a), but using bitmasking for efficiency.
 	 */
@@ -70,9 +70,30 @@ public:
 	}
 
 	/**
+	 * Populates memory with `count` pre-images
 	 *
-	 * @param slab_a pointer to memory region
-	 * @param size_a size of memory region
+	 * These preimages are used as the RHS to the summing problem
+	 * basically does:
+	 *     slab_a[hash(x) % size_a] = x
+	 *
+	 * @param count How many slots in slab_a to fill
+	 * @param begin starting value to hash
+	 */
+	void fill (uint32_t const count, uint32_t const begin = 0)
+	{
+		for (uint32_t current (begin), end (current + count); current < end; ++current)
+		{
+			slab [slot (hash (current & rhs_and_mask))] = current;
+		}
+	}
+		
+	/**
+	 * Searches for a solution to difficulty problem
+	 *
+	 * Generates `count` LHS hashes and searches for associated RHS hashes already in the slab
+	 *
+	 * @param count How many slots in slab_a to fill
+	 * @param begin starting value to hash
 	 */
 	uint64_t search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0)
 	{
@@ -87,25 +108,6 @@ public:
 			incomplete = reduce (hash_l + hash (rhs & rhs_and_mask)) != 0;
 		}
 		return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
-	}
-
-	/**
-	 * Populates memory with `count` pre-images
-	 *
-	 * basically does:
-	 *     slab_a[hash(x) % size_a] = x
-	 *
-	 * @param slab_a pointer to memory region
-	 * @param size_a size of memory region
-	 * @param count How many slots in slab_a to fill
-	 * @param begin starting value to hash
-	 */
-	void fill (uint32_t const count, uint32_t const begin = 0)
-	{
-		for (uint32_t current (begin), end (current + count); current < end; ++current)
-		{
-			slab [slot (hash (current & rhs_and_mask))] = current;
-		}
 	}
 };
 template <typename T>
