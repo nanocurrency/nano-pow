@@ -71,11 +71,11 @@ namespace cpp_pow_driver
 				std::array <uint64_t, 2> nonce = { j, 0 };
 				ssp_pow::blake2_hash hash (nonce);
 				ssp_pow::context<ssp_pow::blake2_hash> context (hash, difficulty);
-				ssp_pow::generator<ssp_pow::blake2_hash> generator (context);
+				ssp_pow::generator<ssp_pow::blake2_hash> generator;
 				unsigned ticket (generator.ticket);
 				threads.emplace_back ([&, i] ()
 				{
-					generator.find (environment.slab, environment.items, ticket, i, thread_count);
+					generator.find (context, environment.slab, environment.items, ticket, i, thread_count);
 					if (i == 0)
 					{
 						auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());

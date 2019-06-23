@@ -104,11 +104,7 @@ template <typename T>
 class generator
 {
 public:
-	generator (ssp_pow::context<T> & context_a) :
-	context (context_a)
-	{
-	}
-	void find (uint32_t * const slab_a, size_t const size_a, unsigned ticket_a, unsigned thread, unsigned total_threads)
+	void find (ssp_pow::context<T> & context_a, uint32_t * const slab_a, size_t const size_a, unsigned ticket_a, unsigned thread, unsigned total_threads)
 	{
 		uint32_t last_fill (~0); // 0xFFFFFFFF
 		while (ticket == ticket_a) // job identifier, if we're still working on this job
@@ -120,11 +116,11 @@ public:
 				// i.e. this thread's fair share.
 				auto allowance (size_a / total_threads);
 				last_fill = current_l >> 32;
-				context.fill (slab_a, size_a,
+				context_a.fill (slab_a, size_a,
 					allowance,
 					last_fill * size_a + thread * allowance );
 			}
-			auto result_l (context.search (slab_a, size_a, stepping, current_l));
+			auto result_l (context_a.search (slab_a, size_a, stepping, current_l));
 			if (result_l != 0)
 			{
 				// solution found!
@@ -140,6 +136,5 @@ public:
 	std::atomic<uint64_t> current { 0 };
 	std::atomic<unsigned> ticket { 0 };
 	static uint32_t constexpr stepping { 1024 };
-	ssp_pow::context<T> context;
 };
 }
