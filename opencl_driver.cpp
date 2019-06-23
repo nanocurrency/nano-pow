@@ -648,8 +648,8 @@ int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned
 				{
 					std::array <uint64_t, 2> nonce = { j, 0 };
 					ssp_pow::blake2_hash hash (nonce);
-					ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, difficulty);
 					size_t slab_size (1ULL << lookup);
+					ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, nullptr, slab_size, ctx.bit_threshold (difficulty));
 					kernel kernel (slab_size, selected_devices[0], context, program);
 					if (!kernel.error ())
 					{
