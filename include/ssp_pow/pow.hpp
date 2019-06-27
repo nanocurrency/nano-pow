@@ -5,20 +5,23 @@
 #include <cstdlib>
 #include <limits>
 
+#include <ssp_pow/hash.hpp>
+
 namespace ssp_pow
 {
-template <typename T>
 class context final
 {
 public:
-	context (T & hash_a, uint32_t * const slab_a, size_t const size_a, uint64_t threshold_a) :
+	context (ssp_pow::hash & hash_a, std::array<uint64_t, 2> nonce_a, uint32_t * const slab_a, size_t const size_a, uint64_t threshold_a) :
 	hash (hash_a),
+	nonce (nonce_a),
 	slab (slab_a),
 	size (size_a),
 	threshold (threshold_a)
 	{
 	}
-	T & hash;
+	ssp_pow::hash & hash;
+	std::array<uint64_t, 2> nonce;
 	uint32_t * slab;
 	size_t size;
 	uint64_t threshold;
@@ -45,16 +48,6 @@ public:
 		result = ( result >> 32                      ) | ( result                       << 32);
 		return result;
 	}
-	uint64_t difficulty (uint64_t const solution_a) const
-	{
-		auto sum (hash ((solution_a >> 32) | lhs_or_mask) + hash (solution_a & rhs_and_mask));
-		uint64_t result (0);
-		if (reduce (sum) == 0)
-		{
-			result = reverse (~sum);
-		}
-		return result;
-	}
 
 	/**
 	 * Maps item_a to an index within the memory region.
@@ -68,6 +61,17 @@ public:
 		assert (((size & mask) == 0) && "Slab size is not a power of 2");
 		return item_a & mask;
 	}
+		
+	uint64_t difficulty (ssp_pow::hash & hash_a, uint64_t const solution_a) const
+	{
+		auto sum (hash_a ((solution_a >> 32) | lhs_or_mask) + hash_a (solution_a & rhs_and_mask));
+		uint64_t result (0);
+		if (reduce (sum) == 0)
+		{
+			result = reverse (~sum);
+		}
+		return result;
+	}
 
 	/**
 	 * Populates memory with `count` pre-images
@@ -79,11 +83,11 @@ public:
 	 * @param count How many slots in slab_a to fill
 	 * @param begin starting value to hash
 	 */
-	void fill (uint32_t const count, uint32_t const begin = 0)
+	void fill (ssp_pow::hash & hash_a, uint32_t const count, uint32_t const begin = 0)
 	{
 		for (uint32_t current (begin), end (current + count); current < end; ++current)
 		{
-			slab [slot (hash (current & rhs_and_mask))] = current;
+			slab [slot (hash_a (current & rhs_and_mask))] = current;
 		}
 	}
 		
@@ -95,27 +99,27 @@ public:
 	 * @param count How many slots in slab_a to fill
 	 * @param begin starting value to hash
 	 */
-	uint64_t search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0)
+	uint64_t search (ssp_pow::hash & hash_a, uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0)
 	{
 		auto incomplete (true);
 		uint32_t lhs, rhs;
 		for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 		{
 			lhs = current; // All the preimages have the same MSB. This is to save 4 bytes per element
-			auto hash_l (hash (current | lhs_or_mask));
+			auto hash_l (hash_a (current | lhs_or_mask));
 			rhs = slab [slot (0 - hash_l)];
 			// if the reduce is 0, then we found a solution!
-			incomplete = reduce (hash_l + hash (rhs & rhs_and_mask)) != 0;
+			incomplete = reduce (hash_l + hash_a (rhs & rhs_and_mask)) != 0;
 		}
 		return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 	}
 };
-template <typename T>
 class generator
 {
 public:
-	void find (ssp_pow::context<T> & context_a, unsigned ticket_a, unsigned thread, unsigned total_threads)
+	void find (ssp_pow::context & context_a, unsigned ticket_a, unsigned thread, unsigned total_threads)
 	{
+		context_a.hash.reset (context_a.nonce);
 		uint32_t last_fill (~0); // 0xFFFFFFFF
 		while (ticket == ticket_a) // job identifier, if we're still working on this job
 		{
@@ -126,9 +130,9 @@ public:
 				// i.e. this thread's fair share.
 				auto allowance (context_a.size / total_threads);
 				last_fill = current_l >> 32;
-				context_a.fill (allowance, last_fill * context_a.size + thread * allowance);
+				context_a.fill (context_a.hash, allowance, last_fill * context_a.size + thread * allowance);
 			}
-			auto result_l (context_a.search (stepping, current_l));
+			auto result_l (context_a.search (context_a.hash, stepping, current_l));
 			if (result_l != 0)
 			{
 				// solution found!

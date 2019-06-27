@@ -69,9 +69,9 @@ namespace cpp_pow_driver
 			for (auto i (0U); i < thread_count; ++i)
 			{
 				std::array <uint64_t, 2> nonce = { j, 0 };
-				ssp_pow::blake2_hash hash (nonce);
-				ssp_pow::context<ssp_pow::blake2_hash> context (hash, environment.slab, environment.items, context.bit_threshold (difficulty));
-				ssp_pow::generator<ssp_pow::blake2_hash> generator;
+				ssp_pow::blake2_hash hash;
+				ssp_pow::context context (hash, nonce, environment.slab, environment.items, context.bit_threshold (difficulty));
+				ssp_pow::generator generator;
 				unsigned ticket (generator.ticket);
 				threads.emplace_back ([&, i] ()
 				{

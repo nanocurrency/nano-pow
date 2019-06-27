@@ -647,9 +647,9 @@ int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned
 				for (auto j (0UL); j < problem_count; ++j)
 				{
 					std::array <uint64_t, 2> nonce = { j, 0 };
-					ssp_pow::blake2_hash hash (nonce);
+					ssp_pow::blake2_hash hash;
 					size_t slab_size (1ULL << lookup);
-					ssp_pow::context<ssp_pow::blake2_hash> ctx (hash, nullptr, slab_size, ctx.bit_threshold (difficulty));
+					ssp_pow::context ctx (hash, nonce, nullptr, slab_size, ctx.bit_threshold (difficulty));
 					kernel kernel (slab_size, selected_devices[0], context, program);
 					if (!kernel.error ())
 					{
@@ -657,7 +657,7 @@ int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned
 						auto result (kernel (nonce, ctx.threshold, threads));
 						auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start2).count ());
 						solution_time += search_time;
-						printf ("Result: %016lx %lx, search %ld ms\n", result, ctx.difficulty (result), search_time);
+						printf ("Result: %016lx %lx, search %ld ms\n", result, ctx.difficulty (hash, result), search_time);
 					}
 					else
 					{
