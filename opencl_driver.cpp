@@ -354,7 +354,7 @@ static ulong slot (ulong const size_a, ulong const item_a)
 
 static ulong reduce (ulong const item_a, ulong threshold_a)
 {
-	//printf ("Reduction: %lu\n", item_a & threshold_a);
+	//printf ("Reduction: %llx\n", item_a & threshold_a);
 	return item_a & threshold_a;
 }
 
@@ -375,6 +375,7 @@ static void init (ulong * const nonce_a, blake2b_state * state_a)
 
 __kernel void search (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, uint const count, uint const begin, ulong const threshold_a)
 {
+	//printf ("Slab %llu %llu %llx\n", slab_a, size_a, threshold_a);
 	ulong nonce_l[2] = { nonce_a [0], nonce_a [1] };
 	blake2b_state state;
 	init (nonce_l, &state);
@@ -397,6 +398,7 @@ __kernel void search (__global ulong * result_a, __global uint * const slab_a, u
 
 __kernel void fill (__global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, uint const count, uint const begin)
 {
+	//printf ("Slab %llu %llu\n", slab_a, size_a);
 	ulong nonce_l[2] = { nonce_a [0], nonce_a [1] };
 	blake2b_state state;
 	init (nonce_l, &state);
@@ -514,92 +516,8 @@ void ssp_pow::opencl_environment::dump (std::ostream & stream)
 	}
 }
 
-class kernel
-{
-public:
-	kernel (size_t size_a, cl_device_id device_a, cl_context context_a, cl_program program_a) :
-	size (size_a)
-	{
-		cl_int error;
-		fill = clCreateKernel (program_a, "fill", &error);
-		search = clCreateKernel (program_a, "search", &error);
-		result_buffer = clCreateBuffer (context_a, CL_MEM_WRITE_ONLY, sizeof (uint64_t), nullptr, &error);
-		nonce_buffer = clCreateBuffer (context_a, CL_MEM_READ_WRITE, sizeof (uint64_t) * 2, nullptr, &error);
-		queue = clCreateCommandQueue (context_a, device_a, 0, &error);
-	}
-	~kernel ()
-	{
-		if (result_buffer)
-		{
-			clReleaseMemObject (result_buffer);
-		}
-		if (nonce_buffer)
-		{
-			clReleaseMemObject (nonce_buffer);
-		}
-	}
-	uint64_t operator () (std::array<uint64_t, 2> nonce_a, uint64_t threshold_a, unsigned search_threads)
-	{
-		uint64_t result (0);
-		bool error (false);
-		int32_t code;
-		uint32_t stepping (256);
-		
-		error |= code = clSetKernelArg (search, 0, sizeof (result_buffer), &result_buffer);
-		error |= code = clSetKernelArg (search, 1, sizeof (slab_buffer), &slab_buffer);
-		error |= code = clSetKernelArg (search, 2, sizeof (uint64_t), &size);
-		error |= code = clSetKernelArg (search, 3, sizeof (nonce_buffer), &nonce_buffer);
-		error |= code = clSetKernelArg (search, 4, sizeof (uint32_t), &stepping);
-		error |= code = clSetKernelArg (search, 6, sizeof (uint64_t), &threshold_a);
-		
-		error |= code = clSetKernelArg (fill, 0, sizeof (slab_buffer), &slab_buffer);
-		error |= code = clSetKernelArg (fill, 1, sizeof (uint64_t), &size);
-		error |= code = clSetKernelArg (fill, 2, sizeof (nonce_buffer), &nonce_buffer);
-		error |= code = clSetKernelArg (fill, 3, sizeof (uint32_t), &stepping);
-
-		error |= code = clEnqueueWriteBuffer (queue, nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce_a.data (), 0, nullptr, nullptr);
-		uint32_t current (0);
-		error |= code = clSetKernelArg (fill, 4, sizeof (uint32_t), &current);
-		size_t fill_size[] = { std::max<size_t> (1U, size / stepping), 0, 0 };
-		error |= code = clEnqueueNDRangeKernel (queue, fill, 1, nullptr, fill_size, nullptr, 0, nullptr, nullptr);
-		error |= code = clFinish (queue);
-		size_t search_size[] = { search_threads, 0, 0 };
-		std::array <cl_event, 2> events;
-		error |= code = clSetKernelArg (search, 5, sizeof (uint32_t), &current);
-		current += search_threads * stepping;
-		error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, search_size, nullptr, 0, nullptr, nullptr);
-		error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[0]);
-		while (!error && result == 0)
-		{
-			error |= code = clSetKernelArg (search, 5, sizeof (uint32_t), &current);
-			current += search_threads * stepping;
-			error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, search_size, nullptr, 0, nullptr, nullptr);
-			error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[1]);
-			error |= clWaitForEvents(1, &events[0]);
-			events[0] = events[1];
-		}
-		error |= code = clFinish (queue);
-		assert (!error);
-		return result;
-	}
-	bool error () const
-	{
-		return fill == nullptr || search == nullptr|| queue == nullptr || result_buffer == nullptr || slab_buffer == nullptr || nonce_buffer == nullptr;
-	}
-	cl_kernel fill;
-	cl_kernel search;
-	cl_command_queue queue;
-	cl_mem result_buffer;
-	cl_mem slab_buffer;
-	uint64_t const size;
-	cl_mem nonce_buffer;
-};
-
-
 ssp_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned short device_id) :
-threads (1024),
-platform_id (platform_id),
-device_id (device_id)
+threads (1024)
 {
 	auto & platform (environment.platforms[platform_id]);
 	selected_device = platform.devices[device_id];
@@ -610,16 +528,30 @@ device_id (device_id)
 	};
 	cl_int createContextError (0);
 	context = clCreateContext (contextProperties, 1, &selected_device, nullptr, nullptr, &createContextError);
-	if (createContextError != CL_SUCCESS)
+	if (createContextError == CL_SUCCESS)
 	{
 		cl_int program_error (0);
 		char const * program_data (opencl_program.data ());
 		size_t program_length (opencl_program.size ());
 		program = clCreateProgramWithSource (context, 1, &program_data, &program_length, &program_error);
-		if (program_error != CL_SUCCESS)
+		if (program_error == CL_SUCCESS)
 		{
 			auto clBuildProgramError (clBuildProgram (program, 1, &selected_device, "", nullptr, nullptr));
-			if (clBuildProgramError != CL_SUCCESS)
+			if (clBuildProgramError == CL_SUCCESS)
+			{
+				cl_int error;
+				fill = clCreateKernel (program, "fill", &error);
+				search = clCreateKernel (program, "search", &error);
+				result_buffer = clCreateBuffer (context, CL_MEM_WRITE_ONLY, sizeof (uint64_t), nullptr, &error);
+				error = clSetKernelArg (search, 0, sizeof (result_buffer), &result_buffer);
+				nonce_buffer = clCreateBuffer (context, CL_MEM_READ_WRITE, sizeof (uint64_t) * 2, nullptr, &error);
+				error = clSetKernelArg (search, 3, sizeof (nonce_buffer), &nonce_buffer);
+				error = clSetKernelArg (fill, 2, sizeof (nonce_buffer), &nonce_buffer);
+				queue = clCreateCommandQueue (context, selected_device, 0, &error);
+				error = clSetKernelArg (search, 4, sizeof (uint32_t), &stepping);
+				error = clSetKernelArg (fill, 3, sizeof (uint32_t), &stepping);
+			}
+			else
 			{
 				std::cerr << (boost::str (boost::format ("Build program error %1%\n") % clBuildProgramError));
 				size_t log_size (0);
@@ -631,12 +563,12 @@ device_id (device_id)
 		}
 		else
 		{
-			std::cerr << (boost::str (boost::format ("Create program error %1%") % program_error));
+			std::cerr << (boost::str (boost::format ("Create program error %1%\n") % program_error));
 		}
 	}
 	else
 	{
-		std::cerr << (boost::str (boost::format ("Unable to create context %1%") % createContextError));
+		std::cerr << (boost::str (boost::format ("Unable to create context %1%\n") % createContextError));
 	}
 }
 
@@ -645,6 +577,32 @@ ssp_pow::opencl_driver::~opencl_driver ()
 	if (slab)
 	{
 		clReleaseMemObject (slab);
+		slab = 0;
+	}
+	if (fill)
+	{
+		clReleaseKernel (fill);
+		fill = 0;
+	}
+	if (search)
+	{
+		clReleaseKernel (search);
+		search = 0;
+	}
+	if (result_buffer)
+	{
+		clReleaseMemObject (result_buffer);
+		result_buffer = 0;
+	}
+	if (nonce_buffer)
+	{
+		clReleaseMemObject (nonce_buffer);
+		nonce_buffer = 0;
+	}
+	if (queue)
+	{
+		clReleaseCommandQueue (queue);
+		queue = 0;
 	}
 }
 
@@ -664,18 +622,54 @@ void ssp_pow::opencl_driver::lookup_set (size_t lookup)
 	if (slab)
 	{
 		clReleaseMemObject (slab);
+		slab = nullptr;
 	}
-	slab = clCreateBuffer (context, CL_MEM_READ_WRITE, lookup * sizeof (uint32_t), nullptr, nullptr);
+	cl_int error;
+	slab = clCreateBuffer (context, CL_MEM_READ_WRITE, lookup * sizeof (uint32_t), nullptr, &error);
+	assert (error == CL_SUCCESS);
+}
+
+bool ssp_pow::opencl_driver::error () const
+{
+	return fill == nullptr || search == nullptr|| queue == nullptr || result_buffer == nullptr || slab == nullptr || nonce_buffer == nullptr;
 }
 
 uint64_t ssp_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 {
-	size_t slab_size (1ULL << lookup);
-	kernel kernel (slab_size, selected_device, context, program);
 	uint64_t result (0);
-	if (!kernel.error ())
+	bool error (false);
+	int32_t code;
+	
+	error |= code = clSetKernelArg (search, 1, sizeof (slab), &slab);
+	error |= code = clSetKernelArg (search, 2, sizeof (uint64_t), &lookup);
+	error |= code = clSetKernelArg (search, 6, sizeof (uint64_t), &threshold);
+	
+	error |= code = clSetKernelArg (fill, 0, sizeof (slab), &slab);
+	error |= code = clSetKernelArg (fill, 1, sizeof (uint64_t), &lookup);
+	
+	error |= code = clEnqueueWriteBuffer (queue, result_buffer, false, 0, sizeof (result), &result, 0, nullptr, nullptr);
+	error |= code = clEnqueueWriteBuffer (queue, nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data (), 0, nullptr, nullptr);
+	uint32_t current (0);
+	error |= code = clSetKernelArg (fill, 4, sizeof (uint32_t), &current);
+	size_t fill_size[] = { std::max<size_t> (1U, lookup / stepping), 0, 0 };
+	error |= code = clEnqueueNDRangeKernel (queue, fill, 1, nullptr, fill_size, nullptr, 0, nullptr, nullptr);
+	error |= code = clFinish (queue);
+	size_t search_size[] = { threads, 0, 0 };
+	std::array <cl_event, 2> events;
+	error |= code = clSetKernelArg (search, 5, sizeof (uint32_t), &current);
+	current += threads * stepping;
+	error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, search_size, nullptr, 0, nullptr, nullptr);
+	error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[0]);
+	while (!error && result == 0)
 	{
-		result = kernel (nonce, threshold, threads);
+		error |= code = clSetKernelArg (search, 5, sizeof (uint32_t), &current);
+		current += threads * stepping;
+		error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, search_size, nullptr, 0, nullptr, nullptr);
+		error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[1]);
+		error |= clWaitForEvents(1, &events[0]);
+		events[0] = events[1];
 	}
+	error |= code = clFinish (queue);
+	assert (!error);
 	return result;
 }

@@ -39,15 +39,20 @@ namespace ssp_pow
 		void lookup_set (size_t lookup) override;
 		virtual uint64_t solve (std::array<uint64_t, 2> nonce) override;
 	private:
+		bool error () const;
 		opencl_environment environment;
 		cl_context context { 0 };
 		cl_program program { 0 };
 		unsigned threads;
-		unsigned threshold;
-		unsigned short platform_id;
-		unsigned short device_id;
+		uint64_t threshold;
 		cl_mem slab { 0 };
-		size_t lookup;
+		uint64_t lookup;
 		cl_device_id selected_device;
+		cl_kernel fill { 0 };
+		cl_kernel search { 0 };
+		cl_command_queue queue { 0 };
+		cl_mem result_buffer { 0 };
+		cl_mem nonce_buffer { 0 };
+		uint32_t stepping { 256 };
 	};
 }
