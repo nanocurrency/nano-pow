@@ -47,6 +47,30 @@ std::istream & operator >> (std::istream & is, driver_type & obj)
 	}
 	return is;
 }
+enum class operation_type
+{
+	profile
+};
+std::ostream & operator << (std::ostream & os, operation_type const & obj)
+{
+	switch (obj)
+	{
+		case operation_type::profile:
+			os << "profile";
+			break;
+	}
+	return os;
+}
+std::istream & operator >> (std::istream & is, operation_type & obj)
+{
+	std::string text;
+	is >> text;
+	if (text == "profile")
+	{
+		obj = operation_type::profile;
+	}
+	return is;
+}
 }
 
 namespace
@@ -77,6 +101,7 @@ int main (int argc, char **argv)
 	("threads", boost::program_options::value<unsigned> (), "Number of device threads to use to find solution")
 	("lookup", boost::program_options::value<unsigned> (), "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2)")
 	("count", boost::program_options::value<unsigned> ()->default_value (16), "Specify how many problems to solve, default 16")
+	("operation", boost::program_options::value<operation_type> ()->default_value(operation_type::profile), "Specify which driver operration to perform")
 	("platform", boost::program_options::value<std::string> (), "Defines the <platform> for OpenCL driver")
 	("device", boost::program_options::value<std::string> (), "Defines <device> for OpenCL driver")
 	("dump", "Dumping OpenCL information");
@@ -154,41 +179,50 @@ int main (int argc, char **argv)
 			{
 				lookup = lookup_opt->second.as <unsigned> ();
 			}
-			if (driver != nullptr)
+			auto count (vm.find ("count")->second.as<unsigned> ());
+			auto operation_type_l (vm.find ("operation")->second.as<operation_type> ());
+			switch (operation_type_l)
 			{
-				driver->threshold_set ((1ULL << difficulty) - 1);
-				driver->lookup_set (1ULL << lookup);
-				auto threads_opt (vm.find ("threads"));
-				if (threads_opt != vm.end ())
+				case operation_type::profile:
 				{
-					driver->threads_set (threads_opt->second.as <unsigned> ());
+					if (driver != nullptr)
+					{
+						auto threads_opt (vm.find ("threads"));
+						if (threads_opt != vm.end ())
+						{
+							driver->threads_set (threads_opt->second.as <unsigned> ());
+						}
+						std::cerr << boost::str (boost::format ("Profiling driver: %1% threads: %2% lookup: %3%MB threshold: %4%\n") % driver_type_l % std::to_string (driver->threads_get ()) % std::to_string ((1ULL << lookup) / 1024 / 1024) % to_string_hex64 ((1ULL << difficulty) - 1));
+						driver->threshold_set ((1ULL << difficulty) - 1);
+						driver->lookup_set (1ULL << lookup);
+						uint64_t total_time (0);
+						for (auto i (0UL); i < count; ++i)
+						{
+							auto start (std::chrono::steady_clock::now ());
+							std::array <uint64_t, 2> nonce = { i + 1, 0 };
+							auto result (driver->solve (nonce));
+							auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now () - start).count ());
+							total_time += search_time;
+							auto lhs (result >> 32);
+							ssp_pow::blake2_hash hash;
+							hash.reset (nonce);
+							auto lhs_hash (hash (lhs | ssp_pow::context::lhs_or_mask));
+							auto rhs (result & 0xffffffffULL);
+							auto rhs_hash (hash (rhs & ssp_pow::context::rhs_and_mask));
+							auto sum (lhs_hash + rhs_hash);
+							std::cerr << boost::str (boost::format (
+																	"%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6%\n")
+													 % to_string_hex (lhs_hash)
+													 % to_string_hex (lhs)
+													 % to_string_hex (rhs_hash)
+													 % to_string_hex (rhs)
+													 % to_string_hex64 (sum)
+													 % std::to_string (search_time));
+						}
+						std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (total_time / count));
+					}
+					break;
 				}
-				auto count (vm.find ("count")->second.as<unsigned> ());
-				uint64_t total_time (0);
-				for (auto i (0UL); i < count; ++i)
-				{
-					auto start (std::chrono::steady_clock::now ());
-					std::array <uint64_t, 2> nonce = { i + 1, 0 };
-					auto result (driver->solve (nonce));
-					auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now () - start).count ());
-					total_time += search_time;
-					auto lhs (result >> 32);
-					ssp_pow::blake2_hash hash;
-					hash.reset (nonce);
-					auto lhs_hash (hash (lhs | ssp_pow::context::lhs_or_mask));
-					auto rhs (result & 0xffffffffULL);
-					auto rhs_hash (hash (rhs & ssp_pow::context::rhs_and_mask));
-					auto sum (lhs_hash + rhs_hash);
-					std::cerr << boost::str (boost::format (
-															"%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6%\n")
-											 % to_string_hex (lhs_hash)
-											 % to_string_hex (lhs)
-											 % to_string_hex (rhs_hash)
-											 % to_string_hex (rhs)
-											 % to_string_hex64 (sum)
-											 % std::to_string (search_time));
-				}
-				std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (total_time / count));
 			}
 		}
 	}

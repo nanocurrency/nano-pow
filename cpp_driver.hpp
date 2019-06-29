@@ -22,6 +22,7 @@ namespace ssp_pow
 		~cpp_driver ();
 		void threshold_set (uint64_t threshold) override;
 		void threads_set (unsigned threads) override;
+		unsigned threads_get () const override;
 		void lookup_set (size_t lookup) override;
 		virtual uint64_t solve (std::array<uint64_t, 2> nonce) override;
 	private:

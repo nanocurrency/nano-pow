@@ -86,6 +86,11 @@ void ssp_pow::cpp_driver::threads_set (unsigned threads)
 	}
 }
 
+unsigned ssp_pow::cpp_driver::threads_get () const
+{
+	return threads.size ();
+}
+
 void ssp_pow::cpp_driver::threshold_set (uint64_t threshold)
 {
 	context.threshold = threshold;

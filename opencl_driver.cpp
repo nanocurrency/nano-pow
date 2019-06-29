@@ -616,6 +616,11 @@ void ssp_pow::opencl_driver::threads_set (unsigned threads)
 	this->threads = threads;
 }
 
+unsigned ssp_pow::opencl_driver::threads_get () const
+{
+	return threads;
+}
+
 void ssp_pow::opencl_driver::lookup_set (size_t lookup)
 {
 	this->lookup = lookup;
