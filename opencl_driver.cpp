@@ -408,7 +408,7 @@ __kernel void fill (__global uint * const slab_a, ulong const size_a, __global u
 }
 )%%%";
 
-opencl_pow_driver::opencl_environment::opencl_environment ()
+ssp_pow::opencl_environment::opencl_environment ()
 {
 	cl_uint platformIdCount = 0;
 	clGetPlatformIDs (0, nullptr, &platformIdCount);
@@ -430,7 +430,7 @@ opencl_pow_driver::opencl_environment::opencl_environment ()
 	}
 }
 
-void opencl_pow_driver::opencl_environment::dump (std::ostream & stream)
+void ssp_pow::opencl_environment::dump (std::ostream & stream)
 {
 	auto index (0);
 	size_t device_count (0);
@@ -524,16 +524,11 @@ public:
 		fill = clCreateKernel (program_a, "fill", &error);
 		search = clCreateKernel (program_a, "search", &error);
 		result_buffer = clCreateBuffer (context_a, CL_MEM_WRITE_ONLY, sizeof (uint64_t), nullptr, &error);
-		slab_buffer = clCreateBuffer (context_a, CL_MEM_READ_WRITE, size_a * sizeof (uint32_t), nullptr, &error);
 		nonce_buffer = clCreateBuffer (context_a, CL_MEM_READ_WRITE, sizeof (uint64_t) * 2, nullptr, &error);
 		queue = clCreateCommandQueue (context_a, device_a, 0, &error);
 	}
 	~kernel ()
 	{
-		if (slab_buffer)
-		{
-			clReleaseMemObject (slab_buffer);
-		}
 		if (result_buffer)
 		{
 			clReleaseMemObject (result_buffer);
@@ -600,85 +595,38 @@ public:
 	cl_mem nonce_buffer;
 };
 
-int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup, unsigned problem_count, unsigned short platform_id, unsigned short device_id)
+
+ssp_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned short device_id) :
+threads (1024),
+platform_id (platform_id),
+device_id (device_id)
 {
-	unsigned threads (1024);
-	try
-	{
-		auto threads_opt (vm.find ("threads"));
-		if (threads_opt != vm.end ())
-		{
-			threads = threads_opt->second.as <unsigned> ();
-		}
-	}
-	catch (boost::program_options::error const & err)
-	{
-		std::cerr << err.what () << std::endl;
-	}
-	bool error_a (false);
-	opencl_environment environment;
-	cl_context context;
-	cl_program program;
 	auto & platform (environment.platforms[platform_id]);
-	std::array<cl_device_id, 1> selected_devices;
-	selected_devices[0] = platform.devices[device_id];
+	selected_device = platform.devices[device_id];
 	cl_context_properties contextProperties[] = {
 		CL_CONTEXT_PLATFORM,
 		reinterpret_cast<cl_context_properties> (platform.platform),
 		0, 0
 	};
 	cl_int createContextError (0);
-	context = clCreateContext (contextProperties, static_cast<cl_uint> (selected_devices.size ()), selected_devices.data (), nullptr, nullptr, &createContextError);
-	error_a |= createContextError != CL_SUCCESS;
-	if (!error_a)
+	context = clCreateContext (contextProperties, 1, &selected_device, nullptr, nullptr, &createContextError);
+	if (createContextError != CL_SUCCESS)
 	{
 		cl_int program_error (0);
 		char const * program_data (opencl_program.data ());
 		size_t program_length (opencl_program.size ());
 		program = clCreateProgramWithSource (context, 1, &program_data, &program_length, &program_error);
-		error_a |= program_error != CL_SUCCESS;
-		if (!error_a)
+		if (program_error != CL_SUCCESS)
 		{
-			auto clBuildProgramError (clBuildProgram (program, static_cast<cl_uint> (selected_devices.size ()), selected_devices.data (), "", nullptr, nullptr));
-			error_a |= clBuildProgramError != CL_SUCCESS;
-			if (!error_a)
+			auto clBuildProgramError (clBuildProgram (program, 1, &selected_device, "", nullptr, nullptr));
+			if (clBuildProgramError != CL_SUCCESS)
 			{
-				unsigned solution_time (0);
-				for (auto j (0UL); j < problem_count; ++j)
-				{
-					std::array <uint64_t, 2> nonce = { j, 0 };
-					ssp_pow::blake2_hash hash;
-					size_t slab_size (1ULL << lookup);
-					ssp_pow::context ctx (hash, nonce, nullptr, slab_size, ctx.bit_threshold (difficulty));
-					kernel kernel (slab_size, selected_devices[0], context, program);
-					if (!kernel.error ())
-					{
-						auto start2 (std::chrono::system_clock::now ());
-						auto result (kernel (nonce, ctx.threshold, threads));
-						auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start2).count ());
-						solution_time += search_time;
-						printf ("Result: %016lx %lx, search %ld ms\n", result, ctx.difficulty (hash, result), search_time);
-					}
-					else
-					{
-						std::cerr << "Kernel error (average solution time will be wrong)" << std::endl;
-						break;
-					}
-				}
-				solution_time = solution_time / problem_count;
-				std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (solution_time));
-			}
-			else
-			{
-				std::cerr << (boost::str (boost::format ("Build program error %1%") % clBuildProgramError));
-				for (auto i (selected_devices.begin ()), n (selected_devices.end ()); i != n; ++i)
-				{
-					size_t log_size (0);
-					clGetProgramBuildInfo (program, *i, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
-					std::vector<char> log (log_size);
-					clGetProgramBuildInfo (program, *i, CL_PROGRAM_BUILD_LOG, log.size (), log.data (), nullptr);
-					std::cerr << (log.data ());
-				}
+				std::cerr << (boost::str (boost::format ("Build program error %1%\n") % clBuildProgramError));
+				size_t log_size (0);
+				clGetProgramBuildInfo (program, selected_device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
+				std::vector<char> log (log_size);
+				clGetProgramBuildInfo (program, selected_device, CL_PROGRAM_BUILD_LOG, log.size (), log.data (), nullptr);
+				std::cerr << (log.data ());
 			}
 		}
 		else
@@ -690,5 +638,44 @@ int opencl_pow_driver::main(boost::program_options::variables_map & vm, unsigned
 	{
 		std::cerr << (boost::str (boost::format ("Unable to create context %1%") % createContextError));
 	}
-	return 0;
+}
+
+ssp_pow::opencl_driver::~opencl_driver ()
+{
+	if (slab)
+	{
+		clReleaseMemObject (slab);
+	}
+}
+
+void ssp_pow::opencl_driver::threshold_set (uint64_t threshold)
+{
+	this->threshold = threshold;
+}
+
+void ssp_pow::opencl_driver::threads_set (unsigned threads)
+{
+	this->threads = threads;
+}
+
+void ssp_pow::opencl_driver::lookup_set (size_t lookup)
+{
+	this->lookup = lookup;
+	if (slab)
+	{
+		clReleaseMemObject (slab);
+	}
+	slab = clCreateBuffer (context, CL_MEM_READ_WRITE, lookup * sizeof (uint32_t), nullptr, nullptr);
+}
+
+uint64_t ssp_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
+{
+	size_t slab_size (1ULL << lookup);
+	kernel kernel (slab_size, selected_device, context, program);
+	uint64_t result (0);
+	if (!kernel.error ())
+	{
+		result = kernel (nonce, threshold, threads);
+	}
+	return result;
 }

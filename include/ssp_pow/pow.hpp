@@ -117,10 +117,10 @@ public:
 class generator
 {
 public:
-	void find (ssp_pow::context & context_a, unsigned ticket_a, unsigned thread, unsigned total_threads)
+	bool find (ssp_pow::context & context_a, unsigned ticket_a, unsigned thread, unsigned total_threads)
 	{
-		context_a.hash.reset (context_a.nonce);
 		uint32_t last_fill (~0); // 0xFFFFFFFF
+		auto found (false);
 		while (ticket == ticket_a) // job identifier, if we're still working on this job
 		{
 			auto current_l (current.fetch_add (stepping)); // local
@@ -140,9 +140,11 @@ public:
 				if (ticket.fetch_add (1) == ticket_a)
 				{
 					result = result_l;
+					found = true;
 				}
 			}
 		}
+		return found;
 	}
 	std::atomic<uint64_t> result { 0 };
 	std::atomic<uint64_t> current { 0 };

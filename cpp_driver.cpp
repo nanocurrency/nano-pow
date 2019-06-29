@@ -3,7 +3,6 @@
 #include <ssp_pow/pow.hpp>
 #include <ssp_pow/hash.hpp>
 
-#include <boost/format.hpp>
 #include <boost/program_options.hpp>
 
 #include <atomic>
@@ -22,97 +21,93 @@
 #define MAP_NOCACHE (0)
 #endif
 
-namespace cpp_pow_driver
+ssp_pow::cpp_driver::cpp_driver () :
+context (hash, { 0, 0 }, nullptr, 0, context.bit_threshold (8))
 {
-	std::string to_string_hex (uint32_t value_a)
+	threads_set (std::thread::hardware_concurrency ());
+}
+
+ssp_pow::cpp_driver::~cpp_driver ()
+{
+	threads_set (0);
+	lookup_set (0);
+}
+
+void ssp_pow::cpp_driver::barrier (std::unique_lock<std::mutex> & lock)
+{
+	condition.wait (lock, [this] () { return ready == threads.size (); });
+}
+
+uint64_t ssp_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
+{
+	std::unique_lock<std::mutex> lock (mutex);
+	barrier (lock);
+	generator.ticket = 0;
+	next_value = 0;
+	this->context.nonce = nonce;
+	this->context.hash.reset (nonce);
+	worker_condition.notify_all ();
+	condition.wait (lock);
+	return generator.result;
+}
+
+void ssp_pow::cpp_driver::lookup_set(size_t lookup)
+{
+	assert ((lookup & (lookup - 1)) == 0);
+	if (context.slab)
 	{
-		std::stringstream stream;
-		stream << std::hex << std::noshowbase << std::setw (8) << std::setfill ('0');
-		stream << value_a;
-		return stream.str ();
+		munmap (context.slab, context.size * sizeof (uint32_t));
 	}
-	std::string to_string_hex64 (uint64_t value_a)
+	context.size = lookup;
+	context.slab = lookup == 0 ? nullptr : reinterpret_cast <uint32_t *> (mmap (0, lookup * sizeof (uint32_t), PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_NOCACHE, -1, 0));
+}
+
+void ssp_pow::cpp_driver::threads_set (unsigned threads)
+{
+	std::unique_lock<std::mutex> lock (mutex);
+	barrier (lock);
+	while (this->threads.size () < threads)
 	{
-		std::stringstream stream;
-		stream << std::hex << std::noshowbase << std::setw (16) << std::setfill ('0');
-		stream << value_a;
-		return stream.str ();
+		this->threads.push_back (std::make_unique<std::thread> ([this, i=this->threads.size ()] () {
+			run_loop (i);
+			condition.notify_one ();
+		}));
 	}
-	class environment
+	while (this->threads.size () > threads)
 	{
-	public:
-		environment (size_t items_a) :
-		items (items_a),
-		slab (reinterpret_cast <uint32_t *> (mmap (0, memory (), PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_NOCACHE, -1, 0))) { }
-		~environment () { munmap (slab, memory ()); }
-		size_t memory () const
-		{
-			return items * sizeof (uint32_t);
-		};
-		size_t const items { 1024ULL * 1024 }; // hold 1M items
-		uint32_t * const slab;
-		std::atomic<uint64_t> next_value { 0 };
-	};
-	void perf_test (unsigned difficulty, unsigned lookup, unsigned problem_count, unsigned thread_count)
+		auto thread (std::move (this->threads.back ()));
+		worker_condition.notify_all ();
+		lock.unlock ();
+		thread->join ();
+		lock.lock ();
+		this->threads.pop_back ();
+	}
+}
+
+void ssp_pow::cpp_driver::threshold_set (uint64_t threshold)
+{
+	context.threshold = threshold;
+}
+
+void ssp_pow::cpp_driver::run_loop (unsigned thread_id)
+{
+	std::unique_lock<std::mutex> lock (mutex);
+	while (threads [thread_id] != nullptr)
 	{
-		std::cerr << "Initializing...\n";
-		std::cerr << boost::str (boost::format ("Lookup Size: %d MB\n") % std::to_string (1ULL << (lookup - 20)));
-		environment environment (1ULL << lookup);
-		memset (environment.slab, 0, environment.memory ());
-		std::cerr << "Starting...\n";
-		
-		std::atomic<unsigned> solution_time (0);
-		for (auto j (0UL); j < problem_count; ++j)
+		++ready;
+		condition.notify_one ();
+		worker_condition.wait (lock);
+		--ready;
+		if (threads [thread_id] != nullptr)
 		{
-			auto start (std::chrono::system_clock::now ());
-			std::vector<std::thread> threads;
-			for (auto i (0U); i < thread_count; ++i)
+			auto threads_size (threads.size ());
+			lock.unlock ();
+			auto found (generator.find (context, 0, thread_id, threads_size));
+			lock.lock ();
+			if (found)
 			{
-				std::array <uint64_t, 2> nonce = { j, 0 };
-				ssp_pow::blake2_hash hash;
-				ssp_pow::context context (hash, nonce, environment.slab, environment.items, context.bit_threshold (difficulty));
-				ssp_pow::generator generator;
-				unsigned ticket (generator.ticket);
-				threads.emplace_back ([&, i] ()
-				{
-					generator.find (context, ticket, i, thread_count);
-					if (i == 0)
-					{
-						auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now () - start).count ());
-						solution_time += search_time;
-						auto lhs (generator.result >> 32);
-						auto lhs_hash (hash (lhs | context.lhs_or_mask));
-						auto rhs (generator.result & 0xffffffffULL);
-						auto rhs_hash (hash (rhs & context.rhs_and_mask));
-						auto sum (lhs_hash + rhs_hash);
-						std::cerr << boost::str (boost::format (
-								"%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6%\n")
-								% to_string_hex (lhs_hash)
-								% to_string_hex (lhs)
-								% to_string_hex (rhs_hash)
-								% to_string_hex (rhs)
-								% to_string_hex64 (sum)
-								% std::to_string (search_time));
-					}
-				});
-			}
-			for (auto & i: threads)
-			{
-				i.join ();
+				condition.notify_one ();
 			}
 		}
-		solution_time = solution_time / problem_count;
-		std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (solution_time));
-	}
-	int main (boost::program_options::variables_map & vm, unsigned difficulty, unsigned lookup, unsigned problem_count)
-	{
-		unsigned threads (std::thread::hardware_concurrency ());
-		auto threads_opt (vm.find ("threads"));
-		if (threads_opt != vm.end ())
-		{
-			threads = threads_opt->second.as <unsigned> ();
-		}
-		perf_test (difficulty, lookup, problem_count, threads);
-		return 0;
 	}
 }
