@@ -3,6 +3,7 @@
 #include <ssp_pow/pow.hpp>
 #include <ssp_pow/hash.hpp>
 
+#include <boost/format.hpp>
 #include <boost/program_options.hpp>
 
 #include <atomic>
@@ -51,6 +52,11 @@ uint64_t ssp_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 	condition.wait (lock);
 	enable = false;
 	return generator.result;
+}
+
+void ssp_pow::cpp_driver::dump () const
+{
+	std::cerr << boost::str (boost::format ("Hardware threads: %1%\n") % std::to_string (std::thread::hardware_concurrency ()));
 }
 
 void ssp_pow::cpp_driver::lookup_set(size_t lookup)

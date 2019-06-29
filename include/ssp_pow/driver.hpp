@@ -15,5 +15,6 @@ public:
 	virtual unsigned threads_get () const = 0;
 	virtual void lookup_set (size_t lookup) = 0;
 	virtual uint64_t solve (std::array<uint64_t, 2> nonce) = 0;
+	virtual void dump () const = 0;
 };
 }

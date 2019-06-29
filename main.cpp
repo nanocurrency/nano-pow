@@ -49,7 +49,8 @@ std::istream & operator >> (std::istream & is, driver_type & obj)
 }
 enum class operation_type
 {
-	profile
+	profile,
+	dump
 };
 std::ostream & operator << (std::ostream & os, operation_type const & obj)
 {
@@ -57,6 +58,9 @@ std::ostream & operator << (std::ostream & os, operation_type const & obj)
 	{
 		case operation_type::profile:
 			os << "profile";
+			break;
+		case operation_type::dump:
+			os << "dump";
 			break;
 	}
 	return os;
@@ -68,6 +72,10 @@ std::istream & operator >> (std::istream & is, operation_type & obj)
 	if (text == "profile")
 	{
 		obj = operation_type::profile;
+	}
+	else if (text == "dump")
+	{
+		obj = operation_type::dump;
 	}
 	return is;
 }
@@ -103,8 +111,7 @@ int main (int argc, char **argv)
 	("count", boost::program_options::value<unsigned> ()->default_value (16), "Specify how many problems to solve, default 16")
 	("operation", boost::program_options::value<operation_type> ()->default_value(operation_type::profile), "Specify which driver operration to perform")
 	("platform", boost::program_options::value<std::string> (), "Defines the <platform> for OpenCL driver")
-	("device", boost::program_options::value<std::string> (), "Defines <device> for OpenCL driver")
-	("dump", "Dumping OpenCL information");
+	("device", boost::program_options::value<std::string> (), "Defines <device> for OpenCL driver");
 	boost::program_options::variables_map vm;
 	int result (1);
 	try
@@ -114,12 +121,6 @@ int main (int argc, char **argv)
 		if (vm.count ("help"))
 		{
 			std::cout << description << std::endl;
-		}
-		else if (vm.count ("dump"))
-		{
-			std::cout << "Dumping OpenCL information" << std::endl;
-			ssp_pow::opencl_environment environment;
-			environment.dump (std::cout);
 		}
 		else
 		{
@@ -172,6 +173,7 @@ int main (int argc, char **argv)
 					break;
 				}
 			}
+			std::cerr << boost::str (boost::format ("Driver: %1%\n")  % driver_type_l);
 			auto difficulty (vm.find ("difficulty")->second.as<unsigned> ());
 			auto lookup (difficulty / 2 + 1);
 			auto lookup_opt (vm.find ("lookup"));
@@ -183,6 +185,10 @@ int main (int argc, char **argv)
 			auto operation_type_l (vm.find ("operation")->second.as<operation_type> ());
 			switch (operation_type_l)
 			{
+				case operation_type::dump:
+					if (driver != nullptr)
+						driver->dump ();
+					break;
 				case operation_type::profile:
 				{
 					if (driver != nullptr)
@@ -192,7 +198,7 @@ int main (int argc, char **argv)
 						{
 							driver->threads_set (threads_opt->second.as <unsigned> ());
 						}
-						std::cerr << boost::str (boost::format ("Profiling driver: %1% threads: %2% lookup: %3%MB threshold: %4%\n") % driver_type_l % std::to_string (driver->threads_get ()) % std::to_string ((1ULL << lookup) / 1024 / 1024) % to_string_hex64 ((1ULL << difficulty) - 1));
+						std::cerr << boost::str (boost::format ("Profiling threads: %1% lookup: %2%MB threshold: %3%\n") % std::to_string (driver->threads_get ()) % std::to_string ((1ULL << lookup) / 1024 / 1024) % to_string_hex64 ((1ULL << difficulty) - 1));
 						driver->threshold_set ((1ULL << difficulty) - 1);
 						driver->lookup_set (1ULL << lookup);
 						uint64_t total_time (0);

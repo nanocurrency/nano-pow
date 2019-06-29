@@ -678,3 +678,9 @@ uint64_t ssp_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 	assert (!error);
 	return result;
 }
+
+void ssp_pow::opencl_driver::dump () const
+{
+	ssp_pow::opencl_environment environment;
+	environment.dump (std::cout);
+}
