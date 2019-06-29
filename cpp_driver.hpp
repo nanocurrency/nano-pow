@@ -9,6 +9,8 @@
 #include <boost/program_options.hpp>
 
 #include <array>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 namespace ssp_pow
@@ -30,6 +32,7 @@ namespace ssp_pow
 		void run_loop (unsigned);
 		std::atomic<unsigned> ready { 0 };
 		std::atomic<uint64_t> next_value { 0 };
+		bool enable { false };
 		std::vector<std::unique_ptr<std::thread>> threads;
 		std::mutex mutex;
 		std::condition_variable condition;

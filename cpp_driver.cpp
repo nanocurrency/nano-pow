@@ -44,10 +44,12 @@ uint64_t ssp_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 	barrier (lock);
 	generator.ticket = 0;
 	next_value = 0;
+	enable = true;
 	this->context.nonce = nonce;
 	this->context.hash.reset (nonce);
 	worker_condition.notify_all ();
 	condition.wait (lock);
+	enable = false;
 	return generator.result;
 }
 
@@ -98,7 +100,7 @@ void ssp_pow::cpp_driver::run_loop (unsigned thread_id)
 		condition.notify_one ();
 		worker_condition.wait (lock);
 		--ready;
-		if (threads [thread_id] != nullptr)
+		if (enable && threads [thread_id] != nullptr)
 		{
 			auto threads_size (threads.size ());
 			lock.unlock ();
