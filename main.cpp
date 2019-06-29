@@ -217,10 +217,8 @@ int main (int argc, char **argv)
 							auto rhs_hash (hash (rhs & ssp_pow::context::rhs_and_mask));
 							auto sum (lhs_hash + rhs_hash);
 							std::cerr << boost::str (boost::format (
-																	"%1%=H0(%2%)+%3%=H1(%4%)=%5% solution ms: %6%\n")
-													 % to_string_hex (lhs_hash)
+																	"H0(%1%)+H1(%2%)=%3% solution ms: %4%\n")
 													 % to_string_hex (lhs)
-													 % to_string_hex (rhs_hash)
 													 % to_string_hex (rhs)
 													 % to_string_hex64 (sum)
 													 % std::to_string (search_time));
