@@ -97,6 +97,38 @@ std::string to_string_hex64 (uint64_t value_a)
 	stream << value_a;
 	return stream.str ();
 }
+std::string to_string_solution (ssp_pow::hash & hash_a, uint64_t solution_a)
+{
+	auto lhs (solution_a >> 32);
+	auto lhs_hash (hash_a (lhs | ssp_pow::context::lhs_or_mask));
+	auto rhs (solution_a & 0xffffffffULL);
+	auto rhs_hash (hash_a (rhs & ssp_pow::context::rhs_and_mask));
+	auto sum (lhs_hash + rhs_hash);
+	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum));
+}
+float profile (ssp_pow::driver & driver_a, unsigned threads, uint64_t threshold, uint64_t lookup, unsigned count)
+{
+	if (threads != 0)
+	{
+		driver_a.threads_set (threads);
+	}
+	driver_a.threshold_set (threshold);
+	driver_a.lookup_set (lookup);
+	uint64_t total_time (0);
+	for (auto i (0UL); i < count; ++i)
+	{
+		auto start (std::chrono::steady_clock::now ());
+		std::array <uint64_t, 2> nonce = { i + 1, 0 };
+		auto result (driver_a.solve (nonce));
+		auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now () - start).count ());
+		total_time += search_time;
+		ssp_pow::blake2_hash hash;
+		hash.reset (nonce);
+		std::cerr << boost::str (boost::format ("%1% solution ms: %2%\n") % to_string_solution (hash, result) % std::to_string (search_time));
+	}
+	std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (total_time / count));
+	return total_time / count;
+}
 }
 
 int main (int argc, char **argv)
@@ -182,6 +214,12 @@ int main (int argc, char **argv)
 				lookup = lookup_opt->second.as <unsigned> ();
 			}
 			auto count (vm.find ("count")->second.as<unsigned> ());
+			unsigned threads (0);
+			auto threads_opt (vm.find ("threads"));
+			if (threads_opt != vm.end ())
+			{
+				threads = threads_opt->second.as <unsigned> ();
+			}
 			auto operation_type_l (vm.find ("operation")->second.as<operation_type> ());
 			switch (operation_type_l)
 			{
@@ -190,43 +228,12 @@ int main (int argc, char **argv)
 						driver->dump ();
 					break;
 				case operation_type::profile:
-				{
 					if (driver != nullptr)
 					{
-						auto threads_opt (vm.find ("threads"));
-						if (threads_opt != vm.end ())
-						{
-							driver->threads_set (threads_opt->second.as <unsigned> ());
-						}
-						std::cerr << boost::str (boost::format ("Profiling threads: %1% lookup: %2%MB threshold: %3%\n") % std::to_string (driver->threads_get ()) % std::to_string ((1ULL << lookup) / 1024 / 1024) % to_string_hex64 ((1ULL << difficulty) - 1));
-						driver->threshold_set ((1ULL << difficulty) - 1);
-						driver->lookup_set (1ULL << lookup);
-						uint64_t total_time (0);
-						for (auto i (0UL); i < count; ++i)
-						{
-							auto start (std::chrono::steady_clock::now ());
-							std::array <uint64_t, 2> nonce = { i + 1, 0 };
-							auto result (driver->solve (nonce));
-							auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now () - start).count ());
-							total_time += search_time;
-							auto lhs (result >> 32);
-							ssp_pow::blake2_hash hash;
-							hash.reset (nonce);
-							auto lhs_hash (hash (lhs | ssp_pow::context::lhs_or_mask));
-							auto rhs (result & 0xffffffffULL);
-							auto rhs_hash (hash (rhs & ssp_pow::context::rhs_and_mask));
-							auto sum (lhs_hash + rhs_hash);
-							std::cerr << boost::str (boost::format (
-																	"H0(%1%)+H1(%2%)=%3% solution ms: %4%\n")
-													 % to_string_hex (lhs)
-													 % to_string_hex (rhs)
-													 % to_string_hex64 (sum)
-													 % std::to_string (search_time));
-						}
-						std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (total_time / count));
+						std::cerr << boost::str (boost::format ("Profiling threads: %1% lookup: %2%kb threshold: %3%\n") % std::to_string (driver->threads_get ()) % std::to_string ((1ULL << lookup) / 1024) % to_string_hex64 ((1ULL << difficulty) - 1));
+						profile (*driver, threads, (1ULL << difficulty) - 1, 1ULL << lookup, count);
 					}
 					break;
-				}
 			}
 		}
 	}
