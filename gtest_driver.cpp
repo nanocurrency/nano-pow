@@ -13,7 +13,7 @@ TEST (context, difficulty)
 	std::array <uint32_t, 8> slab;
 	ssp_pow::context context (hash, nonce, slab.data (), 8, context.bit_threshold (8));
 	generator.find (context, 0, 1, 1);
-	auto difficulty (context.difficulty (hash, generator.result));
+	auto difficulty (context.difficulty (hash, context.threshold, generator.result));
 	ASSERT_NE (0, difficulty);
 	ASSERT_EQ (0xff, difficulty >> 56);
 }

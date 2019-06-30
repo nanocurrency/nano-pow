@@ -33,11 +33,11 @@ public:
 		assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
 		return (1ULL << bits_a) - 1;
 	}
-	uint64_t reduce (uint64_t const item_a) const
+	static uint64_t reduce (uint64_t const item_a, uint64_t threshold)
 	{
 		return item_a & threshold;
 	}
-	uint64_t reverse (uint64_t const item_a) const
+	static uint64_t reverse (uint64_t const item_a)
 	{
 		auto result (item_a);
 		result = ((result >>  1) & 0x5555555555555555) | ((result & 0x5555555555555555) <<  1);
@@ -62,11 +62,11 @@ public:
 		return item_a & mask;
 	}
 		
-	uint64_t difficulty (ssp_pow::hash & hash_a, uint64_t const solution_a) const
+	static uint64_t difficulty (ssp_pow::hash & hash_a, uint64_t const threshold_a, uint64_t const solution_a)
 	{
 		auto sum (hash_a ((solution_a >> 32) | lhs_or_mask) + hash_a (solution_a & rhs_and_mask));
 		uint64_t result (0);
-		if (reduce (sum) == 0)
+		if (reduce (sum, threshold_a) == 0)
 		{
 			result = reverse (~sum);
 		}
@@ -109,7 +109,7 @@ public:
 			auto hash_l (hash_a (current | lhs_or_mask));
 			rhs = slab [slot (0 - hash_l)];
 			// if the reduce is 0, then we found a solution!
-			incomplete = reduce (hash_l + hash_a (rhs & rhs_and_mask)) != 0;
+			incomplete = reduce (hash_l + hash_a (rhs & rhs_and_mask), threshold) != 0;
 		}
 		return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 	}

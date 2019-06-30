@@ -9,7 +9,6 @@
 namespace {
 enum class driver_type
 {
-	gtest,
 	cpp,
 	opencl
 };
@@ -17,9 +16,6 @@ std::ostream & operator << (std::ostream & os, driver_type const & obj)
 {
 	switch (obj)
 	{
-		case driver_type::gtest:
-			os << "gtest";
-			break;
 		case driver_type::cpp:
 			os << "cpp";
 			break;
@@ -33,11 +29,7 @@ std::istream & operator >> (std::istream & is, driver_type & obj)
 {
 	std::string text;
 	is >> text;
-	if (text == "gtest")
-	{
-		obj = driver_type::gtest;
-	}
-	else if (text == "cpp")
+	if (text == "cpp")
 	{
 		obj = driver_type::cpp;
 	}
@@ -50,7 +42,8 @@ std::istream & operator >> (std::istream & is, driver_type & obj)
 enum class operation_type
 {
 	profile,
-	dump
+	dump,
+	gtest
 };
 std::ostream & operator << (std::ostream & os, operation_type const & obj)
 {
@@ -62,6 +55,9 @@ std::ostream & operator << (std::ostream & os, operation_type const & obj)
 		case operation_type::dump:
 			os << "dump";
 			break;
+		case operation_type::gtest:
+			os << "gtest";
+			break;
 	}
 	return os;
 }
@@ -69,7 +65,11 @@ std::istream & operator >> (std::istream & is, operation_type & obj)
 {
 	std::string text;
 	is >> text;
-	if (text == "profile")
+	if (text == "gtest")
+	{
+		obj = operation_type::gtest;
+	}
+	else if (text == "profile")
 	{
 		obj = operation_type::profile;
 	}
@@ -136,12 +136,12 @@ int main (int argc, char **argv)
 	boost::program_options::options_description description ("Command line options");
 	description.add_options ()
 	("help", "Print out options")
-	("driver", boost::program_options::value<driver_type> ()->default_value (driver_type::gtest), "Specify which test driver to use")
+	("driver", boost::program_options::value<driver_type> ()->default_value (driver_type::cpp), "Specify which test driver to use")
 	("difficulty", boost::program_options::value<unsigned> ()->default_value (52), "Solution difficulty 1-64 default: 52")
 	("threads", boost::program_options::value<unsigned> (), "Number of device threads to use to find solution")
 	("lookup", boost::program_options::value<unsigned> (), "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2)")
 	("count", boost::program_options::value<unsigned> ()->default_value (16), "Specify how many problems to solve, default 16")
-	("operation", boost::program_options::value<operation_type> ()->default_value(operation_type::profile), "Specify which driver operration to perform")
+	("operation", boost::program_options::value<operation_type> ()->default_value(operation_type::gtest), "Specify which driver operration to perform")
 	("platform", boost::program_options::value<std::string> (), "Defines the <platform> for OpenCL driver")
 	("device", boost::program_options::value<std::string> (), "Defines <device> for OpenCL driver");
 	boost::program_options::variables_map vm;
@@ -160,12 +160,6 @@ int main (int argc, char **argv)
 			auto driver_type_l (vm.find ("driver")->second.as<driver_type> ());
 			switch (driver_type_l)
 			{
-				case driver_type::gtest:
-				{
-					testing::InitGoogleTest(&argc, argv);
-					result = RUN_ALL_TESTS();
-					break;
-				}
 				case driver_type::cpp:
 				{
 					driver = std::make_unique<ssp_pow::cpp_driver> ();
@@ -223,6 +217,10 @@ int main (int argc, char **argv)
 			auto operation_type_l (vm.find ("operation")->second.as<operation_type> ());
 			switch (operation_type_l)
 			{
+				case operation_type::gtest:
+					testing::InitGoogleTest(&argc, argv);
+					result = RUN_ALL_TESTS();
+					break;
 				case operation_type::dump:
 					if (driver != nullptr)
 						driver->dump ();
