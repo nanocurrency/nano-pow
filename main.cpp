@@ -97,14 +97,14 @@ std::string to_string_hex64 (uint64_t value_a)
 	stream << value_a;
 	return stream.str ();
 }
-std::string to_string_solution (ssp_pow::hash & hash_a, uint64_t solution_a)
+std::string to_string_solution (ssp_pow::hash & hash_a, uint64_t threshold_a, uint64_t solution_a)
 {
 	auto lhs (solution_a >> 32);
 	auto lhs_hash (hash_a (lhs | ssp_pow::context::lhs_or_mask));
 	auto rhs (solution_a & 0xffffffffULL);
 	auto rhs_hash (hash_a (rhs & ssp_pow::context::rhs_and_mask));
 	auto sum (lhs_hash + rhs_hash);
-	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum));
+	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3%::%4%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum) % to_string_hex64(ssp_pow::context::difficulty(hash_a, threshold_a, solution_a)));
 }
 float profile (ssp_pow::driver & driver_a, unsigned threads, uint64_t threshold, uint64_t lookup, unsigned count)
 {
@@ -124,7 +124,7 @@ float profile (ssp_pow::driver & driver_a, unsigned threads, uint64_t threshold,
 		total_time += search_time;
 		ssp_pow::blake2_hash hash;
 		hash.reset (nonce);
-		std::cerr << boost::str (boost::format ("%1% solution ms: %2%\n") % to_string_solution (hash, result) % std::to_string (search_time));
+		std::cerr << boost::str (boost::format ("%1% solution ms: %2%\n") % to_string_solution (hash, driver_a.threshold_get (), result) % std::to_string (search_time));
 	}
 	std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (total_time / count));
 	return total_time / count;

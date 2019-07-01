@@ -611,6 +611,11 @@ void ssp_pow::opencl_driver::threshold_set (uint64_t threshold)
 	this->threshold = threshold;
 }
 
+uint64_t ssp_pow::opencl_driver::threshold_get () const
+{
+	return threshold;
+}
+
 void ssp_pow::opencl_driver::threads_set (unsigned threads)
 {
 	this->threads = threads;

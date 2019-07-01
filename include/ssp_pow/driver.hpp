@@ -11,6 +11,7 @@ class driver
 public:
 	virtual ~driver() = default;
 	virtual void threshold_set (uint64_t threshold) = 0;
+	virtual uint64_t threshold_get () const = 0;
 	virtual void threads_set (unsigned threads) = 0;
 	virtual unsigned threads_get () const = 0;
 	virtual void lookup_set (size_t lookup) = 0;

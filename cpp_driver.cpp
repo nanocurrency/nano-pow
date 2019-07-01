@@ -102,6 +102,11 @@ void ssp_pow::cpp_driver::threshold_set (uint64_t threshold)
 	context.threshold = threshold;
 }
 
+uint64_t ssp_pow::cpp_driver::threshold_get () const
+{
+	return context.threshold;
+}
+
 void ssp_pow::cpp_driver::run_loop (unsigned thread_id)
 {
 	std::unique_lock<std::mutex> lock (mutex);

@@ -35,6 +35,7 @@ namespace ssp_pow
 		opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0);
 		~opencl_driver ();
 		void threshold_set (uint64_t threshold) override;
+		uint64_t threshold_get () const override;
 		void threads_set (unsigned threads) override;
 		unsigned threads_get () const override;
 		void lookup_set (size_t lookup) override;
