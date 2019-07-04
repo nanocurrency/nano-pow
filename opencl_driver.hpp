@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ssp_pow/driver.hpp>
+#include <nano_pow/driver.hpp>
 
 #include <iostream>
 #include <vector>
@@ -14,7 +14,7 @@
 #include <CL/cl.h>
 #endif
 
-namespace ssp_pow
+namespace nano_pow
 {
 	class opencl_platform
 	{

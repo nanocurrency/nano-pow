@@ -1,7 +1,7 @@
 #include <cpp_driver.hpp>
 
-#include <ssp_pow/pow.hpp>
-#include <ssp_pow/hash.hpp>
+#include <nano_pow/pow.hpp>
+#include <nano_pow/hash.hpp>
 
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
@@ -22,24 +22,24 @@
 #define MAP_NOCACHE (0)
 #endif
 
-ssp_pow::cpp_driver::cpp_driver () :
+nano_pow::cpp_driver::cpp_driver () :
 context (hash, { 0, 0 }, nullptr, 0, context.bit_threshold (8))
 {
 	threads_set (std::thread::hardware_concurrency ());
 }
 
-ssp_pow::cpp_driver::~cpp_driver ()
+nano_pow::cpp_driver::~cpp_driver ()
 {
 	threads_set (0);
 	lookup_set (0);
 }
 
-void ssp_pow::cpp_driver::barrier (std::unique_lock<std::mutex> & lock)
+void nano_pow::cpp_driver::barrier (std::unique_lock<std::mutex> & lock)
 {
 	condition.wait (lock, [this] () { return ready == threads.size (); });
 }
 
-uint64_t ssp_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
+uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	barrier (lock);
@@ -54,12 +54,12 @@ uint64_t ssp_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 	return generator.result;
 }
 
-void ssp_pow::cpp_driver::dump () const
+void nano_pow::cpp_driver::dump () const
 {
 	std::cerr << boost::str (boost::format ("Hardware threads: %1%\n") % std::to_string (std::thread::hardware_concurrency ()));
 }
 
-void ssp_pow::cpp_driver::lookup_set(size_t lookup)
+void nano_pow::cpp_driver::lookup_set(size_t lookup)
 {
 	assert ((lookup & (lookup - 1)) == 0);
 	if (context.slab)
@@ -70,7 +70,7 @@ void ssp_pow::cpp_driver::lookup_set(size_t lookup)
 	context.slab = lookup == 0 ? nullptr : reinterpret_cast <uint32_t *> (mmap (0, lookup * sizeof (uint32_t), PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_NOCACHE, -1, 0));
 }
 
-void ssp_pow::cpp_driver::threads_set (unsigned threads)
+void nano_pow::cpp_driver::threads_set (unsigned threads)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	barrier (lock);
@@ -92,22 +92,22 @@ void ssp_pow::cpp_driver::threads_set (unsigned threads)
 	}
 }
 
-unsigned ssp_pow::cpp_driver::threads_get () const
+unsigned nano_pow::cpp_driver::threads_get () const
 {
 	return threads.size ();
 }
 
-void ssp_pow::cpp_driver::threshold_set (uint64_t threshold)
+void nano_pow::cpp_driver::threshold_set (uint64_t threshold)
 {
 	context.threshold = threshold;
 }
 
-uint64_t ssp_pow::cpp_driver::threshold_get () const
+uint64_t nano_pow::cpp_driver::threshold_get () const
 {
 	return context.threshold;
 }
 
-void ssp_pow::cpp_driver::run_loop (unsigned thread_id)
+void nano_pow::cpp_driver::run_loop (unsigned thread_id)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	while (threads [thread_id] != nullptr)

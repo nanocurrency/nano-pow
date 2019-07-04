@@ -1,9 +1,9 @@
 #pragma once
 
-#include <ssp_pow/driver.hpp>
-#include <ssp_pow/hash.hpp>
+#include <nano_pow/driver.hpp>
+#include <nano_pow/hash.hpp>
 
-#include <ssp_pow/pow.hpp>
+#include <nano_pow/pow.hpp>
 
 #include <boost/optional.hpp>
 #include <boost/program_options.hpp>
@@ -13,7 +13,7 @@
 #include <mutex>
 #include <thread>
 
-namespace ssp_pow
+namespace nano_pow
 {
 	class cpp_driver : public driver
 	{
@@ -29,9 +29,9 @@ namespace ssp_pow
 		void dump () const override;
 	private:
 		void barrier (std::unique_lock<std::mutex> & lock);
-		ssp_pow::blake2_hash hash;
-		ssp_pow::context context;
-		ssp_pow::generator generator;
+		nano_pow::blake2_hash hash;
+		nano_pow::context context;
+		nano_pow::generator generator;
 		void run_loop (unsigned);
 		std::atomic<unsigned> ready { 0 };
 		std::atomic<uint64_t> next_value { 0 };

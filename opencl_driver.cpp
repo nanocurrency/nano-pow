@@ -1,7 +1,7 @@
 #include <opencl_driver.hpp>
 
-#include <ssp_pow/hash.hpp>
-#include <ssp_pow/pow.hpp>
+#include <nano_pow/hash.hpp>
+#include <nano_pow/pow.hpp>
 
 #include <boost/endian/arithmetic.hpp>
 #include <boost/format.hpp>
@@ -410,7 +410,7 @@ __kernel void fill (__global uint * const slab_a, ulong const size_a, __global u
 }
 )%%%";
 
-ssp_pow::opencl_environment::opencl_environment ()
+nano_pow::opencl_environment::opencl_environment ()
 {
 	cl_uint platformIdCount = 0;
 	clGetPlatformIDs (0, nullptr, &platformIdCount);
@@ -432,7 +432,7 @@ ssp_pow::opencl_environment::opencl_environment ()
 	}
 }
 
-void ssp_pow::opencl_environment::dump (std::ostream & stream)
+void nano_pow::opencl_environment::dump (std::ostream & stream)
 {
 	auto index (0);
 	size_t device_count (0);
@@ -516,7 +516,7 @@ void ssp_pow::opencl_environment::dump (std::ostream & stream)
 	}
 }
 
-ssp_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned short device_id) :
+nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned short device_id) :
 threads (1024)
 {
 	auto & platform (environment.platforms[platform_id]);
@@ -572,7 +572,7 @@ threads (1024)
 	}
 }
 
-ssp_pow::opencl_driver::~opencl_driver ()
+nano_pow::opencl_driver::~opencl_driver ()
 {
 	if (slab)
 	{
@@ -606,27 +606,27 @@ ssp_pow::opencl_driver::~opencl_driver ()
 	}
 }
 
-void ssp_pow::opencl_driver::threshold_set (uint64_t threshold)
+void nano_pow::opencl_driver::threshold_set (uint64_t threshold)
 {
 	this->threshold = threshold;
 }
 
-uint64_t ssp_pow::opencl_driver::threshold_get () const
+uint64_t nano_pow::opencl_driver::threshold_get () const
 {
 	return threshold;
 }
 
-void ssp_pow::opencl_driver::threads_set (unsigned threads)
+void nano_pow::opencl_driver::threads_set (unsigned threads)
 {
 	this->threads = threads;
 }
 
-unsigned ssp_pow::opencl_driver::threads_get () const
+unsigned nano_pow::opencl_driver::threads_get () const
 {
 	return threads;
 }
 
-void ssp_pow::opencl_driver::lookup_set (size_t lookup)
+void nano_pow::opencl_driver::lookup_set (size_t lookup)
 {
 	this->lookup = lookup;
 	if (slab)
@@ -639,12 +639,12 @@ void ssp_pow::opencl_driver::lookup_set (size_t lookup)
 	assert (error == CL_SUCCESS);
 }
 
-bool ssp_pow::opencl_driver::error () const
+bool nano_pow::opencl_driver::error () const
 {
 	return fill == nullptr || search == nullptr|| queue == nullptr || result_buffer == nullptr || slab == nullptr || nonce_buffer == nullptr;
 }
 
-uint64_t ssp_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
+uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 {
 	uint64_t result (0);
 	bool error (false);
@@ -684,8 +684,8 @@ uint64_t ssp_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 	return result;
 }
 
-void ssp_pow::opencl_driver::dump () const
+void nano_pow::opencl_driver::dump () const
 {
-	ssp_pow::opencl_environment environment;
+	nano_pow::opencl_environment environment;
 	environment.dump (std::cout);
 }

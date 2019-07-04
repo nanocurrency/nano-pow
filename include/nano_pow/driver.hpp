@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace ssp_pow
+namespace nano_pow
 {
 class driver
 {

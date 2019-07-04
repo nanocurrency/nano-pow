@@ -6,7 +6,7 @@
 #include <array>
 #include <algorithm>
 
-namespace ssp_pow
+namespace nano_pow
 {
 class hash
 {

@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.4)
-project (ssp-pow)
+project (nano-pow)
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
@@ -47,18 +47,18 @@ add_library (blake2
 
 target_compile_definitions(blake2 PRIVATE -D__SSE2__)
 
-add_executable (ssp_pow_driver
+add_executable (nano_pow_driver
 	cpp_driver.cpp
 	cpp_driver.hpp
 	gtest_driver.cpp
-	include/ssp_pow/driver.hpp
-	include/ssp_pow/hash.hpp
-	include/ssp_pow/pow.hpp
+	include/nano_pow/driver.hpp
+	include/nano_pow/hash.hpp
+	include/nano_pow/pow.hpp
 	main.cpp
 	opencl_driver.cpp
 	opencl_driver.hpp)
 
-target_link_libraries (ssp_pow_driver
+target_link_libraries (nano_pow_driver
 	blake2
 	${Boost_LIBRARIES}
 	gtest
