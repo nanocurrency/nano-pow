@@ -100,9 +100,9 @@ std::string to_string_hex64 (uint64_t value_a)
 std::string to_string_solution (nano_pow::hash & hash_a, uint64_t threshold_a, uint64_t solution_a)
 {
 	auto lhs (solution_a >> 32);
-	auto lhs_hash (hash_a (lhs | nano_pow::context::lhs_or_mask));
+	auto lhs_hash (hash_a.H0 (lhs));
 	auto rhs (solution_a & 0xffffffffULL);
-	auto rhs_hash (hash_a (rhs & nano_pow::context::rhs_and_mask));
+	auto rhs_hash (hash_a.H1 (rhs));
 	auto sum (lhs_hash + rhs_hash);
 	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3%::%4%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum) % to_string_hex64(nano_pow::context::difficulty(hash_a, threshold_a, solution_a)));
 }

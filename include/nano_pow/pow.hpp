@@ -25,8 +25,6 @@ namespace nano_pow
 		uint32_t * slab;
 		size_t size;
 		uint64_t threshold;
-		static uint64_t constexpr lhs_or_mask { 0x1ULL << 63 };
-		static uint64_t constexpr rhs_and_mask { 0x7fff'ffff };
 	public:
 		static uint64_t bit_threshold (unsigned bits_a)
 		{
@@ -64,7 +62,7 @@ namespace nano_pow
 		
 		static uint64_t difficulty (nano_pow::hash & hash_a, uint64_t const threshold_a, uint64_t const solution_a)
 		{
-			auto sum (hash_a ((solution_a >> 32) | lhs_or_mask) + hash_a (solution_a & rhs_and_mask));
+			auto sum (hash_a.H0 (solution_a >> 32) + hash_a.H1 (solution_a));
 			uint64_t result (0);
 			if (reduce (sum, threshold_a) == 0)
 			{
@@ -87,7 +85,7 @@ namespace nano_pow
 		{
 			for (uint32_t current (begin), end (current + count); current < end; ++current)
 			{
-				slab [slot (hash_a (current & rhs_and_mask))] = current;
+				slab [slot (hash_a.H1 (current))] = current;
 			}
 		}
 		
@@ -106,10 +104,10 @@ namespace nano_pow
 			for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 			{
 				lhs = current; // All the preimages have the same MSB. This is to save 4 bytes per element
-				auto hash_l (hash_a (current | lhs_or_mask));
+				auto hash_l (hash_a.H0 (current));
 				rhs = slab [slot (0 - hash_l)];
 				// if the reduce is 0, then we found a solut ion!
-				incomplete = reduce (hash_l + hash_a (rhs & rhs_and_mask), threshold) != 0;
+				incomplete = reduce (hash_l + hash_a.H1 (rhs), threshold) != 0;
 			}
 			return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 		}
