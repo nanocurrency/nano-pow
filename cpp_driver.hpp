@@ -34,7 +34,6 @@ namespace nano_pow
 		nano_pow::generator generator;
 		void run_loop (unsigned);
 		std::atomic<unsigned> ready { 0 };
-		std::atomic<uint64_t> next_value { 0 };
 		bool enable { false };
 		std::vector<std::unique_ptr<std::thread>> threads;
 		std::mutex mutex;

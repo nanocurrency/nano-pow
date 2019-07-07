@@ -44,7 +44,7 @@ uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 	std::unique_lock<std::mutex> lock (mutex);
 	barrier (lock);
 	generator.ticket = 0;
-	next_value = 0;
+	generator.current = 0;
 	enable = true;
 	this->context.nonce = nonce;
 	this->context.hash.reset (nonce);
