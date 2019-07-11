@@ -17,7 +17,8 @@ namespace nano_pow
 		nonce (nonce_a),
 		slab (slab_a),
 		size (size_a),
-		difficulty_inv (difficulty_inv_a)
+		difficulty_inv (difficulty_inv_a),
+		difficulty_m (reverse (difficulty_inv))
 		{
 		}
 		nano_pow::hash & hash;
@@ -25,19 +26,21 @@ namespace nano_pow
 		uint32_t * slab;
 		size_t size;
 		uint64_t difficulty_inv;
+		uint64_t difficulty_m;
 	public:
 		static uint64_t bit_difficulty_inv (unsigned bits_a)
 		{
 			assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
 			return (1ULL << bits_a) - 1;
 		}
-		static uint64_t difficulty_quick (uint64_t const item_a, uint64_t const difficulty_inv_a)
+		static uint64_t difficulty_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
 		{
 			assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
-			return item_a & difficulty_inv_a;
+			return sum_a & difficulty_inv_a;
 		}
 		static bool passes_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
 		{
+			assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 			return difficulty_quick (sum_a, difficulty_inv_a) == 0;
 		}
 		static uint64_t reverse (uint64_t const item_a)
@@ -69,6 +72,15 @@ namespace nano_pow
 		{
 			auto sum (hash_a.H0 (solution_a >> 32) + hash_a.H1 (solution_a));
 			return reverse (~sum);
+		}
+		static uint64_t passes_sum (nano_pow::hash & hash_a, uint64_t const sum_a, uint64_t threshold_a)
+		{
+			return reverse (~sum_a) > threshold_a;
+		}
+		static uint64_t passes (nano_pow::hash & hash_a, uint64_t const solution_a, uint64_t threshold_a)
+		{
+			auto sum (hash_a.H0 (solution_a >> 32) + hash_a.H1 (solution_a));
+			return passes_sum (hash_a, sum, threshold_a);
 		}
 
 		/**
@@ -103,11 +115,12 @@ namespace nano_pow
 			uint32_t lhs, rhs;
 			for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 			{
-				lhs = current; // All the preimages have the same MSB. This is to save 4 bytes per element
+				lhs = current;
 				auto hash_l (hash_a.H0 (current));
 				rhs = slab [slot (0 - hash_l)];
-				// If difficulty is 0, we found a solution
-				incomplete = !passes_quick (hash_l + hash_a.H1 (rhs), difficulty_inv);
+				auto sum (hash_l + hash_a.H1 (rhs));
+				// Check if the solution passes through the quick path then check it through the long path
+				incomplete = !passes_quick (sum, difficulty_inv) || !passes (hash_a, sum, difficulty_m);
 			}
 			return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 		}

@@ -16,6 +16,8 @@ TEST (context, difficulty)
 	auto difficulty (context.difficulty (hash, generator.result));
 	ASSERT_NE (0, difficulty);
 	ASSERT_EQ (0xff, difficulty >> 56);
+	ASSERT_TRUE (context.passes (hash, generator.result, 0xff00'0000'0000'0000ULL));
+	ASSERT_FALSE (context.passes (hash, generator.result, 0xffff'ffff'0000'0000ULL));
 }
 
 TEST (cpp_driver, threads)
