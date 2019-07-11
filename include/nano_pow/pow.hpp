@@ -12,28 +12,29 @@ namespace nano_pow
 	class context final
 	{
 	public:
-		context (nano_pow::hash & hash_a, std::array<uint64_t, 2> nonce_a, uint32_t * const slab_a, size_t const size_a, uint64_t threshold_a) :
+		context (nano_pow::hash & hash_a, std::array<uint64_t, 2> nonce_a, uint32_t * const slab_a, size_t const size_a, uint64_t difficulty_inv_a) :
 		hash (hash_a),
 		nonce (nonce_a),
 		slab (slab_a),
 		size (size_a),
-		threshold (threshold_a)
+		difficulty_inv (difficulty_inv_a)
 		{
 		}
 		nano_pow::hash & hash;
 		std::array<uint64_t, 2> nonce;
 		uint32_t * slab;
 		size_t size;
-		uint64_t threshold;
+		uint64_t difficulty_inv;
 	public:
-		static uint64_t bit_threshold (unsigned bits_a)
+		static uint64_t bit_difficulty_inv (unsigned bits_a)
 		{
 			assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
 			return (1ULL << bits_a) - 1;
 		}
-		static uint64_t reduce (uint64_t const item_a, uint64_t threshold)
+		static uint64_t reduce (uint64_t const item_a, uint64_t difficulty_inv_a)
 		{
-			return item_a & threshold;
+			assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
+			return item_a & difficulty_inv_a;
 		}
 		static uint64_t reverse (uint64_t const item_a)
 		{
@@ -102,7 +103,7 @@ namespace nano_pow
 				auto hash_l (hash_a.H0 (current));
 				rhs = slab [slot (0 - hash_l)];
 				// if the reduce is 0, then we found a solut ion!
-				incomplete = reduce (hash_l + hash_a.H1 (rhs), threshold) != 0;
+				incomplete = reduce (hash_l + hash_a.H1 (rhs), difficulty_inv) != 0;
 			}
 			return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 		}
