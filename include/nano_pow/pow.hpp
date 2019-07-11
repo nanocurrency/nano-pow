@@ -46,7 +46,7 @@ namespace nano_pow
 			result = ( result >> 32                      ) | ( result                       << 32);
 			return result;
 		}
-		
+
 		/**
 		 * Maps item_a to an index within the memory region.
 		 *
@@ -59,18 +59,13 @@ namespace nano_pow
 			assert (((size & mask) == 0) && "Slab size is not a power of 2");
 			return item_a & mask;
 		}
-		
-		static uint64_t difficulty (nano_pow::hash & hash_a, uint64_t const threshold_a, uint64_t const solution_a)
+
+		static uint64_t difficulty (nano_pow::hash & hash_a, uint64_t const solution_a)
 		{
 			auto sum (hash_a.H0 (solution_a >> 32) + hash_a.H1 (solution_a));
-			uint64_t result (0);
-			if (reduce (sum, threshold_a) == 0)
-			{
-				result = reverse (~sum);
-			}
-			return result;
+			return reverse (~sum);
 		}
-		
+
 		/**
 		 * Populates memory with `count` pre-images
 		 *
@@ -88,7 +83,7 @@ namespace nano_pow
 				slab [slot (hash_a.H1 (current))] = current;
 			}
 		}
-		
+
 		/**
 		 * Searches for a solution to difficulty problem
 		 *

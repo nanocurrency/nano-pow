@@ -104,7 +104,7 @@ std::string to_string_solution (nano_pow::hash & hash_a, uint64_t threshold_a, u
 	auto rhs (solution_a & 0xffffffffULL);
 	auto rhs_hash (hash_a.H1 (rhs));
 	auto sum (lhs_hash + rhs_hash);
-	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3%::%4%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum) % to_string_hex64(nano_pow::context::difficulty(hash_a, threshold_a, solution_a)));
+	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3%::%4%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum) % to_string_hex64(nano_pow::context::difficulty (hash_a, solution_a)));
 }
 float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold, uint64_t lookup, unsigned count)
 {
