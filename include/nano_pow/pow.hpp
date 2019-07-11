@@ -31,10 +31,14 @@ namespace nano_pow
 			assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
 			return (1ULL << bits_a) - 1;
 		}
-		static uint64_t reduce (uint64_t const item_a, uint64_t difficulty_inv_a)
+		static uint64_t difficulty_quick (uint64_t const item_a, uint64_t const difficulty_inv_a)
 		{
 			assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 			return item_a & difficulty_inv_a;
+		}
+		static bool passes_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
+		{
+			return difficulty_quick (sum_a, difficulty_inv_a) == 0;
 		}
 		static uint64_t reverse (uint64_t const item_a)
 		{
@@ -102,8 +106,8 @@ namespace nano_pow
 				lhs = current; // All the preimages have the same MSB. This is to save 4 bytes per element
 				auto hash_l (hash_a.H0 (current));
 				rhs = slab [slot (0 - hash_l)];
-				// if the reduce is 0, then we found a solut ion!
-				incomplete = reduce (hash_l + hash_a.H1 (rhs), difficulty_inv) != 0;
+				// If difficulty is 0, we found a solution
+				incomplete = !passes_quick (hash_l + hash_a.H1 (rhs), difficulty_inv);
 			}
 			return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 		}
