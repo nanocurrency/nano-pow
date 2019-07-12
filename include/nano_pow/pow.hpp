@@ -27,6 +27,19 @@ namespace nano_pow
 		size_t size;
 		uint64_t difficulty_inv;
 		uint64_t difficulty_m;
+		static uint64_t constexpr lhs_or_mask { 0x1ULL << 63 };
+		static uint64_t constexpr rhs_and_mask { 0xffff'ffff };
+	public:
+		// Hash function H0 sets the high order bit
+		inline uint64_t H0 (uint64_t const item_a) const
+		{
+			return hash (lhs_or_mask | item_a);
+		}
+		// Hash function H1 clears the high order bit
+		inline uint64_t H1 (uint64_t const item_a) const
+		{
+			return hash (rhs_and_mask & item_a);
+		}
 	public:
 		static uint64_t bit_difficulty_inv (unsigned bits_a)
 		{
@@ -68,19 +81,19 @@ namespace nano_pow
 			return item_a & mask;
 		}
 
-		static uint64_t difficulty (nano_pow::hash & hash_a, uint64_t const solution_a)
+		static uint64_t difficulty (nano_pow::context & context_a, uint64_t const solution_a)
 		{
-			auto sum (hash_a.H0 (solution_a >> 32) + hash_a.H1 (solution_a));
+			auto sum (context_a.H0 (solution_a >> 32) + context_a.H1 (solution_a));
 			return reverse (~sum);
 		}
-		static uint64_t passes_sum (nano_pow::hash & hash_a, uint64_t const sum_a, uint64_t threshold_a)
+		static uint64_t passes_sum (uint64_t const sum_a, uint64_t threshold_a)
 		{
 			return reverse (~sum_a) > threshold_a;
 		}
-		static uint64_t passes (nano_pow::hash & hash_a, uint64_t const solution_a, uint64_t threshold_a)
+		static uint64_t passes (nano_pow::context & context_a, uint64_t const solution_a, uint64_t threshold_a)
 		{
-			auto sum (hash_a.H0 (solution_a >> 32) + hash_a.H1 (solution_a));
-			return passes_sum (hash_a, sum, threshold_a);
+			auto sum (context_a.H0 (solution_a >> 32) + context_a.H1 (solution_a));
+			return passes_sum (sum, threshold_a);
 		}
 
 		/**
@@ -93,11 +106,11 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		void fill (nano_pow::hash & hash_a, uint32_t const count, uint32_t const begin = 0)
+		void fill (uint32_t const count, uint32_t const begin = 0)
 		{
 			for (uint32_t current (begin), end (current + count); current < end; ++current)
 			{
-				slab [slot (hash_a.H1 (current))] = current;
+				slab [slot (H1 (current))] = current;
 			}
 		}
 
@@ -109,18 +122,18 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		uint64_t search (nano_pow::hash & hash_a, uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0)
+		uint64_t search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0)
 		{
 			auto incomplete (true);
 			uint32_t lhs, rhs;
 			for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 			{
 				lhs = current;
-				auto hash_l (hash_a.H0 (current));
+				auto hash_l (H0 (current));
 				rhs = slab [slot (0 - hash_l)];
-				auto sum (hash_l + hash_a.H1 (rhs));
+				auto sum (hash_l + H1 (rhs));
 				// Check if the solution passes through the quick path then check it through the long path
-				incomplete = !passes_quick (sum, difficulty_inv) || !passes (hash_a, sum, difficulty_m);
+				incomplete = !passes_quick (sum, difficulty_inv) || !passes (*this, sum, difficulty_m);
 			}
 			return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 		}
@@ -141,9 +154,9 @@ namespace nano_pow
 					// i.e. this thread's fair share.
 					auto allowance (context_a.size / total_threads);
 					last_fill = current_l >> 32;
-					context_a.fill (context_a.hash, allowance, last_fill * context_a.size + thread * allowance);
+					context_a.fill (allowance, last_fill * context_a.size + thread * allowance);
 				}
-				auto result_l (context_a.search (context_a.hash, stepping, current_l));
+				auto result_l (context_a.search (stepping, current_l));
 				if (result_l != 0)
 				{
 					// solution found!

@@ -97,14 +97,14 @@ std::string to_string_hex64 (uint64_t value_a)
 	stream << value_a;
 	return stream.str ();
 }
-std::string to_string_solution (nano_pow::hash & hash_a, uint64_t threshold_a, uint64_t solution_a)
+std::string to_string_solution (nano_pow::context & context_a, uint64_t threshold_a, uint64_t solution_a)
 {
 	auto lhs (solution_a >> 32);
-	auto lhs_hash (hash_a.H0 (lhs));
+	auto lhs_hash (context_a.H0 (lhs));
 	auto rhs (solution_a & 0xffffffffULL);
-	auto rhs_hash (hash_a.H1 (rhs));
+	auto rhs_hash (context_a.H1 (rhs));
 	auto sum (lhs_hash + rhs_hash);
-	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3%::%4%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum) % to_string_hex64(nano_pow::context::difficulty (hash_a, solution_a)));
+	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3%::%4%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum) % to_string_hex64 (context_a.difficulty (context_a, solution_a)));
 }
 float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold, uint64_t lookup, unsigned count)
 {
@@ -124,7 +124,8 @@ float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold
 		total_time += search_time;
 		nano_pow::blake2_hash hash;
 		hash.reset (nonce);
-		std::cerr << boost::str (boost::format ("%1% solution ms: %2%\n") % to_string_solution (hash, driver_a.threshold_get (), result) % std::to_string (search_time));
+		nano_pow::context context (hash, nonce, nullptr, 0, driver_a.threshold_get ());
+		std::cerr << boost::str (boost::format ("%1% solution ms: %2%\n") % to_string_solution (context, driver_a.threshold_get (), result) % std::to_string (search_time));
 	}
 	std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (total_time / count));
 	return total_time / count;
