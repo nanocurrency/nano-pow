@@ -29,7 +29,7 @@ namespace nano_pow
 		void dump () const override;
 	private:
 		void barrier (std::unique_lock<std::mutex> & lock);
-		nano_pow::blake2_hash hash;
+		nano_pow::sip_hash hash;
 		nano_pow::context context;
 		nano_pow::generator generator;
 		void run_loop (unsigned);

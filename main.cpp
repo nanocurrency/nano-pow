@@ -104,7 +104,7 @@ std::string to_string_solution (nano_pow::context & context_a, uint64_t threshol
 	auto rhs (solution_a & 0xffffffffULL);
 	auto rhs_hash (context_a.H1 (rhs));
 	auto sum (lhs_hash + rhs_hash);
-	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3%::%4%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum) % to_string_hex64 (context_a.difficulty (context_a, solution_a)));
+	return boost::str (boost::format ("H0(%1%)+H1(%2%)=%3% %4%") % to_string_hex (lhs) % to_string_hex (rhs) % to_string_hex64 (sum) % to_string_hex64 (context_a.difficulty (context_a, solution_a)));
 }
 float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold, uint64_t lookup, unsigned count)
 {
@@ -122,7 +122,7 @@ float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold
 		auto result (driver_a.solve (nonce));
 		auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now () - start).count ());
 		total_time += search_time;
-		nano_pow::blake2_hash hash;
+		nano_pow::sip_hash hash;
 		hash.reset (nonce);
 		nano_pow::context context (hash, nonce, nullptr, 0, driver_a.threshold_get ());
 		std::cerr << boost::str (boost::format ("%1% solution ms: %2%\n") % to_string_solution (context, driver_a.threshold_get (), result) % std::to_string (search_time));

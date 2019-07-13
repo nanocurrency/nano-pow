@@ -7,7 +7,7 @@
 TEST (context, difficulty)
 {
 	std::array<uint64_t, 2> nonce = { 0, 0 };
-	nano_pow::blake2_hash hash;
+	nano_pow::sip_hash hash;
 	hash.reset (nonce);
 	nano_pow::generator generator;
 	std::array <uint32_t, 8> slab;
