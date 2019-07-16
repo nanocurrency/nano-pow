@@ -5,13 +5,11 @@
 
 #include <nano_pow/pow.hpp>
 
-#include <boost/optional.hpp>
-#include <boost/program_options.hpp>
-
 #include <array>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 namespace nano_pow
 {

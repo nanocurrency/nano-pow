@@ -3,9 +3,6 @@
 #include <nano_pow/hash.hpp>
 #include <nano_pow/pow.hpp>
 
-#include <boost/format.hpp>
-#include <boost/program_options.hpp>
-
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -439,7 +436,7 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 	{
 		device_count += i.devices.size ();
 	}
-	stream << boost::str (boost::format ("OpenCL found %1% platforms and %2% devices\n") % platforms.size () % device_count);
+	stream << "OpenCL found " << platforms.size () << " platforms and " << device_count << " devices\n";
 	for (auto i (platforms.begin ()), n (platforms.end ()); i != n; ++i, ++index)
 	{
 		std::vector<unsigned> queries = { CL_PLATFORM_PROFILE, CL_PLATFORM_VERSION, CL_PLATFORM_NAME, CL_PLATFORM_VENDOR, CL_PLATFORM_EXTENSIONS };
@@ -542,7 +539,7 @@ threads (1024)
 			}
 			else
 			{
-				std::cerr << (boost::str (boost::format ("Build program error %1%\n") % clBuildProgramError));
+				std::cerr << "Build program error " << clBuildProgramError << std::endl;
 				size_t log_size (0);
 				clGetProgramBuildInfo (program, selected_device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
 				std::vector<char> log (log_size);
@@ -552,12 +549,12 @@ threads (1024)
 		}
 		else
 		{
-			std::cerr << (boost::str (boost::format ("Create program error %1%\n") % program_error));
+			std::cerr << "Create program error " << program_error << std::endl;
 		}
 	}
 	else
 	{
-		std::cerr << (boost::str (boost::format ("Unable to create context %1%\n") % createContextError));
+		std::cerr << "Unable to create context " << createContextError << std::endl;
 	}
 }
 

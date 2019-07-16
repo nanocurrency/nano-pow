@@ -7,18 +7,12 @@ endif()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_CXX_EXTENSIONS OFF)
+# set(CMAKE_CXX_EXTENSIONS OFF)
+
+# add_compile_options(-Wall -Wextra -pedantic)
 
 include_directories (${CMAKE_SOURCE_DIR})
 include_directories (${CMAKE_SOURCE_DIR}/include)
-
-if (BOOST_ROOT)
-	list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
-endif ()
-
-find_package (Boost 1.65.0 REQUIRED COMPONENTS program_options)
-
-include_directories (${Boost_INCLUDE_DIR})
 
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
@@ -47,6 +41,8 @@ add_library (blake2
 
 target_compile_definitions(blake2 PRIVATE -D__SSE2__)
 
+include_directories (cxxopts/include)
+
 add_executable (nano_pow_driver
 	cpp_driver.cpp
 	cpp_driver.hpp
@@ -60,6 +56,5 @@ add_executable (nano_pow_driver
 
 target_link_libraries (nano_pow_driver
 	blake2
-	${Boost_LIBRARIES}
 	gtest
 	${OpenCL_LIBRARY})

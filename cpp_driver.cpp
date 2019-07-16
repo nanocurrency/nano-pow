@@ -3,9 +3,6 @@
 #include <nano_pow/pow.hpp>
 #include <nano_pow/hash.hpp>
 
-#include <boost/format.hpp>
-#include <boost/program_options.hpp>
-
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -56,7 +53,7 @@ uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 
 void nano_pow::cpp_driver::dump () const
 {
-	std::cerr << boost::str (boost::format ("Hardware threads: %1%\n") % std::to_string (std::thread::hardware_concurrency ()));
+	std::cerr << "Hardware threads: " << std::to_string (std::thread::hardware_concurrency ()) << std::endl;
 }
 
 void nano_pow::cpp_driver::lookup_set(size_t lookup)
