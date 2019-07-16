@@ -1,7 +1,6 @@
 #pragma once
 
 #include <nano_pow/driver.hpp>
-#include <nano_pow/hash.hpp>
 
 #include <nano_pow/pow.hpp>
 
@@ -29,7 +28,6 @@ namespace nano_pow
 		void dump () const override;
 	private:
 		void barrier (std::unique_lock<std::mutex> & lock);
-		nano_pow::sip_hash hash;
 		nano_pow::context context;
 		nano_pow::generator generator;
 		void run_loop (unsigned);

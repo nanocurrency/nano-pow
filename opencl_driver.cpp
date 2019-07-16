@@ -1,6 +1,5 @@
 #include <opencl_driver.hpp>
 
-#include <nano_pow/hash.hpp>
 #include <nano_pow/pow.hpp>
 
 #include <boost/endian/arithmetic.hpp>

@@ -122,9 +122,7 @@ float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold
 		auto result (driver_a.solve (nonce));
 		auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now () - start).count ());
 		total_time += search_time;
-		nano_pow::sip_hash hash;
-		hash.reset (nonce);
-		nano_pow::context context (hash, nonce, nullptr, 0, driver_a.threshold_get ());
+		nano_pow::context context (nonce, nullptr, 0, driver_a.threshold_get ());
 		std::cerr << boost::str (boost::format ("%1% solution ms: %2%\n") % to_string_solution (context, driver_a.threshold_get (), result) % std::to_string (search_time));
 	}
 	std::cerr << boost::str (boost::format ("Average solution time: %1%\n") % std::to_string (total_time / count));
