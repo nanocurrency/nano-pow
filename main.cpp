@@ -229,7 +229,8 @@ int main (int argc, char **argv)
 				case operation_type::profile:
 					if (driver != nullptr)
 					{
-						std::cerr << boost::str (boost::format ("Profiling threads: %1% lookup: %2%kb threshold: %3%\n") % std::to_string (driver->threads_get ()) % std::to_string ((1ULL << lookup) / 1024) % to_string_hex64 ((1ULL << difficulty) - 1));
+						std::string threads_l (std::to_string (threads != 0 ? threads : driver->threads_get ()));
+						std::cerr << boost::str (boost::format ("Profiling threads: %1% lookup: %2%kb threshold: %3%\n") % threads_l % std::to_string ((1ULL << lookup) / 1024) % to_string_hex64 ((1ULL << difficulty) - 1));
 						profile (*driver, threads, (1ULL << difficulty) - 1, 1ULL << lookup, count);
 					}
 					break;
