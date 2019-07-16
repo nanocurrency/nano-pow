@@ -52,7 +52,8 @@ add_executable (nano_pow_driver
 	include/nano_pow/pow.hpp
 	main.cpp
 	opencl_driver.cpp
-	opencl_driver.hpp)
+	opencl_driver.hpp
+    cxxopts/include/cxxopts.hpp)
 
 target_link_libraries (nano_pow_driver
 	blake2
