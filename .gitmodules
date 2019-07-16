@@ -7,3 +7,7 @@
 [submodule "BLAKE2"]
 	path = BLAKE2
 	url = https://github.com/BLAKE2/BLAKE2
+[submodule "cxxopts"]
+	path = cxxopts
+	url = https://github.com/jarro2783/cxxopts
+	branch = 2_1
