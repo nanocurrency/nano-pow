@@ -133,7 +133,7 @@ int main (int argc, char **argv)
 				if (driver != nullptr)
 				{
 					std::string threads_l (std::to_string (threads != 0 ? threads : driver->threads_get ()));
-					std::cerr << "Profiling threads: " << threads_l << " lookup: " << std::to_string ((1ULL << lookup) / 1024) << "kb threshold: " << to_string_hex64 ((1ULL << difficulty) - 1) << std::endl;
+					std::cerr << "Profiling threads: " << threads_l << " lookup: " << std::to_string ((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64 ((1ULL << difficulty) - 1) << std::endl;
 					profile (*driver, threads, (1ULL << difficulty) - 1, 1ULL << lookup, count);
 				}
 			}
