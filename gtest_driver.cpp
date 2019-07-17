@@ -11,7 +11,7 @@ TEST (context, difficulty)
 	hash.reset (nonce);
 	nano_pow::generator generator;
 	std::array <uint32_t, 8> slab;
-	nano_pow::context context (hash, nonce, slab.data (), 8, context.bit_difficulty_inv (8));
+	nano_pow::context context (hash, nonce, slab.data (), 8, nano_pow::context::bit_difficulty_inv(8));
 	generator.find (context, 0, 1, 1);
 	auto difficulty (context.difficulty (context, generator.result));
 	ASSERT_NE (0, difficulty);

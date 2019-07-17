@@ -12,6 +12,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories (${CMAKE_SOURCE_DIR})
 include_directories (${CMAKE_SOURCE_DIR}/include)
 
+set(Boost_USE_STATIC_LIBS	ON)
+set(Boost_USE_MULTITHREAD	ON)
+
 if (BOOST_ROOT)
 	list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 endif ()
@@ -24,7 +27,11 @@ if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
 	SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINK_FLAGS}" )
 else ()
-	set (PLATFORM_LINK_FLAGS "-static-libgcc -static-libstdc++")
+	if (WIN32)
+		set (PLATFORM_LINK_FLAGS "")
+	else ()
+		set (PLATFORM_LINK_FLAGS "-static-libgcc -static-libstdc++")
+	endif ()
 	find_package (OpenCL REQUIRED)
 	include_directories (${OpenCL_INCLUDE_DIRS})
 	link_directories (${OpenCL_LIBRARY})
@@ -47,7 +54,12 @@ add_library (blake2
 
 target_compile_definitions(blake2 PRIVATE -D__SSE2__)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	SET (PLATFORM_SOURCE include/plat/win/mman.c include/plat/win/mman.h)
+endif ()
+
 add_executable (nano_pow_driver
+	${PLATFORM_SOURCE}
 	cpp_driver.cpp
 	cpp_driver.hpp
 	gtest_driver.cpp

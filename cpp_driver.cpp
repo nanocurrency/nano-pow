@@ -15,7 +15,11 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#include <include/plat/win/mman.h>
+#else
 #include <sys/mman.h>
+#endif
 
 #ifndef MAP_NOCACHE
 /* No MAP_NOCACHE on Linux */
