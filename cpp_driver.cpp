@@ -97,9 +97,9 @@ unsigned nano_pow::cpp_driver::threads_get () const
 	return threads.size ();
 }
 
-void nano_pow::cpp_driver::threshold_set (uint64_t const difficulty_inv_a)
+void nano_pow::cpp_driver::threshold_set (uint64_t difficulty_inv_a)
 {
-	context.difficulty_set (difficulty_inv_a);
+	context.difficulty_inv = difficulty_inv_a;
 }
 
 uint64_t nano_pow::cpp_driver::threshold_get () const
