@@ -17,8 +17,7 @@ namespace nano_pow
 		nonce (nonce_a),
 		slab (slab_a),
 		size (size_a),
-		difficulty_inv (difficulty_inv_a),
-		difficulty_m (reverse (difficulty_inv))
+		difficulty_inv (difficulty_inv_a)
 		{
 		}
 		nano_pow::hash & hash;
@@ -26,7 +25,6 @@ namespace nano_pow
 		uint32_t * slab;
 		size_t size;
 		uint64_t difficulty_inv;
-		uint64_t difficulty_m;
 		static uint64_t constexpr lhs_or_mask { 0x1ULL << 63 };
 		static uint64_t constexpr rhs_and_mask { 0xffff'ffff };
 	public:
@@ -133,7 +131,7 @@ namespace nano_pow
 				rhs = slab [slot (0 - hash_l)];
 				auto sum (hash_l + H1 (rhs));
 				// Check if the solution passes through the quick path then check it through the long path
-				incomplete = !passes_quick (sum, difficulty_inv) || !passes (*this, sum, difficulty_m);
+				incomplete = !passes_quick (sum, difficulty_inv) || !passes (*this, sum, difficulty_inv);
 			}
 			return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 		}
