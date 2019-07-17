@@ -91,13 +91,9 @@ namespace nano_pow
 			auto sum (context_a.H0 (solution_a >> 32) + context_a.H1 (solution_a));
 			return reverse (~sum);
 		}
-		static uint64_t passes_sum (uint64_t const sum_a, uint64_t threshold_a)
-		{
-			return sum_a > threshold_a;
-		}
 		static uint64_t passes (nano_pow::context & context_a, uint64_t const sum_a, uint64_t threshold_a)
 		{
-			auto passed (passes_sum (reverse (~sum_a), reverse (~threshold_a)));
+			auto passed (reverse (~sum_a) > reverse (~threshold_a));
 			return passed;
 		}
 
