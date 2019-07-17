@@ -57,13 +57,13 @@ v2 += v1; v1=ROTL(v1,17); v1 ^= v2; v2=ROTL(v2,32); \
 } while(0)
 
 /* SipHash-2-4 */
-int crypto_auth( unsigned char *out, const unsigned char *in, unsigned long long inlen, const unsigned char *k )
+int crypto_auth( uchar *out, const uchar *in, ulong inlen, __global const uchar *k )
 {
 	/* "somepseudorandomlygeneratedbytes" */
-	u64 v0 = 0x736f6d6570736575ULL;
-	u64 v1 = 0x646f72616e646f6dULL;
-	u64 v2 = 0x6c7967656e657261ULL;
-	u64 v3 = 0x7465646279746573ULL;
+	u64 v0 = 0x736f6d6570736575UL;
+	u64 v1 = 0x646f72616e646f6dUL;
+	u64 v2 = 0x6c7967656e657261UL;
+	u64 v3 = 0x7465646279746573UL;
 	u64 b;
 	u64 k0 = U8TO64_LE( k );
 	u64 k1 = U8TO64_LE( k + 8 );
@@ -150,7 +150,7 @@ static ulong reduce (ulong const item_a, ulong threshold_a)
 	return item_a & threshold_a;
 }
 
-static ulong hash (__global ulong * const nonce_a, ulong const item_a)
+static ulong hash (__global uchar * const nonce_a, ulong const item_a)
 {
 	ulong result;
 	int code = crypto_auth (&result, &item_a, sizeof (item_a), nonce_a);
