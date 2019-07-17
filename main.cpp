@@ -108,12 +108,14 @@ std::string to_string_solution (nano_pow::context & context_a, uint64_t threshol
 }
 float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold, uint64_t lookup, unsigned count)
 {
+	std::cerr << "Initializing driver" << std::endl;
 	if (threads != 0)
 	{
 		driver_a.threads_set (threads);
 	}
 	driver_a.threshold_set (threshold);
 	driver_a.lookup_set (lookup);
+	std::cerr << "Starting profile" << std::endl;
 	uint64_t total_time (0);
 	for (auto i (0UL); i < count; ++i)
 	{
@@ -155,6 +157,7 @@ int main (int argc, char **argv)
 		}
 		else
 		{
+			std::cerr << "Initializing driver" << std::endl;
 			std::unique_ptr<nano_pow::driver> driver;
 			auto driver_type_l (vm.find ("driver")->second.as<driver_type> ());
 			switch (driver_type_l)
