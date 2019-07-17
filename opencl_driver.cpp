@@ -3,10 +3,6 @@
 #include <nano_pow/hash.hpp>
 #include <nano_pow/pow.hpp>
 
-#include <boost/endian/arithmetic.hpp>
-#include <boost/format.hpp>
-#include <boost/program_options.hpp>
-
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -83,7 +79,7 @@ static inline int blake2b_set_lastnode( blake2b_state *S )
 static inline int blake2b_set_lastblock( blake2b_state *S )
 {
 	if( S->last_node ) blake2b_set_lastnode( S );
-	
+
 	S->f[0] = ~0UL;
 	return 0;
 }
@@ -167,18 +163,18 @@ static inline int blake2b_init_param( blake2b_state *S, const blake2b_param *P )
 	p = ( uchar * )( P );
 	/* IV XOR ParamBlock */
 	ucharset( S, 0, sizeof( blake2b_state ) );
-	
+
 	for( int i = 0; i < BLAKE2B_OUTBYTES; ++i ) h[i] = v[i] ^ p[i];
-	
+
 	return 0;
 }
 
 static inline int blake2b_init( blake2b_state *S, const uchar outlen )
 {
 	blake2b_param P[1];
-	
+
 	if ( ( !outlen ) || ( outlen > BLAKE2B_OUTBYTES ) ) return -1;
-	
+
 	P->digest_length = outlen;
 	P->key_length    = 0;
 	P->fanout        = 1;
@@ -198,13 +194,13 @@ static int blake2b_compress( blake2b_state *S, __private const uchar block[BLAKE
 	ulong m[16];
 	ulong v[16];
 	int i;
-	
+
 	for( i = 0; i < 16; ++i )
 		m[i] = load64( block + i * sizeof( m[i] ) );
-	
+
 	for( i = 0; i < 8; ++i )
 		v[i] = S->h[i];
-	
+
 	v[ 8] = blake2b_IV[0];
 	v[ 9] = blake2b_IV[1];
 	v[10] = blake2b_IV[2];
@@ -247,10 +243,10 @@ G(r,7,v[ 3],v[ 4],v[ 9],v[14]); \
 	ROUND( 9 );
 	ROUND( 10 );
 	ROUND( 11 );
-	
+
 	for( i = 0; i < 8; ++i )
 		S->h[i] = S->h[i] ^ v[i] ^ v[i + 8];
-	
+
 #undef G
 #undef ROUND
 	return 0;
@@ -281,7 +277,7 @@ static int blake2b_update( blake2b_state *S, const uchar *in, ulong inlen )
 	{
 		size_t left = S->buflen;
 		size_t fill = 2 * BLAKE2B_BLOCKBYTES - left;
-		
+
 		if( inlen > fill )
 		{
 			ucharcpy( S->buf + left, in, fill ); // Fill buffer
@@ -301,7 +297,7 @@ static int blake2b_update( blake2b_state *S, const uchar *in, ulong inlen )
 			inlen -= inlen;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -309,7 +305,7 @@ static int blake2b_update( blake2b_state *S, const uchar *in, ulong inlen )
 static int blake2b_final( blake2b_state *S, uchar *out, uchar outlen )
 {
 	uchar buffer[BLAKE2B_OUTBYTES];
-	
+
 	if( S->buflen > BLAKE2B_BLOCKBYTES )
 	{
 		blake2b_increment_counter( S, BLAKE2B_BLOCKBYTES );
@@ -317,21 +313,21 @@ static int blake2b_final( blake2b_state *S, uchar *out, uchar outlen )
 		S->buflen -= BLAKE2B_BLOCKBYTES;
 		ucharcpy( S->buf, S->buf + BLAKE2B_BLOCKBYTES, S->buflen );
 	}
-	
+
 	//blake2b_increment_counter( S, S->buflen );
 	ulong inc = (ulong)S->buflen;
 	S->t[0] += inc;
 	//  if ( S->t[0] < inc )
 	//    S->t[1] += 1;
 	// This seems to crash the opencl compiler though fortunately this is calculating size and we don't do things bigger than 2^32
-	
+
 	blake2b_set_lastblock( S );
 	ucharset( S->buf + S->buflen, 0, 2 * BLAKE2B_BLOCKBYTES - S->buflen ); /* Padding */
 	blake2b_compress( S, S->buf );
-	
+
 	for( int i = 0; i < 8; ++i ) /* Output full hash to temp buffer */
 		store64( buffer + sizeof( S->h[i] ) * i, S->h[i] );
-	
+
 	ucharcpy( out, buffer, outlen );
 	return 0;
 }
@@ -440,7 +436,7 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 	{
 		device_count += i.devices.size ();
 	}
-	stream << boost::str (boost::format ("OpenCL found %1% platforms and %2% devices\n") % platforms.size () % device_count);
+	stream << "OpenCL found " << platforms.size () << " platforms and " << device_count << " devices\n";
 	for (auto i (platforms.begin ()), n (platforms.end ()); i != n; ++i, ++index)
 	{
 		std::vector<unsigned> queries = { CL_PLATFORM_PROFILE, CL_PLATFORM_VERSION, CL_PLATFORM_NAME, CL_PLATFORM_VENDOR, CL_PLATFORM_EXTENSIONS };
@@ -465,12 +461,10 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 				clGetDeviceInfo (*j, *k, info.size (), info.data (), nullptr);
 				stream << '\t' << info.data () << std::endl;
 			}
-			size_t deviceTypeCount = 0;
-			clGetDeviceInfo (*j, CL_DEVICE_TYPE, 0, nullptr, &deviceTypeCount);
-			std::vector<uint8_t> deviceTypeInfo (deviceTypeCount);
-			clGetDeviceInfo (*j, CL_DEVICE_TYPE, deviceTypeCount, deviceTypeInfo.data (), 0);
+			cl_device_type deviceType;
+			clGetDeviceInfo (*j, CL_DEVICE_TYPE, sizeof(deviceType), &deviceType, nullptr);
 			std::string device_type_string;
-			switch (deviceTypeInfo[0])
+			switch (deviceType)
 			{
 				case CL_DEVICE_TYPE_ACCELERATOR:
 					device_type_string = "ACCELERATOR";
@@ -492,26 +486,18 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 					break;
 			}
 			stream << '\t' << device_type_string << std::endl;
-			
-			size_t compilerAvailableCount = 0;
-			clGetDeviceInfo (*j, CL_DEVICE_COMPILER_AVAILABLE, 0, nullptr, &compilerAvailableCount);
-			std::vector<uint8_t> compilerAvailableInfo (compilerAvailableCount);
-			clGetDeviceInfo (*j, CL_DEVICE_COMPILER_AVAILABLE, compilerAvailableCount, compilerAvailableInfo.data (), 0);
-			stream << '\t' << "Compiler available: " << (compilerAvailableInfo[0] ? "true" : "false") << std::endl;
-			
-			size_t globalMemSizeCount = 0;
-			clGetDeviceInfo (*j, CL_DEVICE_GLOBAL_MEM_SIZE, 0, nullptr, &globalMemSizeCount);
-			std::vector<uint8_t> globalMemSizeInfo (globalMemSizeCount);
-			clGetDeviceInfo (*j, CL_DEVICE_GLOBAL_MEM_SIZE, globalMemSizeCount, globalMemSizeInfo.data (), 0);
-			uint64_t globalMemSize (boost::endian::little_to_native (*reinterpret_cast <uint64_t *> (globalMemSizeInfo.data ())));
+
+			cl_bool compilerAvailable;
+			clGetDeviceInfo (*j, CL_DEVICE_COMPILER_AVAILABLE, sizeof(compilerAvailable), &compilerAvailable, nullptr);
+			stream << '\t' << "Compiler available: " << (compilerAvailable ? "true" : "false") << std::endl;
+
+			cl_ulong globalMemSize;
+			clGetDeviceInfo (*j, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(globalMemSize), &globalMemSize, nullptr);
 			stream << '\t' << "Global mem size: " << globalMemSize << std::endl;
-			
-			size_t computeUnitsAvailableCount = 0;
-			clGetDeviceInfo (*j, CL_DEVICE_MAX_COMPUTE_UNITS, 0, nullptr, &computeUnitsAvailableCount);
-			std::vector<uint8_t> computeUnitsAvailableInfo (computeUnitsAvailableCount);
-			clGetDeviceInfo (*j, CL_DEVICE_MAX_COMPUTE_UNITS, computeUnitsAvailableCount, computeUnitsAvailableInfo.data (), 0);
-			uint32_t computeUnits (boost::endian::little_to_native (*reinterpret_cast <uint32_t *> (computeUnitsAvailableInfo.data ())));
-			stream << '\t' << "Compute units available: " << computeUnits << std::endl;
+
+			cl_uint computeUnitsAvailable;
+			clGetDeviceInfo (*j, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnitsAvailable), &computeUnitsAvailable, nullptr);
+			stream << '\t' << "Compute units available: " << computeUnitsAvailable << std::endl;
 		}
 	}
 }
@@ -553,7 +539,7 @@ threads (1024)
 			}
 			else
 			{
-				std::cerr << (boost::str (boost::format ("Build program error %1%\n") % clBuildProgramError));
+				std::cerr << "Build program error " << clBuildProgramError << std::endl;
 				size_t log_size (0);
 				clGetProgramBuildInfo (program, selected_device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
 				std::vector<char> log (log_size);
@@ -563,12 +549,12 @@ threads (1024)
 		}
 		else
 		{
-			std::cerr << (boost::str (boost::format ("Create program error %1%\n") % program_error));
+			std::cerr << "Create program error " << program_error << std::endl;
 		}
 	}
 	else
 	{
-		std::cerr << (boost::str (boost::format ("Unable to create context %1%\n") % createContextError));
+		std::cerr << "Unable to create context " << createContextError << std::endl;
 	}
 }
 
@@ -649,14 +635,14 @@ uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 	uint64_t result (0);
 	bool error (false);
 	int32_t code;
-	
+
 	error |= code = clSetKernelArg (search, 1, sizeof (slab), &slab);
 	error |= code = clSetKernelArg (search, 2, sizeof (uint64_t), &lookup);
 	error |= code = clSetKernelArg (search, 6, sizeof (uint64_t), &threshold);
-	
+
 	error |= code = clSetKernelArg (fill, 0, sizeof (slab), &slab);
 	error |= code = clSetKernelArg (fill, 1, sizeof (uint64_t), &lookup);
-	
+
 	error |= code = clEnqueueWriteBuffer (queue, result_buffer, false, 0, sizeof (result), &result, 0, nullptr, nullptr);
 	error |= code = clEnqueueWriteBuffer (queue, nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data (), 0, nullptr, nullptr);
 	uint32_t current (0);
