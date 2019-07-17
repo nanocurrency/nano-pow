@@ -60,6 +60,10 @@ namespace nano_pow
 			assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 			return difficulty_quick (sum_a, difficulty_inv_a) == 0;
 		}
+		static bool passes_sum (uint64_t const sum_a, uint64_t threshold_a)
+		{
+			return reverse (~sum_a) > threshold_a;
+		}
 		static uint64_t reverse (uint64_t const item_a)
 		{
 			auto result (item_a);
@@ -73,6 +77,25 @@ namespace nano_pow
 		}
 
 		/**
+		 * Returns the difficulty associated to a nonce under this context
+		 */
+		uint64_t difficulty (uint64_t const solution_a)
+		{
+			auto sum (H0 (solution_a >> 32) + H1 (solution_a));
+			return reverse (~sum);
+		}
+		void difficulty_set (uint64_t const difficulty_inv_a)
+		{
+			difficulty_inv = difficulty_inv_a;
+			difficulty_m = reverse(difficulty_inv_a);
+		}
+		bool passes (uint64_t const solution_a, uint64_t threshold_a)
+		{
+			auto sum (H0 (solution_a >> 32) + H1 (solution_a));
+			return passes_sum (sum, threshold_a);
+		}
+
+		/**
 		 * Maps item_a to an index within the memory region.
 		 *
 		 * @param item_a value that needs to be pigeonholed into an index/slot.
@@ -83,21 +106,6 @@ namespace nano_pow
 			auto mask (size - 1);
 			assert (((size & mask) == 0) && "Slab size is not a power of 2");
 			return item_a & mask;
-		}
-
-		static uint64_t difficulty (nano_pow::context & context_a, uint64_t const solution_a)
-		{
-			auto sum (context_a.H0 (solution_a >> 32) + context_a.H1 (solution_a));
-			return reverse (~sum);
-		}
-		static uint64_t passes_sum (uint64_t const sum_a, uint64_t threshold_a)
-		{
-			return reverse (~sum_a) > threshold_a;
-		}
-		static uint64_t passes (nano_pow::context & context_a, uint64_t const solution_a, uint64_t threshold_a)
-		{
-			auto sum (context_a.H0 (solution_a >> 32) + context_a.H1 (solution_a));
-			return passes_sum (sum, threshold_a);
 		}
 
 		/**
@@ -137,7 +145,7 @@ namespace nano_pow
 				rhs = slab [slot (0 - hash_l)];
 				auto sum (hash_l + H1 (rhs));
 				// Check if the solution passes through the quick path then check it through the long path
-				incomplete = !passes_quick (sum, difficulty_inv) || !passes (*this, sum, difficulty_m);
+				incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (sum, difficulty_m);
 			}
 			return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 		}
