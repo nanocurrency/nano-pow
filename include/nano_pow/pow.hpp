@@ -58,7 +58,8 @@ namespace nano_pow
 		static bool passes_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
 		{
 			assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
-			return difficulty_quick (sum_a, difficulty_inv_a) == 0;
+			auto passed (difficulty_quick (sum_a, difficulty_inv_a) == 0);
+			return passed;
 		}
 		static uint64_t reverse (uint64_t const item_a)
 		{
@@ -92,12 +93,12 @@ namespace nano_pow
 		}
 		static uint64_t passes_sum (uint64_t const sum_a, uint64_t threshold_a)
 		{
-			return reverse (~sum_a) > threshold_a;
+			return sum_a > threshold_a;
 		}
-		static uint64_t passes (nano_pow::context & context_a, uint64_t const solution_a, uint64_t threshold_a)
+		static uint64_t passes (nano_pow::context & context_a, uint64_t const sum_a, uint64_t threshold_a)
 		{
-			auto sum (context_a.H0 (solution_a >> 32) + context_a.H1 (solution_a));
-			return passes_sum (sum, threshold_a);
+			auto passed (passes_sum (reverse (~sum_a), reverse (~threshold_a)));
+			return passed;
 		}
 
 		/**

@@ -100,6 +100,7 @@ unsigned nano_pow::cpp_driver::threads_get () const
 void nano_pow::cpp_driver::threshold_set (uint64_t difficulty_inv_a)
 {
 	context.difficulty_inv = difficulty_inv_a;
+	context.difficulty_m = nano_pow::context::reverse (difficulty_inv_a);
 }
 
 uint64_t nano_pow::cpp_driver::threshold_get () const
