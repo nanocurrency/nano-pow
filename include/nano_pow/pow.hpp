@@ -1,28 +1,28 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <cstdlib>
 #include <limits>
 
-#include <nano_pow/hash.hpp>
+#include <highwayhash/highwayhash/sip_hash.h>
 
 namespace nano_pow
 {
 	class context final
 	{
 	public:
-		context (nano_pow::hash & hash_a, std::array<uint64_t, 2> nonce_a, uint32_t * const slab_a, size_t const size_a, uint64_t difficulty_inv_a) :
-		hash (hash_a),
-		nonce (nonce_a),
+		context (std::array<uint64_t, 2> nonce_a, uint32_t * const slab_a, size_t const size_a, uint64_t difficulty_inv_a) :
 		slab (slab_a),
 		size (size_a),
 		difficulty_inv (difficulty_inv_a),
 		difficulty_m (reverse (difficulty_inv))
 		{
+			nonce [0] = nonce_a [0];
+			nonce [1] = nonce_a [1];
 		}
-		nano_pow::hash & hash;
-		std::array<uint64_t, 2> nonce;
+		highwayhash::SipHashState::Key nonce;
 		uint32_t * slab;
 		size_t size;
 		uint64_t difficulty_inv;
@@ -30,6 +30,10 @@ namespace nano_pow
 		static uint64_t constexpr lhs_or_mask { 0x1ULL << 63 };
 		static uint64_t constexpr rhs_and_mask { 0xffff'ffff };
 	public:
+		inline uint64_t hash (uint64_t const item_a) const
+		{
+			return highwayhash::SipHash (nonce, reinterpret_cast<char const *> (&item_a), sizeof (item_a));
+		}
 		// Hash function H0 sets the high order bit
 		inline uint64_t H0 (uint64_t const item_a) const
 		{

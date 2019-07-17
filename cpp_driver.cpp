@@ -1,7 +1,6 @@
 #include <cpp_driver.hpp>
 
 #include <nano_pow/pow.hpp>
-#include <nano_pow/hash.hpp>
 
 #include <atomic>
 #include <cstdint>
@@ -24,7 +23,7 @@
 #endif
 
 nano_pow::cpp_driver::cpp_driver () :
-context (hash, { 0, 0 }, nullptr, 0, context.bit_difficulty_inv (8))
+context ({ 0, 0 }, nullptr, 0, context.bit_difficulty_inv (8))
 {
 	threads_set (std::thread::hardware_concurrency ());
 }
@@ -47,8 +46,8 @@ uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 	generator.ticket = 0;
 	generator.current = 0;
 	enable = true;
-	this->context.nonce = nonce;
-	this->context.hash.reset (nonce);
+	this->context.nonce [0] = nonce [0];
+	this->context.nonce [1] = nonce [1];
 	worker_condition.notify_all ();
 	condition.wait (lock);
 	enable = false;
