@@ -121,7 +121,7 @@ namespace nano_pow
 			highwayhash::SipHashState::Key nonce_l  = { nonce [0], nonce [1] };
 			for (uint32_t current (begin), end (current + count); current < end; ++current)
 			{
-				slab [slot (H1 (nonce_l, current))] = current;
+				slab [slot (H0 (nonce_l, current))] = current;
 			}
 		}
 
@@ -140,10 +140,10 @@ namespace nano_pow
 			highwayhash::SipHashState::Key nonce_l  = { nonce [0], nonce [1] };
 			for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 			{
-				lhs = current;
-				auto hash_l (H0 (nonce_l, current));
-				rhs = slab [slot (0 - hash_l)];
-				auto sum (hash_l + H1 (nonce_l, rhs));
+				rhs = current;
+				auto hash_l (H1 (nonce_l, current));
+				lhs = slab [slot (0 - hash_l)];
+				auto sum (hash_l + H0 (nonce_l, lhs));
 				// Check if the solution passes through the quick path then check it through the long path
 				incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (*this, sum, difficulty_m);
 			}
