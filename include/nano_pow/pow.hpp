@@ -44,6 +44,11 @@ namespace nano_pow
 		{
 			return hash (rhs_and_mask & item_a);
 		}
+		inline uint64_t sum (uint64_t const solution_a) const
+		{
+			auto result (H0 (solution_a >> 32) + H1 (solution_a));
+			return result;
+		}
 	public:
 		static uint64_t bit_difficulty_inv (unsigned bits_a)
 		{
@@ -88,12 +93,11 @@ namespace nano_pow
 
 		static uint64_t difficulty (nano_pow::context & context_a, uint64_t const solution_a)
 		{
-			auto sum (context_a.H0 (solution_a >> 32) + context_a.H1 (solution_a));
-			return reverse (~sum);
+			return reverse (~context_a.sum (solution_a));
 		}
 		static uint64_t passes (nano_pow::context & context_a, uint64_t const sum_a, uint64_t threshold_a)
 		{
-			auto passed (reverse (~sum_a) > reverse (~threshold_a));
+			auto passed (reverse (~sum_a) > threshold_a);
 			return passed;
 		}
 
