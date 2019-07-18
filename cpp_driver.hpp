@@ -21,7 +21,7 @@ namespace nano_pow
 		uint64_t threshold_get () const override;
 		void threads_set (unsigned threads) override;
 		unsigned threads_get () const override;
-		void lookup_set (size_t lookup) override;
+		void memory_set (size_t memory) override;
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
 	private:

@@ -38,10 +38,11 @@ namespace nano_pow
 		uint64_t threshold_get () const override;
 		void threads_set (unsigned threads) override;
 		unsigned threads_get () const override;
-		void lookup_set (size_t lookup) override;
+		void memory_set (size_t memory) override;
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
 	private:
+		uint64_t entries () const { return slab_size / sizeof (uint32_t); }
 		bool error () const;
 		opencl_environment environment;
 		cl_context context { 0 };
@@ -49,7 +50,7 @@ namespace nano_pow
 		unsigned threads;
 		uint64_t threshold;
 		cl_mem slab { 0 };
-		uint64_t lookup;
+		uint64_t slab_size;
 		cl_device_id selected_device;
 		cl_kernel fill { 0 };
 		cl_kernel search { 0 };

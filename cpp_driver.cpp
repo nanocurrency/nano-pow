@@ -31,7 +31,7 @@ context ({ 0, 0 }, nullptr, 0, context.bit_difficulty_inv (8))
 nano_pow::cpp_driver::~cpp_driver ()
 {
 	threads_set (0);
-	lookup_set (0);
+	memory_set (0);
 }
 
 void nano_pow::cpp_driver::barrier (std::unique_lock<std::mutex> & lock)
@@ -59,15 +59,15 @@ void nano_pow::cpp_driver::dump () const
 	std::cerr << "Hardware threads: " << std::to_string (std::thread::hardware_concurrency ()) << std::endl;
 }
 
-void nano_pow::cpp_driver::lookup_set(size_t lookup)
+void nano_pow::cpp_driver::memory_set (size_t memory)
 {
-	assert ((lookup & (lookup - 1)) == 0);
+	assert ((memory & (memory - 1)) == 0);
 	if (context.slab)
 	{
 		munmap (context.slab, context.size * sizeof (uint32_t));
 	}
-	context.size = lookup;
-	context.slab = lookup == 0 ? nullptr : reinterpret_cast <uint32_t *> (mmap (0, lookup * sizeof (uint32_t), PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_NOCACHE, -1, 0));
+	context.size = memory / sizeof (uint32_t);
+	context.slab = memory == 0 ? nullptr : reinterpret_cast <uint32_t *> (mmap (0, memory, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_NOCACHE, -1, 0));
 }
 
 void nano_pow::cpp_driver::threads_set (unsigned threads)

@@ -31,7 +31,7 @@ std::string to_string_solution (nano_pow::context & context_a, uint64_t threshol
 	oss << "H0(" << to_string_hex (lhs) << ")+H1(" << to_string_hex (rhs) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (context_a.difficulty (context_a, solution_a));
 	return oss.str ();
 }
-float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold, uint64_t lookup, unsigned count)
+float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold, uint64_t memory, unsigned count)
 {
 	std::cerr << "Initializing driver" << std::endl;
 	if (threads != 0)
@@ -39,7 +39,7 @@ float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t threshold
 		driver_a.threads_set (threads);
 	}
 	driver_a.threshold_set (threshold);
-	driver_a.lookup_set (lookup);
+	driver_a.memory_set (memory);
 	std::cerr << "Starting profile" << std::endl;
 	uint64_t total_time (0);
 	for (auto i (0UL); i < count; ++i)

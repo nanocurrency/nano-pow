@@ -394,16 +394,16 @@ unsigned nano_pow::opencl_driver::threads_get () const
 	return threads;
 }
 
-void nano_pow::opencl_driver::lookup_set (size_t lookup)
+void nano_pow::opencl_driver::memory_set (size_t memory)
 {
-	this->lookup = lookup;
+	slab_size = memory;
 	if (slab)
 	{
 		clReleaseMemObject (slab);
 		slab = nullptr;
 	}
 	cl_int error;
-	slab = clCreateBuffer (context, CL_MEM_READ_WRITE, lookup * sizeof (uint32_t), nullptr, &error);
+	slab = clCreateBuffer (context, CL_MEM_READ_WRITE, slab_size, nullptr, &error);
 	assert (error == CL_SUCCESS);
 }
 
@@ -419,17 +419,17 @@ uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 	int32_t code;
 
 	error |= code = clSetKernelArg (search, 1, sizeof (slab), &slab);
-	error |= code = clSetKernelArg (search, 2, sizeof (uint64_t), &lookup);
+	error |= code = clSetKernelArg (search, 2, sizeof (uint64_t), &slab_size);
 	error |= code = clSetKernelArg (search, 6, sizeof (uint64_t), &threshold);
 
 	error |= code = clSetKernelArg (fill, 0, sizeof (slab), &slab);
-	error |= code = clSetKernelArg (fill, 1, sizeof (uint64_t), &lookup);
+	error |= code = clSetKernelArg (fill, 1, sizeof (uint64_t), &slab_size);
 
 	error |= code = clEnqueueWriteBuffer (queue, result_buffer, false, 0, sizeof (result), &result, 0, nullptr, nullptr);
 	error |= code = clEnqueueWriteBuffer (queue, nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data (), 0, nullptr, nullptr);
 	uint32_t current (0);
 	error |= code = clSetKernelArg (fill, 4, sizeof (uint32_t), &current);
-	size_t fill_size[] = { std::max<size_t> (1U, lookup / stepping), 0, 0 };
+	size_t fill_size[] = { std::max<size_t> (1U, entries () / stepping), 0, 0 };
 	error |= code = clEnqueueNDRangeKernel (queue, fill, 1, nullptr, fill_size, nullptr, 0, nullptr, nullptr);
 	error |= code = clFinish (queue);
 	size_t search_size[] = { threads, 0, 0 };
