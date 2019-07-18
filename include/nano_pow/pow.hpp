@@ -77,6 +77,11 @@ namespace nano_pow
 			result = ( result >> 32                      ) | ( result                       << 32);
 			return result;
 		}
+		static bool passes_sum (nano_pow::context & context_a, uint64_t const sum_a, uint64_t threshold_a)
+		{
+			auto passed (reverse (~sum_a) > threshold_a);
+			return passed;
+		}
 
 		/**
 		 * Maps item_a to an index within the memory region.
@@ -95,9 +100,9 @@ namespace nano_pow
 		{
 			return reverse (~context_a.sum (solution_a));
 		}
-		static uint64_t passes (nano_pow::context & context_a, uint64_t const sum_a, uint64_t threshold_a)
+		static bool passes (nano_pow::context & context_a, uint64_t const solution_a, uint64_t threshold_a)
 		{
-			auto passed (reverse (~sum_a) > threshold_a);
+			auto passed (reverse (~context_a.sum (solution_a)) > threshold_a);
 			return passed;
 		}
 
@@ -138,7 +143,7 @@ namespace nano_pow
 				rhs = slab [slot (0 - hash_l)];
 				auto sum (hash_l + H1 (rhs));
 				// Check if the solution passes through the quick path then check it through the long path
-				incomplete = !passes_quick (sum, difficulty_inv) || !passes (*this, sum, difficulty_m);
+				incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (*this, sum, difficulty_m);
 			}
 			return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 		}

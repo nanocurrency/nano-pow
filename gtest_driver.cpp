@@ -13,8 +13,8 @@ TEST (context, difficulty)
 	auto difficulty (context.difficulty (context, generator.result));
 	ASSERT_NE (0, difficulty);
 	ASSERT_EQ (0xff, difficulty >> 56);
-	ASSERT_TRUE (context.passes (context, context.sum (generator.result), 0xff00'0000'0000'0000ULL));
-	ASSERT_FALSE (context.passes (context, context.sum (generator.result), 0xffff'ffff'0000'0000ULL));
+	ASSERT_TRUE (context.passes (context, generator.result, 0xff00'0000'0000'0000ULL));
+	ASSERT_FALSE (context.passes (context, generator.result, 0xffff'ffff'0000'0000ULL));
 }
 
 TEST (cpp_driver, threads)
