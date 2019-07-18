@@ -30,23 +30,23 @@ namespace nano_pow
 		static uint64_t constexpr lhs_or_mask { 0x1ULL << 63 };
 		static uint64_t constexpr rhs_and_mask { 0xffff'ffff };
 	public:
-		inline uint64_t hash (uint64_t const item_a) const
+		static inline uint64_t hash (highwayhash::SipHashState::Key const & nonce_a, uint64_t const item_a)
 		{
-			return highwayhash::SipHash (nonce, reinterpret_cast<char const *> (&item_a), sizeof (item_a));
+			return highwayhash::SipHash (nonce_a, reinterpret_cast<char const *> (&item_a), sizeof (item_a));
 		}
 		// Hash function H0 sets the high order bit
-		inline uint64_t H0 (uint64_t const item_a) const
+		static inline uint64_t H0 (highwayhash::SipHashState::Key const & nonce_a, uint64_t const item_a)
 		{
-			return hash (lhs_or_mask | item_a);
+			return hash (nonce_a, lhs_or_mask | item_a);
 		}
 		// Hash function H1 clears the high order bit
-		inline uint64_t H1 (uint64_t const item_a) const
+		static inline uint64_t H1 (highwayhash::SipHashState::Key const & nonce_a, uint64_t const item_a)
 		{
-			return hash (rhs_and_mask & item_a);
+			return hash (nonce_a, rhs_and_mask & item_a);
 		}
-		inline uint64_t sum (uint64_t const solution_a) const
+		static inline uint64_t sum (highwayhash::SipHashState::Key const & nonce_a, uint64_t const solution_a)
 		{
-			auto result (H0 (solution_a >> 32) + H1 (solution_a));
+			auto result (H0 (nonce_a, solution_a >> 32) + H1 (nonce_a, solution_a));
 			return result;
 		}
 	public:
@@ -98,11 +98,11 @@ namespace nano_pow
 
 		static uint64_t difficulty (nano_pow::context & context_a, uint64_t const solution_a)
 		{
-			return reverse (~context_a.sum (solution_a));
+			return reverse (~sum (context_a.nonce,  solution_a));
 		}
 		static bool passes (nano_pow::context & context_a, uint64_t const solution_a, uint64_t threshold_a)
 		{
-			auto passed (reverse (~context_a.sum (solution_a)) > threshold_a);
+			auto passed (reverse (~sum (context_a.nonce, solution_a)) > threshold_a);
 			return passed;
 		}
 
@@ -118,9 +118,10 @@ namespace nano_pow
 		 */
 		void fill (uint32_t const count, uint32_t const begin = 0)
 		{
+			highwayhash::SipHashState::Key nonce_l  = { nonce [0], nonce [1] };
 			for (uint32_t current (begin), end (current + count); current < end; ++current)
 			{
-				slab [slot (H1 (current))] = current;
+				slab [slot (H1 (nonce_l, current))] = current;
 			}
 		}
 
@@ -136,12 +137,13 @@ namespace nano_pow
 		{
 			auto incomplete (true);
 			uint32_t lhs, rhs;
+			highwayhash::SipHashState::Key nonce_l  = { nonce [0], nonce [1] };
 			for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 			{
 				lhs = current;
-				auto hash_l (H0 (current));
+				auto hash_l (H0 (nonce_l, current));
 				rhs = slab [slot (0 - hash_l)];
-				auto sum (hash_l + H1 (rhs));
+				auto sum (hash_l + H1 (nonce_l, rhs));
 				// Check if the solution passes through the quick path then check it through the long path
 				incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (*this, sum, difficulty_m);
 			}

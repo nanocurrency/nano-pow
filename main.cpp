@@ -23,9 +23,9 @@ std::string to_string_hex64 (uint64_t value_a)
 std::string to_string_solution (nano_pow::context & context_a, uint64_t threshold_a, uint64_t solution_a)
 {
 	auto lhs (solution_a >> 32);
-	auto lhs_hash (context_a.H0 (lhs));
+	auto lhs_hash (nano_pow::context::H0 (context_a.nonce, lhs));
 	auto rhs (solution_a & 0xffffffffULL);
-	auto rhs_hash (context_a.H1 (rhs));
+	auto rhs_hash (nano_pow::context::H1 (context_a.nonce, rhs));
 	auto sum (lhs_hash + rhs_hash);
 	std::ostringstream oss;
 	oss << "H0(" << to_string_hex (lhs) << ")+H1(" << to_string_hex (rhs) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (context_a.difficulty (context_a, solution_a));
