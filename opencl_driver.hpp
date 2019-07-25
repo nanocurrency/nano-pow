@@ -42,7 +42,8 @@ namespace nano_pow
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
 	private:
-		uint64_t entries () const { return slab_size / sizeof (uint32_t); }
+		void fill_loop () const;
+		uint64_t search_loop () const;
 		bool error () const;
 		opencl_environment environment;
 		cl_context context { 0 };
@@ -51,6 +52,7 @@ namespace nano_pow
 		uint64_t threshold;
 		cl_mem slab { 0 };
 		uint64_t slab_size;
+		uint64_t slab_entries;
 		cl_device_id selected_device;
 		cl_kernel fill { 0 };
 		cl_kernel search { 0 };
