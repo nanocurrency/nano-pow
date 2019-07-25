@@ -42,6 +42,8 @@ namespace nano_pow
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
 	private:
+		void fill_loop () const;
+		uint64_t search_loop () const;
 		uint64_t entries () const { return slab_size / sizeof (uint32_t); }
 		bool error () const;
 		opencl_environment environment;
