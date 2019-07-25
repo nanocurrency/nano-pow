@@ -109,6 +109,7 @@ int main (int argc, char **argv)
 			{
 				lookup = parsed["lookup"].as <unsigned> ();
 			}
+			auto lookup_entries (1ULL << lookup);
 			auto count (parsed["count"].as<unsigned> ());
 			unsigned threads (0);
 			if (parsed.count ("threads"))
@@ -129,12 +130,11 @@ int main (int argc, char **argv)
 			}
 			else if (operation == "profile")
 			{
-
 				if (driver != nullptr)
 				{
 					std::string threads_l (std::to_string (threads != 0 ? threads : driver->threads_get ()));
 					std::cerr << "Profiling threads: " << threads_l << " lookup: " << std::to_string ((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64 ((1ULL << difficulty) - 1) << std::endl;
-					profile (*driver, threads, (1ULL << difficulty) - 1, 1ULL << lookup, count);
+					profile (*driver, threads, (1ULL << difficulty) - 1, lookup_entries * sizeof (uint32_t), count);
 				}
 			}
 			else{
