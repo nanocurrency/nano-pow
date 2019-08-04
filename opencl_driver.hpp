@@ -48,7 +48,7 @@ namespace nano_pow
 		opencl_environment environment;
 		cl_context context { 0 };
 		cl_program program { 0 };
-		unsigned threads;
+		uint32_t threads;
 		uint64_t threshold;
 		cl_mem slab { 0 };
 		uint64_t slab_size;

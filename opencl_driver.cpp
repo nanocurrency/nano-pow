@@ -416,25 +416,35 @@ bool nano_pow::opencl_driver::error () const
 	return fill == nullptr || search == nullptr|| queue == nullptr || result_buffer == nullptr || slab == nullptr || nonce_buffer == nullptr;
 }
 
+namespace
+{
+void check (bool & error, int32_t & code, int32_t result)
+{
+	code = result;
+	error |= code != 0;
+}
+}
+
 void nano_pow::opencl_driver::fill_loop () const
 {
 	uint32_t current (0);
 	bool error (false);
 	int32_t code;
 	
-	size_t threads[] = { this->threads, 0, 0 };
+	uint32_t thread_count (this->threads);
+	size_t threads[] = { thread_count, 0, 0 };
 	
-	error |= code = clFinish (queue);
-	error |= code = clSetKernelArg (fill, 4, sizeof (uint32_t), &current);
-	current += threads[0] * stepping;
-	error |= code = clEnqueueNDRangeKernel (queue, fill, 1, nullptr, threads, nullptr, 0, nullptr, nullptr);
+	check (error, code, clFinish (queue));
+	check (error, code, clSetKernelArg (fill, 4, sizeof (uint32_t), &current));
+	current += thread_count * stepping;
+	check (error, code, clEnqueueNDRangeKernel (queue, fill, 1, nullptr, threads, nullptr, 0, nullptr, nullptr));
 	while (!error && current < slab_entries)
 	{
-		error |= code = clSetKernelArg (fill, 4, sizeof (uint32_t), &current);
-		current += threads[0] * stepping;
-		error |= code = clEnqueueNDRangeKernel (queue, fill, 1, nullptr, threads, nullptr, 0, nullptr, nullptr);
+		check (error, code, clSetKernelArg (fill, 4, sizeof (uint32_t), &current));
+		current += thread_count * stepping;
+		check (error, code, clEnqueueNDRangeKernel (queue, fill, 1, nullptr, threads, nullptr, 0, nullptr, nullptr));
 	}
-	error |= code = clFinish (queue);
+	check (error, code, clFinish (queue));
 	assert(!error);
 }
 
@@ -446,22 +456,23 @@ uint64_t nano_pow::opencl_driver::search_loop () const
 	uint32_t current (0);
 	uint64_t result (0);
 	
-	size_t threads[] = { this->threads, 0, 0 };
+	uint32_t thread_count (this->threads);
+	size_t threads[] = { thread_count, 0, 0 };
 	
-	error |= code = clSetKernelArg (search, 5, sizeof (uint32_t), &current);
-	current += threads[0] * stepping;
-	error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, threads, nullptr, 0, nullptr, nullptr);
-	error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[0]);
+	check (error, code, clSetKernelArg (search, 5, sizeof (uint32_t), &current));
+	current += thread_count * stepping;
+	check (error, code, clEnqueueNDRangeKernel (queue, search, 1, nullptr, threads, nullptr, 0, nullptr, nullptr));
+	check (error, code, clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[0]));
 	while (!error && result == 0)
 	{
-		error |= code = clSetKernelArg (search, 5, sizeof (uint32_t), &current);
-		current += threads[0] * stepping;
-		error |= code = clEnqueueNDRangeKernel (queue, search, 1, nullptr, threads, nullptr, 0, nullptr, nullptr);
-		error |= code = clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[1]);
-		error |= clWaitForEvents(1, &events[0]);
+		check (error, code, clSetKernelArg (search, 5, sizeof (uint32_t), &current));
+		current += thread_count * stepping;
+		check (error, code, clEnqueueNDRangeKernel (queue, search, 1, nullptr, threads, nullptr, 0, nullptr, nullptr));
+		check (error, code, clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[1]));
+		check (error, code, clWaitForEvents(1, &events[0]));
 		events[0] = events[1];
 	}
-	error |= code = clFinish (queue);
+	check (error, code, clFinish (queue));
 	assert (!error);
 	return result;
 }
@@ -472,15 +483,15 @@ uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 	bool error (false);
 	int32_t code;
 
-	error |= code = clSetKernelArg (search, 1, sizeof (slab), &slab);
-	error |= code = clSetKernelArg (search, 2, sizeof (uint64_t), &slab_entries);
-	error |= code = clSetKernelArg (search, 6, sizeof (uint64_t), &threshold);
+	check (error, code, clSetKernelArg (search, 1, sizeof (slab), &slab));
+	check (error, code, clSetKernelArg (search, 2, sizeof (uint64_t), &slab_entries));
+	check (error, code, clSetKernelArg (search, 6, sizeof (uint64_t), &threshold));
 
-	error |= code = clSetKernelArg (fill, 0, sizeof (slab), &slab);
-	error |= code = clSetKernelArg (fill, 1, sizeof (uint64_t), &slab_entries);
+	check (error, code, clSetKernelArg (fill, 0, sizeof (slab), &slab));
+	check (error, code, clSetKernelArg (fill, 1, sizeof (uint64_t), &slab_entries));
 
-	error |= code = clEnqueueWriteBuffer (queue, result_buffer, false, 0, sizeof (result), &result, 0, nullptr, nullptr);
-	error |= code = clEnqueueWriteBuffer (queue, nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data (), 0, nullptr, nullptr);
+	check (error, code, clEnqueueWriteBuffer (queue, result_buffer, false, 0, sizeof (result), &result, 0, nullptr, nullptr));
+	check (error, code, clEnqueueWriteBuffer (queue, nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data (), 0, nullptr, nullptr));
 	fill_loop ();
 	result = search_loop ();
 	return result;
