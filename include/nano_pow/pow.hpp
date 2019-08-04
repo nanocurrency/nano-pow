@@ -153,7 +153,7 @@ namespace nano_pow
 	class generator
 	{
 	public:
-		bool find (nano_pow::context & context_a, unsigned ticket_a, unsigned thread, unsigned total_threads)
+		bool find (nano_pow::context & context_a, unsigned ticket_a, size_t thread, size_t total_threads)
 		{
 			uint32_t last_fill (~0); // 0xFFFFFFFF
 			auto found (false);

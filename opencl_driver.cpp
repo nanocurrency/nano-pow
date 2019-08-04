@@ -392,7 +392,7 @@ void nano_pow::opencl_driver::threads_set (unsigned threads)
 	this->threads = threads;
 }
 
-unsigned nano_pow::opencl_driver::threads_get () const
+size_t nano_pow::opencl_driver::threads_get () const
 {
 	return threads;
 }

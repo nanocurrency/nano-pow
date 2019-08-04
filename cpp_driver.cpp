@@ -92,7 +92,7 @@ void nano_pow::cpp_driver::threads_set (unsigned threads)
 	}
 }
 
-unsigned nano_pow::cpp_driver::threads_get () const
+size_t nano_pow::cpp_driver::threads_get () const
 {
 	return threads.size ();
 }
@@ -108,7 +108,7 @@ uint64_t nano_pow::cpp_driver::threshold_get () const
 	return context.difficulty_inv;
 }
 
-void nano_pow::cpp_driver::run_loop (unsigned thread_id)
+void nano_pow::cpp_driver::run_loop (size_t thread_id)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	while (threads [thread_id] != nullptr)
