@@ -159,16 +159,19 @@ namespace nano_pow
 			auto found (false);
 			while (ticket == ticket_a) // job identifier, if we're still working on this job
 			{
-				auto current_l (current.fetch_add (stepping)); // local
-				if (current_l >> 32 != last_fill) // top half of current_l
+				uint64_t current_l (current.fetch_add (stepping));
+				uint32_t fill_iteration (static_cast<uint32_t> (current_l >> 32));
+				uint32_t search_iteration (static_cast<uint32_t> (current_l >> 0));
+				if (fill_iteration != last_fill) // top half of current_l
 				{
 					// fill the memory with 1/threads preimages
 					// i.e. this thread's fair share.
-					auto allowance (context_a.size / total_threads);
-					last_fill = current_l >> 32;
-					context_a.fill (allowance, last_fill * context_a.size + thread * allowance);
+					uint32_t allowance (static_cast<uint32_t> (context_a.size / total_threads));
+					last_fill = fill_iteration;
+					uint32_t fill_count (static_cast<uint32_t> (last_fill * context_a.size + thread * allowance));
+					context_a.fill (allowance, fill_count);
 				}
-				auto result_l (context_a.search (stepping, current_l));
+				auto result_l (context_a.search (stepping, search_iteration));
 				if (result_l != 0)
 				{
 					// solution found!
