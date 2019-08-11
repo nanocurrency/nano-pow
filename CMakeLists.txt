@@ -13,10 +13,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # add_compile_options(-Wall -Wextra -pedantic)
 
-include_directories (${CMAKE_SOURCE_DIR})
-include_directories (${CMAKE_SOURCE_DIR}/include)
-include_directories (${CMAKE_SOURCE_DIR}/highwayhash/highwayhash)
-
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
 	SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINK_FLAGS}" )
@@ -57,6 +53,10 @@ add_library (nano_pow
 	opencl_driver.cpp
 	opencl_driver.hpp
 )
+
+target_include_directories (nano_pow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories (nano_pow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories (nano_pow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/highwayhash)
 
 if (${NANO_POW_TEST})
 	add_executable (nano_pow_driver
