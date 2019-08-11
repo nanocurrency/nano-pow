@@ -54,9 +54,9 @@ add_library (nano_pow
 	opencl_driver.hpp
 )
 
-target_include_directories (nano_pow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories (nano_pow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories (nano_pow INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/highwayhash)
+target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/highwayhash)
 
 if (${NANO_POW_TEST})
 	add_executable (nano_pow_driver
