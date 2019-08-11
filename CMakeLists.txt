@@ -47,11 +47,11 @@ include_directories (cxxopts/include)
 add_library (nano_pow
 	${PLATFORM_SOURCE}
 	cpp_driver.cpp
-	cpp_driver.hpp
+	include/nano_pow/cpp_driver.hpp
 	include/nano_pow/driver.hpp
+	include/nano_pow/opencl_driver.hpp
 	include/nano_pow/pow.hpp
 	opencl_driver.cpp
-	opencl_driver.hpp
 )
 
 target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
