@@ -1,4 +1,4 @@
-#include <opencl_driver.hpp>
+#include <nano_pow/opencl_driver.hpp>
 
 #include <nano_pow/pow.hpp>
 
