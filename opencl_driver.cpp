@@ -377,14 +377,14 @@ nano_pow::opencl_driver::~opencl_driver ()
 	}
 }
 
-void nano_pow::opencl_driver::threshold_set (uint64_t threshold)
+void nano_pow::opencl_driver::threshold_set (uint64_t difficulty_inv_a)
 {
-	this->threshold = threshold;
+	this->difficulty_inv = difficulty_inv_a;
 }
 
 uint64_t nano_pow::opencl_driver::threshold_get () const
 {
-	return threshold;
+	return difficulty_inv;
 }
 
 void nano_pow::opencl_driver::threads_set (unsigned threads)
@@ -485,7 +485,7 @@ uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 
 	check (error, code, clSetKernelArg (search, 1, sizeof (slab), &slab));
 	check (error, code, clSetKernelArg (search, 2, sizeof (uint64_t), &slab_entries));
-	check (error, code, clSetKernelArg (search, 6, sizeof (uint64_t), &threshold));
+	check (error, code, clSetKernelArg (search, 6, sizeof (uint64_t), &difficulty_inv));
 
 	check (error, code, clSetKernelArg (fill, 0, sizeof (slab), &slab));
 	check (error, code, clSetKernelArg (fill, 1, sizeof (uint64_t), &slab_entries));

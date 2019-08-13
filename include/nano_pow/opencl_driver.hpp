@@ -49,7 +49,7 @@ namespace nano_pow
 		cl_context context { 0 };
 		cl_program program { 0 };
 		uint32_t threads;
-		uint64_t threshold;
+		uint64_t difficulty_inv;
 		cl_mem slab { 0 };
 		uint64_t slab_size;
 		uint64_t slab_entries;
