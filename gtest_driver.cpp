@@ -8,7 +8,7 @@ TEST (context, difficulty)
 	std::array<uint64_t, 2> nonce = { 0, 0 };
 	nano_pow::generator generator;
 	std::array <uint32_t, 8> slab;
-	nano_pow::context context (nonce, slab.data (), 8, nano_pow::context::bit_difficulty_inv (8));
+	nano_pow::context context (nonce, slab.data (), 8, nullptr, nano_pow::context::bit_difficulty (8));
 	generator.find (context, 0, 0, 1);
 	auto difficulty (context.difficulty (context, generator.result));
 	ASSERT_NE (0, difficulty);

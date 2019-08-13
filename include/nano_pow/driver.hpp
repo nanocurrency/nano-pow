@@ -10,8 +10,8 @@ class driver
 {
 public:
 	virtual ~driver() = default;
-	virtual void threshold_set (uint64_t threshold) = 0;
-	virtual uint64_t threshold_get () const = 0;
+	virtual void difficulty_set (uint64_t difficulty) = 0;
+	virtual uint64_t difficulty_get () const = 0;
 	virtual void threads_set (unsigned threads) = 0;
 	virtual size_t threads_get () const = 0;
 	// Tell the driver the amount of memory to use, in bytes

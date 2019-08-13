@@ -13,11 +13,11 @@ namespace nano_pow
 	class context final
 	{
 	public:
-		context (std::array<uint64_t, 2> nonce_a, uint32_t * const slab_a, size_t const size_a, uint64_t difficulty_inv_a) :
+		context (std::array<uint64_t, 2> nonce_a, uint32_t * const slab_a, size_t const size_a, std::nullptr_t, uint64_t difficulty_a) :
 		slab (slab_a),
 		size (size_a),
-		difficulty_inv (difficulty_inv_a),
-		difficulty_m (reverse (difficulty_inv))
+		difficulty_inv (reverse (difficulty_a)),
+		difficulty_m (difficulty_a)
 		{
 			nonce [0] = nonce_a [0];
 			nonce [1] = nonce_a [1];
@@ -50,10 +50,21 @@ namespace nano_pow
 			return result;
 		}
 	public:
-		static uint64_t bit_difficulty_inv (unsigned bits_a)
+		static uint64_t reverse (uint64_t const item_a)
+		{
+			auto result (item_a);
+			result = ((result >>  1) & 0x5555555555555555) | ((result & 0x5555555555555555) <<  1);
+			result = ((result >>  2) & 0x3333333333333333) | ((result & 0x3333333333333333) <<  2);
+			result = ((result >>  4) & 0x0F0F0F0F0F0F0F0F) | ((result & 0x0F0F0F0F0F0F0F0F) <<  4);
+			result = ((result >>  8) & 0x00FF00FF00FF00FF) | ((result & 0x00FF00FF00FF00FF) <<  8);
+			result = ((result >> 16) & 0x0000FFFF0000FFFF) | ((result & 0x0000FFFF0000FFFF) << 16);
+			result = ( result >> 32                      ) | ( result                       << 32);
+			return result;
+		}
+		static uint64_t bit_difficulty (unsigned bits_a)
 		{
 			assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
-			return (1ULL << bits_a) - 1;
+			return reverse ((1ULL << bits_a) - 1);
 		}
 		static uint64_t difficulty_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
 		{
@@ -65,17 +76,6 @@ namespace nano_pow
 			assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 			auto passed (difficulty_quick (sum_a, difficulty_inv_a) == 0);
 			return passed;
-		}
-		static uint64_t reverse (uint64_t const item_a)
-		{
-			auto result (item_a);
-			result = ((result >>  1) & 0x5555555555555555) | ((result & 0x5555555555555555) <<  1);
-			result = ((result >>  2) & 0x3333333333333333) | ((result & 0x3333333333333333) <<  2);
-			result = ((result >>  4) & 0x0F0F0F0F0F0F0F0F) | ((result & 0x0F0F0F0F0F0F0F0F) <<  4);
-			result = ((result >>  8) & 0x00FF00FF00FF00FF) | ((result & 0x00FF00FF00FF00FF) <<  8);
-			result = ((result >> 16) & 0x0000FFFF0000FFFF) | ((result & 0x0000FFFF0000FFFF) << 16);
-			result = ( result >> 32                      ) | ( result                       << 32);
-			return result;
 		}
 		static bool passes_sum (uint64_t const sum_a, uint64_t threshold_a)
 		{

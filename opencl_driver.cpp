@@ -400,15 +400,15 @@ nano_pow::opencl_driver::~opencl_driver ()
 	}
 }
 
-void nano_pow::opencl_driver::threshold_set (uint64_t difficulty_inv_a)
+void nano_pow::opencl_driver::difficulty_set (uint64_t difficulty_a)
 {
-	this->difficulty_inv = difficulty_inv_a;
-	this->difficulty = nano_pow::context::reverse (difficulty_inv_a);
+	this->difficulty_inv = nano_pow::context::reverse (difficulty_a);
+	this->difficulty = difficulty_a;
 }
 
-uint64_t nano_pow::opencl_driver::threshold_get () const
+uint64_t nano_pow::opencl_driver::difficulty_get () const
 {
-	return difficulty_inv;
+	return difficulty;
 }
 
 void nano_pow::opencl_driver::threads_set (unsigned threads)

@@ -23,7 +23,7 @@
 #endif
 
 nano_pow::cpp_driver::cpp_driver () :
-context ({ 0, 0 }, nullptr, 0, context.bit_difficulty_inv (8))
+context ({ 0, 0 }, nullptr, 0, nullptr, context.bit_difficulty (8))
 {
 	threads_set (std::thread::hardware_concurrency ());
 }
@@ -97,15 +97,15 @@ size_t nano_pow::cpp_driver::threads_get () const
 	return threads.size ();
 }
 
-void nano_pow::cpp_driver::threshold_set (uint64_t difficulty_inv_a)
+void nano_pow::cpp_driver::difficulty_set (uint64_t difficulty_a)
 {
-	context.difficulty_inv = difficulty_inv_a;
-	context.difficulty_m = nano_pow::context::reverse (difficulty_inv_a);
+	context.difficulty_inv = nano_pow::context::reverse (difficulty_a);
+	context.difficulty_m = difficulty_a;
 }
 
-uint64_t nano_pow::cpp_driver::threshold_get () const
+uint64_t nano_pow::cpp_driver::difficulty_get () const
 {
-	return context.difficulty_inv;
+	return context.difficulty_m;
 }
 
 void nano_pow::cpp_driver::run_loop (size_t thread_id)

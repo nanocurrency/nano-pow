@@ -34,8 +34,8 @@ namespace nano_pow
 	public:
 		opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0);
 		~opencl_driver ();
-		void threshold_set (uint64_t threshold) override;
-		uint64_t threshold_get () const override;
+		void difficulty_set (uint64_t difficulty) override;
+		uint64_t difficulty_get () const override;
 		void threads_set (unsigned threads) override;
 		size_t threads_get () const override;
 		void memory_set (size_t memory) override;
