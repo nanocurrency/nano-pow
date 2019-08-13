@@ -1,6 +1,6 @@
 #include <nano_pow/pow.hpp>
-#include <cpp_driver.hpp>
-#include <opencl_driver.hpp>
+#include <nano_pow/cpp_driver.hpp>
+#include <nano_pow/opencl_driver.hpp>
 #include <gtest/gtest.h>
 #include <cxxopts.hpp>
 
