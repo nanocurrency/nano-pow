@@ -144,17 +144,22 @@ static ulong slot (ulong const size_a, ulong const item_a)
 	return item_a & mask;
 }
 
-static ulong reduce (ulong const item_a, ulong threshold_a)
-{
-	//printf ("Reduction: %llx\n", item_a & threshold_a);
-	return item_a & threshold_a;
-}
-
 static ulong hash (__global uchar * const nonce_a, ulong const item_a)
 {
 	ulong result;
 	int code = crypto_auth ((uchar *) &result, (uchar *) &item_a, sizeof (item_a), nonce_a);
 	return result;
+}
+
+static ulong difficulty_quick (ulong const sum_a, ulong const difficulty_inv_a)
+{
+	return sum_a & difficulty_inv_a;
+}
+
+static bool passes_quick (ulong const sum_a, ulong const difficulty_inv_a)
+{
+	bool passed = difficulty_quick (sum_a, difficulty_inv_a) == 0;
+	return passed;
 }
 
 __kernel void search (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global uchar * const nonce_a, uint const count, uint const begin, ulong const threshold_a)
@@ -168,9 +173,9 @@ __kernel void search (__global ulong * result_a, __global uint * const slab_a, u
 		ulong hash_l = hash (nonce_a, current | (0x1UL << 63));
 		ulong slot_l = slot (size_a, 0 - hash_l);
 		rhs = slab_a [slot_l];
-		ulong hash2 = hash (nonce_a, rhs & 0x7fffffff);
+		ulong sum = hash_l + hash (nonce_a, rhs & 0x7fffffff);
 		//printf ("%lu %lx %lu %lu %lx\n", lhs, hash_l, slot_l, rhs, hash2);
-		incomplete = reduce (hash_l + hash2, threshold_a) != 0;
+		incomplete = !passes_quick (sum, threshold_a);
 	}
 	if (!incomplete)
 	{
@@ -380,6 +385,7 @@ nano_pow::opencl_driver::~opencl_driver ()
 void nano_pow::opencl_driver::threshold_set (uint64_t difficulty_inv_a)
 {
 	this->difficulty_inv = difficulty_inv_a;
+	this->difficulty = nano_pow::context::reverse (difficulty_inv_a);
 }
 
 uint64_t nano_pow::opencl_driver::threshold_get () const
