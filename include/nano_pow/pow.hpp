@@ -77,7 +77,7 @@ namespace nano_pow
 			result = ( result >> 32                      ) | ( result                       << 32);
 			return result;
 		}
-		static bool passes_sum (nano_pow::context & context_a, uint64_t const sum_a, uint64_t threshold_a)
+		static bool passes_sum (uint64_t const sum_a, uint64_t threshold_a)
 		{
 			auto passed (reverse (~sum_a) > threshold_a);
 			return passed;
@@ -145,7 +145,7 @@ namespace nano_pow
 				lhs = slab [slot (0 - hash_l)];
 				auto sum (hash_l + H0 (nonce_l, lhs));
 				// Check if the solution passes through the quick path then check it through the long path
-				incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (*this, sum, difficulty_m);
+				incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (sum, difficulty_m);
 			}
 			return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 		}

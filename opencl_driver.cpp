@@ -162,6 +162,24 @@ static bool passes_quick (ulong const sum_a, ulong const difficulty_inv_a)
 	return passed;
 }
 
+static ulong reverse (ulong const item_a)
+{
+	ulong result = item_a;
+	result = ((result >>  1) & 0x5555555555555555) | ((result & 0x5555555555555555) <<  1);
+	result = ((result >>  2) & 0x3333333333333333) | ((result & 0x3333333333333333) <<  2);
+	result = ((result >>  4) & 0x0F0F0F0F0F0F0F0F) | ((result & 0x0F0F0F0F0F0F0F0F) <<  4);
+	result = ((result >>  8) & 0x00FF00FF00FF00FF) | ((result & 0x00FF00FF00FF00FF) <<  8);
+	result = ((result >> 16) & 0x0000FFFF0000FFFF) | ((result & 0x0000FFFF0000FFFF) << 16);
+	result = ( result >> 32                      ) | ( result                       << 32);
+	return result;
+}
+
+static bool passes_sum (ulong const sum_a, ulong threshold_a)
+{
+	bool passed = reverse (~sum_a) > threshold_a;
+	return passed;
+}
+
 __kernel void search (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global uchar * const nonce_a, uint const count, uint const begin, ulong const threshold_a)
 {
 	//printf ("[%lu] Search %llu %llu %llx\n", get_global_id (0), slab_a, size_a, threshold_a);
@@ -175,7 +193,7 @@ __kernel void search (__global ulong * result_a, __global uint * const slab_a, u
 		rhs = slab_a [slot_l];
 		ulong sum = hash_l + hash (nonce_a, rhs & 0x7fffffff);
 		//printf ("%lu %lx %lu %lu %lx\n", lhs, hash_l, slot_l, rhs, hash2);
-		incomplete = !passes_quick (sum, threshold_a);
+		incomplete = !passes_quick (sum, threshold_a) || !passes_sum (sum, reverse (threshold_a));
 	}
 	if (!incomplete)
 	{
