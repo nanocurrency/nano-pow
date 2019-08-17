@@ -89,10 +89,10 @@ namespace nano_pow
 		 * @param item_a value that needs to be pigeonholed into an index/slot.
 		 *        Naively is (item_a % size_a), but using bitmasking for efficiency.
 		 */
-		uint64_t slot (uint64_t const item_a) const
+		uint64_t slot (uint64_t const size_a, uint64_t const item_a) const
 		{
-			auto mask (size - 1);
-			assert (((size & mask) == 0) && "Slab size is not a power of 2");
+			auto mask (size_a - 1);
+			assert (((size_a & mask) == 0) && "Slab size is not a power of 2");
 			return item_a & mask;
 		}
 
@@ -118,10 +118,11 @@ namespace nano_pow
 		 */
 		void fill (uint32_t const count, uint32_t const begin = 0)
 		{
+			auto size_l (size);
 			highwayhash::SipHashState::Key nonce_l  = { nonce [0], nonce [1] };
 			for (uint32_t current (begin), end (current + count); current < end; ++current)
 			{
-				slab [slot (H0 (nonce_l, current))] = current;
+				slab [slot (size_l, H0 (nonce_l, current))] = current;
 			}
 		}
 
@@ -138,12 +139,13 @@ namespace nano_pow
 			auto incomplete (true);
 			uint32_t lhs, rhs;
 			highwayhash::SipHashState::Key nonce_l  = { nonce [0], nonce [1] };
+			auto size_l (size);
 			for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 			{
 				rhs = current;
-				auto hash_l (H1 (nonce_l, current));
-				lhs = slab [slot (0 - hash_l)];
-				auto sum (hash_l + H0 (nonce_l, lhs));
+				auto hash_l (H1 (nonce_l, rhs));
+				lhs = slab [slot (size_l, 0 - hash_l)];
+				auto sum (H0 (nonce_l, lhs) + hash_l);
 				// Check if the solution passes through the quick path then check it through the long path
 				incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (sum, difficulty_m);
 			}

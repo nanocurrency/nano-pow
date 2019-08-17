@@ -206,11 +206,10 @@ __kernel void search (__global ulong * result_a, __global uint * const slab_a, u
 	nonce_l.values [1] = nonce_a [1];
 	for (uint current = begin + get_global_id (0) * count, end = current + count; incomplete && current < end; ++current)
 	{
-		lhs = current;
-		ulong hash_l = hash (nonce_l, current | lhs_or_mask);
-		ulong slot_l = slot (size_a, 0 - hash_l);
-		rhs = slab_a [slot_l];
-		ulong sum = hash_l + hash (nonce_l, rhs & rhs_and_mask);
+		rhs = current;
+		ulong hash_l = H1 (nonce_l, rhs);
+		lhs = slab_a [slot (size_a, 0 - hash_l)];
+		ulong sum = H0 (nonce_l, lhs) + hash_l;
 		//printf ("%lu %lx %lu %lu %lx\n", lhs, hash_l, slot_l, rhs, hash2);
 		incomplete = !passes_quick (sum, threshold_a) || !passes_sum (sum, reverse (threshold_a));
 	}
@@ -228,7 +227,7 @@ __kernel void fill (__global uint * const slab_a, ulong const size_a, __global u
 	//printf ("[%lu] Fill %llu %llu\n", get_global_id (0), slab_a, size_a);
 	for (uint current = begin + get_global_id (0) * count, end = current + count; current < end && current < size_a; ++current)
 	{
-		ulong slot_l = slot (size_a, hash (nonce_l, current & rhs_and_mask));
+		ulong slot_l = slot (size_a, H0 (nonce_l, current));
 		//printf ("Writing %llu to %llu\n", current, slot_l);
 		slab_a [slot_l] = current;
 	}
