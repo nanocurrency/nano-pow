@@ -37,16 +37,22 @@ namespace nano_pow
 		// Hash function H0 sets the high order bit
 		static inline uint64_t H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 		{
-			return hash (nonce_a, lhs_or_mask | item_a);
+			auto nonce (nonce_a);
+			nonce [0] = nonce_a [0] | lhs_or_mask;
+			nonce [1] = nonce_a [1];
+			return hash (nonce, item_a);
 		}
 		// Hash function H1 clears the high order bit
 		static inline uint64_t H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 		{
-			return hash (nonce_a, rhs_and_mask & item_a);
+			auto nonce (nonce_a);
+			nonce [0] = nonce_a [0] & rhs_and_mask;
+			nonce [1] = nonce_a [1];
+			return hash (nonce, item_a);
 		}
 		static inline uint64_t sum (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
 		{
-			auto result (H0 (nonce_a, solution_a >> 32) + H1 (nonce_a, solution_a));
+			auto result (H0 (nonce_a, solution_a >> 32) + H1 (nonce_a, (solution_a << 32) >> 32));
 			return result;
 		}
 	public:
@@ -66,7 +72,7 @@ namespace nano_pow
 			assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
 			return reverse ((1ULL << bits_a) - 1);
 		}
-			
+
 		static uint64_t difficulty (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
 		{
 			return reverse (~sum (nonce_a,  solution_a));
@@ -76,7 +82,7 @@ namespace nano_pow
 			auto passed (reverse (~sum (nonce_a, solution_a)) > difficulty_a);
 			return passed;
 		}
-			
+
 		static uint64_t difficulty_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
 		{
 			assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
@@ -93,7 +99,6 @@ namespace nano_pow
 			auto passed (reverse (~sum_a) > threshold_a);
 			return passed;
 		}
-
 		/**
 		 * Maps item_a to an index within the memory region.
 		 *
@@ -139,8 +144,8 @@ namespace nano_pow
 		{
 			auto incomplete (true);
 			uint32_t lhs, rhs;
-			auto nonce_l (nonce);
 			auto size_l (size);
+			auto nonce_l (nonce);
 			for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 			{
 				rhs = current;

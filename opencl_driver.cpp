@@ -159,12 +159,18 @@ static ulong hash (nonce_t const nonce_a, ulong const item_a)
 
 static ulong H0 (nonce_t nonce_a, ulong const item_a)
 {
-	return hash (nonce_a, lhs_or_mask | item_a);
+	nonce_t nonce = nonce_a;
+	nonce.values [0] = nonce_a.values [0] | lhs_or_mask;
+	nonce.values [1] = nonce_a.values [1];
+	return hash (nonce, item_a);
 }
 
 static ulong H1 (nonce_t nonce_a, ulong const item_a)
 {
-	return hash (nonce_a, rhs_and_mask & item_a);
+	nonce_t nonce = nonce_a;
+	nonce.values [0] = nonce_a.values [0] & rhs_and_mask;
+	nonce.values [1] = nonce_a.values [1];
+	return hash (nonce, item_a);
 }
 
 static ulong difficulty_quick (ulong const sum_a, ulong const difficulty_inv_a)
