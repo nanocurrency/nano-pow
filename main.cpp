@@ -28,7 +28,7 @@ std::string to_string_solution (nano_pow::context & context_a, uint64_t threshol
 	auto rhs_hash (nano_pow::context::H1 (context_a.nonce, rhs));
 	auto sum (lhs_hash + rhs_hash);
 	std::ostringstream oss;
-	oss << "H0(" << to_string_hex (lhs) << ")+H1(" << to_string_hex (rhs) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (context_a.difficulty (context_a, solution_a));
+	oss << "H0(" << to_string_hex (lhs) << ")+H1(" << to_string_hex (rhs) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (context_a.difficulty (context_a.nonce, solution_a));
 	return oss.str ();
 }
 float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t difficulty, uint64_t memory, unsigned count)

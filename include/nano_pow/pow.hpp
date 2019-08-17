@@ -14,15 +14,14 @@ namespace nano_pow
 	{
 	public:
 		context (std::array<uint64_t, 2> nonce_a, uint32_t * const slab_a, size_t const size_a, std::nullptr_t, uint64_t difficulty_a) :
+		nonce (nonce_a),
 		slab (slab_a),
 		size (size_a),
 		difficulty_inv (reverse (difficulty_a)),
 		difficulty_m (difficulty_a)
 		{
-			nonce [0] = nonce_a [0];
-			nonce [1] = nonce_a [1];
 		}
-		highwayhash::SipHashState::Key nonce;
+		std::array<uint64_t, 2> nonce;
 		uint32_t * slab;
 		size_t size;
 		uint64_t difficulty_inv;
@@ -30,21 +29,22 @@ namespace nano_pow
 		static uint64_t constexpr lhs_or_mask { 0x1ULL << 63 };
 		static uint64_t constexpr rhs_and_mask { 0xffff'ffff };
 	public:
-		static inline uint64_t hash (highwayhash::SipHashState::Key const & nonce_a, uint64_t const item_a)
+		static inline uint64_t hash (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 		{
-			return highwayhash::SipHash (nonce_a, reinterpret_cast<char const *> (&item_a), sizeof (item_a));
+			highwayhash::SipHashState::Key nonce = { nonce_a [0], nonce_a [1] };
+			return highwayhash::SipHash (nonce, reinterpret_cast<char const *> (&item_a), sizeof (item_a));
 		}
 		// Hash function H0 sets the high order bit
-		static inline uint64_t H0 (highwayhash::SipHashState::Key const & nonce_a, uint64_t const item_a)
+		static inline uint64_t H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 		{
 			return hash (nonce_a, lhs_or_mask | item_a);
 		}
 		// Hash function H1 clears the high order bit
-		static inline uint64_t H1 (highwayhash::SipHashState::Key const & nonce_a, uint64_t const item_a)
+		static inline uint64_t H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 		{
 			return hash (nonce_a, rhs_and_mask & item_a);
 		}
-		static inline uint64_t sum (highwayhash::SipHashState::Key const & nonce_a, uint64_t const solution_a)
+		static inline uint64_t sum (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
 		{
 			auto result (H0 (nonce_a, solution_a >> 32) + H1 (nonce_a, solution_a));
 			return result;
@@ -66,6 +66,17 @@ namespace nano_pow
 			assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
 			return reverse ((1ULL << bits_a) - 1);
 		}
+			
+		static uint64_t difficulty (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
+		{
+			return reverse (~sum (nonce_a,  solution_a));
+		}
+		static bool passes (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a, uint64_t difficulty_a)
+		{
+			auto passed (reverse (~sum (nonce_a, solution_a)) > difficulty_a);
+			return passed;
+		}
+			
 		static uint64_t difficulty_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
 		{
 			assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
@@ -96,16 +107,6 @@ namespace nano_pow
 			return item_a & mask;
 		}
 
-		static uint64_t difficulty (nano_pow::context & context_a, uint64_t const solution_a)
-		{
-			return reverse (~sum (context_a.nonce,  solution_a));
-		}
-		static bool passes (nano_pow::context & context_a, uint64_t const solution_a, uint64_t threshold_a)
-		{
-			auto passed (reverse (~sum (context_a.nonce, solution_a)) > threshold_a);
-			return passed;
-		}
-
 		/**
 		 * Populates memory with `count` pre-images
 		 *
@@ -119,7 +120,7 @@ namespace nano_pow
 		void fill (uint32_t const count, uint32_t const begin = 0)
 		{
 			auto size_l (size);
-			highwayhash::SipHashState::Key nonce_l  = { nonce [0], nonce [1] };
+			auto nonce_l (nonce);
 			for (uint32_t current (begin), end (current + count); current < end; ++current)
 			{
 				slab [slot (size_l, H0 (nonce_l, current))] = current;
@@ -138,7 +139,7 @@ namespace nano_pow
 		{
 			auto incomplete (true);
 			uint32_t lhs, rhs;
-			highwayhash::SipHashState::Key nonce_l  = { nonce [0], nonce [1] };
+			auto nonce_l (nonce);
 			auto size_l (size);
 			for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 			{
