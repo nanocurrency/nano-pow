@@ -9,7 +9,7 @@
 #include <chrono>
 
 std::string opencl_program = R"%%%(
-static __constant ulong lhs_or_mask = ~ulong(LONG_MAX);
+static __constant ulong lhs_or_mask = ~(ulong)(LONG_MAX);
 static __constant ulong rhs_and_mask = LONG_MAX;
 typedef struct
 {
