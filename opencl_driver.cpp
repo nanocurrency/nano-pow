@@ -9,12 +9,24 @@
 #include <chrono>
 
 std::string opencl_program = R"%%%(
+static __constant ulong lhs_or_mask = ~ulong(LONG_MAX);
+static __constant ulong rhs_and_mask = LONG_MAX;
 typedef struct
 {
 	ulong values[2];
 } nonce_t;
-static __constant ulong lhs_or_mask = 0x1UL << 63 ;
-static __constant ulong rhs_and_mask = 0xffffffff;
+nonce_t lhs_nonce (nonce_t item_a)
+{
+	nonce_t result = item_a;
+	result.values[0] |= lhs_or_mask;
+	return result;
+}
+nonce_t rhs_nonce (nonce_t item_a)
+{
+	nonce_t result = item_a;
+	result.values[0] &= rhs_and_mask;
+	return result;
+}
 /*
  SipHash reference C implementation
  
@@ -159,18 +171,12 @@ static ulong hash (nonce_t const nonce_a, ulong const item_a)
 
 static ulong H0 (nonce_t nonce_a, ulong const item_a)
 {
-	nonce_t nonce = nonce_a;
-	nonce.values [0] = nonce_a.values [0] | lhs_or_mask;
-	nonce.values [1] = nonce_a.values [1];
-	return hash (nonce, item_a);
+	return hash (lhs_nonce (nonce_a), item_a);
 }
 
 static ulong H1 (nonce_t nonce_a, ulong const item_a)
 {
-	nonce_t nonce = nonce_a;
-	nonce.values [0] = nonce_a.values [0] & rhs_and_mask;
-	nonce.values [1] = nonce_a.values [1];
-	return hash (nonce, item_a);
+	return hash (rhs_nonce (nonce_a), item_a);
 }
 
 static ulong difficulty_quick (ulong const sum_a, ulong const difficulty_inv_a)

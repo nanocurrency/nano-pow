@@ -26,9 +26,20 @@ namespace nano_pow
 		size_t size;
 		uint64_t difficulty_inv;
 		uint64_t difficulty_m;
-		static uint64_t constexpr lhs_or_mask { 0x1ULL << 63 };
-		static uint64_t constexpr rhs_and_mask { 0xffff'ffff };
 	public:
+		static inline std::array<uint64_t, 2> lhs_nonce (std::array<uint64_t, 2> item_a)
+		{
+			uint64_t lhs_or_mask (~static_cast <uint64_t> (std::numeric_limits<int64_t>::max ()));
+			std::array<uint64_t, 2> result = item_a;
+			result[0] |= lhs_or_mask;
+			return result;
+		}
+		static inline std::array<uint64_t, 2> rhs_nonce (std::array<uint64_t, 2> item_a)
+		{
+			std::array<uint64_t, 2> result = item_a;
+			result[0] &= std::numeric_limits<int64_t>::max ();
+			return result;
+		}
 		static inline uint64_t hash (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 		{
 			highwayhash::SipHashState::Key nonce = { nonce_a [0], nonce_a [1] };
@@ -37,18 +48,12 @@ namespace nano_pow
 		// Hash function H0 sets the high order bit
 		static inline uint64_t H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 		{
-			auto nonce (nonce_a);
-			nonce [0] = nonce_a [0] | lhs_or_mask;
-			nonce [1] = nonce_a [1];
-			return hash (nonce, item_a);
+			return hash (lhs_nonce (nonce_a), item_a);
 		}
 		// Hash function H1 clears the high order bit
 		static inline uint64_t H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 		{
-			auto nonce (nonce_a);
-			nonce [0] = nonce_a [0] & rhs_and_mask;
-			nonce [1] = nonce_a [1];
-			return hash (nonce, item_a);
+			return hash (rhs_nonce (nonce_a), item_a);
 		}
 		static inline uint64_t sum (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
 		{
