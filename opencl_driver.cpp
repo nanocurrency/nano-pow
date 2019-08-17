@@ -9,6 +9,12 @@
 #include <chrono>
 
 std::string opencl_program = R"%%%(
+typedef struct
+{
+	ulong values[2];
+} nonce_t;
+static __constant ulong lhs_or_mask = 0x1UL << 63 ;
+static __constant ulong rhs_and_mask = 0xffffffff;
 /*
  SipHash reference C implementation
  
@@ -57,7 +63,7 @@ v2 += v1; v1=ROTL(v1,17); v1 ^= v2; v2=ROTL(v2,32); \
 } while(0)
 
 /* SipHash-2-4 */
-int crypto_auth( uchar *out, const uchar *in, ulong inlen, __global const uchar *k )
+int crypto_auth( uchar *out, const uchar *in, ulong inlen, nonce_t nonce_a )
 {
 	/* "somepseudorandomlygeneratedbytes" */
 	u64 v0 = 0x736f6d6570736575UL;
@@ -65,8 +71,8 @@ int crypto_auth( uchar *out, const uchar *in, ulong inlen, __global const uchar 
 	u64 v2 = 0x6c7967656e657261UL;
 	u64 v3 = 0x7465646279746573UL;
 	u64 b;
-	u64 k0 = U8TO64_LE( k );
-	u64 k1 = U8TO64_LE( k + 8 );
+	u64 k0 = nonce_a.values[0];
+	u64 k1 = nonce_a.values[1];
 	u64 m;
 	const u8 *end = in + inlen - ( inlen % sizeof( u64 ) );
 	const int left = inlen & 7;
@@ -144,11 +150,21 @@ static ulong slot (ulong const size_a, ulong const item_a)
 	return item_a & mask;
 }
 
-static ulong hash (__global uchar * const nonce_a, ulong const item_a)
+static ulong hash (nonce_t const nonce_a, ulong const item_a)
 {
 	ulong result;
 	int code = crypto_auth ((uchar *) &result, (uchar *) &item_a, sizeof (item_a), nonce_a);
 	return result;
+}
+
+static ulong H0 (nonce_t nonce_a, ulong const item_a)
+{
+	return hash (nonce_a, lhs_or_mask | item_a);
+}
+
+static ulong H1 (nonce_t nonce_a, ulong const item_a)
+{
+	return hash (nonce_a, rhs_and_mask & item_a);
 }
 
 static ulong difficulty_quick (ulong const sum_a, ulong const difficulty_inv_a)
@@ -180,18 +196,21 @@ static bool passes_sum (ulong const sum_a, ulong threshold_a)
 	return passed;
 }
 
-__kernel void search (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global uchar * const nonce_a, uint const count, uint const begin, ulong const threshold_a)
+__kernel void search (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, uint const count, uint const begin, ulong const threshold_a)
 {
 	//printf ("[%lu] Search %llu %llu %llx\n", get_global_id (0), slab_a, size_a, threshold_a);
 	bool incomplete = true;
 	uint lhs, rhs;
+	nonce_t nonce_l;
+	nonce_l.values [0] = nonce_a [0];
+	nonce_l.values [1] = nonce_a [1];
 	for (uint current = begin + get_global_id (0) * count, end = current + count; incomplete && current < end; ++current)
 	{
 		lhs = current;
-		ulong hash_l = hash (nonce_a, current | (0x1UL << 63));
+		ulong hash_l = hash (nonce_l, current | lhs_or_mask);
 		ulong slot_l = slot (size_a, 0 - hash_l);
 		rhs = slab_a [slot_l];
-		ulong sum = hash_l + hash (nonce_a, rhs & 0x7fffffff);
+		ulong sum = hash_l + hash (nonce_l, rhs & rhs_and_mask);
 		//printf ("%lu %lx %lu %lu %lx\n", lhs, hash_l, slot_l, rhs, hash2);
 		incomplete = !passes_quick (sum, threshold_a) || !passes_sum (sum, reverse (threshold_a));
 	}
@@ -201,12 +220,15 @@ __kernel void search (__global ulong * result_a, __global uint * const slab_a, u
 	}
 }
 
-__kernel void fill (__global uint * const slab_a, ulong const size_a, __global uchar * const nonce_a, uint const count, uint const begin)
+__kernel void fill (__global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, uint const count, uint const begin)
 {
+	nonce_t nonce_l;
+	nonce_l.values [0] = nonce_a [0];
+	nonce_l.values [1] = nonce_a [1];
 	//printf ("[%lu] Fill %llu %llu\n", get_global_id (0), slab_a, size_a);
 	for (uint current = begin + get_global_id (0) * count, end = current + count; current < end && current < size_a; ++current)
 	{
-		ulong slot_l = slot (size_a, hash (nonce_a, current & 0x7fffffff));
+		ulong slot_l = slot (size_a, hash (nonce_l, current & rhs_and_mask));
 		//printf ("Writing %llu to %llu\n", current, slot_l);
 		slab_a [slot_l] = current;
 	}
