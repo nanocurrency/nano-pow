@@ -27,6 +27,11 @@ nonce_t rhs_nonce (nonce_t item_a)
 	result.values[0] &= rhs_and_mask;
 	return result;
 }
+
+typedef ulong uint64_t;
+typedef uint uint32_t;
+typedef uchar uint8_t;
+
 /*
  SipHash reference C implementation
  
@@ -42,117 +47,147 @@ nonce_t rhs_nonce (nonce_t item_a)
  this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
  */
 
-typedef ulong u64;
-typedef uint u32;
-typedef uchar u8;
+/* default: SipHash-2-4 */
+#define cROUNDS 2
+#define dROUNDS 4
 
-#define ROTL(x,b) (u64)( ((x) << (b)) | ( (x) >> (64 - (b))) )
+#define ROTL(x, b) (uint64_t)(((x) << (b)) | ((x) >> (64 - (b))))
 
-#define U32TO8_LE(p, v)         \
-(p)[0] = (u8)((v)      ); (p)[1] = (u8)((v) >>  8); \
-(p)[2] = (u8)((v) >> 16); (p)[3] = (u8)((v) >> 24);
+#define U32TO8_LE(p, v)                                                        \
+(p)[0] = (uint8_t)((v));                                                   \
+(p)[1] = (uint8_t)((v) >> 8);                                              \
+(p)[2] = (uint8_t)((v) >> 16);                                             \
+(p)[3] = (uint8_t)((v) >> 24);
 
-#define U64TO8_LE(p, v)         \
-U32TO8_LE((p),     (u32)((v)      ));   \
-U32TO8_LE((p) + 4, (u32)((v) >> 32));
+#define U64TO8_LE(p, v)                                                        \
+U32TO8_LE((p), (uint32_t)((v)));                                           \
+U32TO8_LE((p) + 4, (uint32_t)((v) >> 32));
 
-#define U8TO64_LE(p) \
-(((u64)((p)[0])      ) | \
-((u64)((p)[1]) <<  8) | \
-((u64)((p)[2]) << 16) | \
-((u64)((p)[3]) << 24) | \
-((u64)((p)[4]) << 32) | \
-((u64)((p)[5]) << 40) | \
-((u64)((p)[6]) << 48) | \
-((u64)((p)[7]) << 56))
+#define U8TO64_LE(p)                                                           \
+(((uint64_t)((p)[0])) | ((uint64_t)((p)[1]) << 8) |                        \
+((uint64_t)((p)[2]) << 16) | ((uint64_t)((p)[3]) << 24) |                 \
+((uint64_t)((p)[4]) << 32) | ((uint64_t)((p)[5]) << 40) |                 \
+((uint64_t)((p)[6]) << 48) | ((uint64_t)((p)[7]) << 56))
 
-#define SIPROUND            \
-do {              \
-v0 += v1; v1=ROTL(v1,13); v1 ^= v0; v0=ROTL(v0,32); \
-v2 += v3; v3=ROTL(v3,16); v3 ^= v2;     \
-v0 += v3; v3=ROTL(v3,21); v3 ^= v0;     \
-v2 += v1; v1=ROTL(v1,17); v1 ^= v2; v2=ROTL(v2,32); \
-} while(0)
+#define SIPROUND                                                               \
+do {                                                                       \
+v0 += v1;                                                              \
+v1 = ROTL(v1, 13);                                                     \
+v1 ^= v0;                                                              \
+v0 = ROTL(v0, 32);                                                     \
+v2 += v3;                                                              \
+v3 = ROTL(v3, 16);                                                     \
+v3 ^= v2;                                                              \
+v0 += v3;                                                              \
+v3 = ROTL(v3, 21);                                                     \
+v3 ^= v0;                                                              \
+v2 += v1;                                                              \
+v1 = ROTL(v1, 17);                                                     \
+v1 ^= v2;                                                              \
+v2 = ROTL(v2, 32);                                                     \
+} while (0)
 
-/* SipHash-2-4 */
-int crypto_auth( uchar *out, const uchar *in, ulong inlen, nonce_t nonce_a )
-{
-	/* "somepseudorandomlygeneratedbytes" */
-	u64 v0 = 0x736f6d6570736575UL;
-	u64 v1 = 0x646f72616e646f6dUL;
-	u64 v2 = 0x6c7967656e657261UL;
-	u64 v3 = 0x7465646279746573UL;
-	u64 b;
-	u64 k0 = nonce_a.values[0];
-	u64 k1 = nonce_a.values[1];
-	u64 m;
-	const u8 *end = in + inlen - ( inlen % sizeof( u64 ) );
+#ifdef DEBUG
+#define TRACE                                                                  \
+do {                                                                       \
+printf("(%3d) v0 %08x %08x\n", (int)inlen, (uint32_t)(v0 >> 32),       \
+(uint32_t)v0);                                                  \
+printf("(%3d) v1 %08x %08x\n", (int)inlen, (uint32_t)(v1 >> 32),       \
+(uint32_t)v1);                                                  \
+printf("(%3d) v2 %08x %08x\n", (int)inlen, (uint32_t)(v2 >> 32),       \
+(uint32_t)v2);                                                  \
+printf("(%3d) v3 %08x %08x\n", (int)inlen, (uint32_t)(v3 >> 32),       \
+(uint32_t)v3);                                                  \
+} while (0)
+#else
+#define TRACE
+#endif
+
+int siphash(const uint8_t *in, const size_t inlen, const uint8_t *k,
+			uint8_t *out, const size_t outlen) {
+	
+	uint64_t v0 = 0x736f6d6570736575UL;
+	uint64_t v1 = 0x646f72616e646f6dUL;
+	uint64_t v2 = 0x6c7967656e657261UL;
+	uint64_t v3 = 0x7465646279746573UL;
+	uint64_t k0 = U8TO64_LE(k);
+	uint64_t k1 = U8TO64_LE(k + 8);
+	uint64_t m;
+	int i;
+	const uint8_t *end = in + inlen - (inlen % sizeof(uint64_t));
 	const int left = inlen & 7;
-	b = ( ( u64 )inlen ) << 56;
+	uint64_t b = ((uint64_t)inlen) << 56;
 	v3 ^= k1;
 	v2 ^= k0;
 	v1 ^= k1;
 	v0 ^= k0;
 	
-	for ( ; in != end; in += 8 )
-	{
-		m = U8TO64_LE( in );
-#ifdef DEBUG
-		printf( "(%3d) v0 %08x %08x\n", ( int )inlen, ( u32 )( v0 >> 32 ), ( u32 )v0 );
-		printf( "(%3d) v1 %08x %08x\n", ( int )inlen, ( u32 )( v1 >> 32 ), ( u32 )v1 );
-		printf( "(%3d) v2 %08x %08x\n", ( int )inlen, ( u32 )( v2 >> 32 ), ( u32 )v2 );
-		printf( "(%3d) v3 %08x %08x\n", ( int )inlen, ( u32 )( v3 >> 32 ), ( u32 )v3 );
-		printf( "(%3d) compress %08x %08x\n", ( int )inlen, ( u32 )( m >> 32 ), ( u32 )m );
-#endif
+	if (outlen == 16)
+		v1 ^= 0xee;
+	
+	for (; in != end; in += 8) {
+		m = U8TO64_LE(in);
 		v3 ^= m;
-		SIPROUND;
-		SIPROUND;
+		
+		TRACE;
+		for (i = 0; i < cROUNDS; ++i)
+			SIPROUND;
+		
 		v0 ^= m;
 	}
 	
-	switch( left )
-	{
-		case 7: b |= ( ( u64 )in[ 6] )  << 48;
-			
-		case 6: b |= ( ( u64 )in[ 5] )  << 40;
-			
-		case 5: b |= ( ( u64 )in[ 4] )  << 32;
-			
-		case 4: b |= ( ( u64 )in[ 3] )  << 24;
-			
-		case 3: b |= ( ( u64 )in[ 2] )  << 16;
-			
-		case 2: b |= ( ( u64 )in[ 1] )  <<  8;
-			
-		case 1: b |= ( ( u64 )in[ 0] ); break;
-			
-		case 0: break;
+	switch (left) {
+		case 7:
+			b |= ((uint64_t)in[6]) << 48;
+		case 6:
+			b |= ((uint64_t)in[5]) << 40;
+		case 5:
+			b |= ((uint64_t)in[4]) << 32;
+		case 4:
+			b |= ((uint64_t)in[3]) << 24;
+		case 3:
+			b |= ((uint64_t)in[2]) << 16;
+		case 2:
+			b |= ((uint64_t)in[1]) << 8;
+		case 1:
+			b |= ((uint64_t)in[0]);
+			break;
+		case 0:
+			break;
 	}
 	
-#ifdef DEBUG
-	printf( "(%3d) v0 %08x %08x\n", ( int )inlen, ( u32 )( v0 >> 32 ), ( u32 )v0 );
-	printf( "(%3d) v1 %08x %08x\n", ( int )inlen, ( u32 )( v1 >> 32 ), ( u32 )v1 );
-	printf( "(%3d) v2 %08x %08x\n", ( int )inlen, ( u32 )( v2 >> 32 ), ( u32 )v2 );
-	printf( "(%3d) v3 %08x %08x\n", ( int )inlen, ( u32 )( v3 >> 32 ), ( u32 )v3 );
-	printf( "(%3d) padding   %08x %08x\n", ( int )inlen, ( u32 )( b >> 32 ), ( u32 )b );
-#endif
 	v3 ^= b;
-	SIPROUND;
-	SIPROUND;
+	
+	TRACE;
+	for (i = 0; i < cROUNDS; ++i)
+		SIPROUND;
+	
 	v0 ^= b;
-#ifdef DEBUG
-	printf( "(%3d) v0 %08x %08x\n", ( int )inlen, ( u32 )( v0 >> 32 ), ( u32 )v0 );
-	printf( "(%3d) v1 %08x %08x\n", ( int )inlen, ( u32 )( v1 >> 32 ), ( u32 )v1 );
-	printf( "(%3d) v2 %08x %08x\n", ( int )inlen, ( u32 )( v2 >> 32 ), ( u32 )v2 );
-	printf( "(%3d) v3 %08x %08x\n", ( int )inlen, ( u32 )( v3 >> 32 ), ( u32 )v3 );
-#endif
-	v2 ^= 0xff;
-	SIPROUND;
-	SIPROUND;
-	SIPROUND;
-	SIPROUND;
-	b = v0 ^ v1 ^ v2  ^ v3;
-	U64TO8_LE( out, b );
+	
+	if (outlen == 16)
+		v2 ^= 0xee;
+	else
+		v2 ^= 0xff;
+	
+	TRACE;
+	for (i = 0; i < dROUNDS; ++i)
+		SIPROUND;
+	
+	b = v0 ^ v1 ^ v2 ^ v3;
+	U64TO8_LE(out, b);
+	
+	if (outlen == 8)
+		return 0;
+	
+	v1 ^= 0xdd;
+	
+	TRACE;
+	for (i = 0; i < dROUNDS; ++i)
+		SIPROUND;
+	
+	b = v0 ^ v1 ^ v2 ^ v3;
+	U64TO8_LE(out + 8, b);
+	
 	return 0;
 }
 
@@ -165,7 +200,7 @@ static ulong slot (ulong const size_a, ulong const item_a)
 static ulong hash (nonce_t const nonce_a, ulong const item_a)
 {
 	ulong result;
-	int code = crypto_auth ((uchar *) &result, (uchar *) &item_a, sizeof (item_a), nonce_a);
+	int code = siphash ((uchar *) &item_a, sizeof (item_a), (uchar *) nonce_a.values, (uchar *) &result, sizeof (result));
 	return result;
 }
 
@@ -222,7 +257,7 @@ __kernel void search (__global ulong * result_a, __global uint * const slab_a, u
 		ulong hash_l = H1 (nonce_l, rhs);
 		lhs = slab_a [slot (size_a, 0 - hash_l)];
 		ulong sum = H0 (nonce_l, lhs) + hash_l;
-		//printf ("%lu %lx %lu %lu %lx\n", lhs, hash_l, slot_l, rhs, hash2);
+		//printf ("%lu %lx %lu %lx\n", lhs, hash_l, rhs, hash2);
 		incomplete = !passes_quick (sum, threshold_a) || !passes_sum (sum, reverse (threshold_a));
 	}
 	if (!incomplete)
