@@ -39,7 +39,7 @@ void nano_pow::cpp_driver::barrier (std::unique_lock<std::mutex> & lock)
 	condition.wait (lock, [this] () { return ready == threads.size (); });
 }
 
-uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
+bool nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce, uint64_t & result)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	barrier (lock);
@@ -51,7 +51,13 @@ uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 	worker_condition.notify_all ();
 	condition.wait (lock);
 	enable = false;
-	return generator.result;
+	result = generator.result;
+	return false;
+}
+
+bool nano_pow::cpp_driver::ok() const
+{
+	return true;
 }
 
 void nano_pow::cpp_driver::dump () const
@@ -59,7 +65,7 @@ void nano_pow::cpp_driver::dump () const
 	std::cerr << "Hardware threads: " << std::to_string (std::thread::hardware_concurrency ()) << std::endl;
 }
 
-void nano_pow::cpp_driver::memory_set (size_t memory)
+bool nano_pow::cpp_driver::memory_set (size_t memory)
 {
 	assert ((memory & (memory - 1)) == 0);
 	if (context.slab)
@@ -68,6 +74,12 @@ void nano_pow::cpp_driver::memory_set (size_t memory)
 	}
 	context.size = memory / sizeof (uint32_t);
 	context.slab = memory == 0 ? nullptr : reinterpret_cast <uint32_t *> (mmap (0, memory, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_NOCACHE, -1, 0));
+	bool error (context.slab == MAP_FAILED);
+	if (error)
+	{
+		std::cerr << "Error while creating memory buffer: MAP_FAILED" << std::endl;
+	}
+	return error;
 }
 
 void nano_pow::cpp_driver::threads_set (unsigned threads)

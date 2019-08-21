@@ -283,96 +283,54 @@ __kernel void fill (__global uint * const slab_a, ulong const size_a, __global u
 
 nano_pow::opencl_environment::opencl_environment ()
 {
-	cl_uint platformIdCount = 0;
-	clGetPlatformIDs (0, nullptr, &platformIdCount);
-	std::vector<cl_platform_id> platformIds (platformIdCount);
-	clGetPlatformIDs (platformIdCount, platformIds.data (), nullptr);
-	for (auto i (platformIds.begin ()), n (platformIds.end ()); i != n; ++i)
-	{
-		opencl_platform platform;
-		platform.platform = *i;
-		cl_uint deviceIdCount = 0;
-		clGetDeviceIDs (*i, CL_DEVICE_TYPE_ALL, 0, nullptr, &deviceIdCount);
-		std::vector<cl_device_id> deviceIds (deviceIdCount);
-		clGetDeviceIDs (*i, CL_DEVICE_TYPE_ALL, deviceIdCount, deviceIds.data (), nullptr);
-		for (auto j (deviceIds.begin ()), m (deviceIds.end ()); j != m; ++j)
-		{
-			platform.devices.push_back (*j);
-		}
-		platforms.push_back (platform);
-	}
+	(void)cl::Platform::get (&platforms);
 }
 
 void nano_pow::opencl_environment::dump (std::ostream & stream)
 {
-	auto index (0);
-	size_t device_count (0);
-	for (auto & i : platforms)
+	stream << "OpenCL found " << platforms.size() << " platforms" << std::endl;;
+	for (auto & platform: platforms)
 	{
-		device_count += i.devices.size ();
-	}
-	stream << "OpenCL found " << platforms.size () << " platforms and " << device_count << " devices\n";
-	for (auto i (platforms.begin ()), n (platforms.end ()); i != n; ++i, ++index)
-	{
-		std::vector<unsigned> queries = { CL_PLATFORM_PROFILE, CL_PLATFORM_VERSION, CL_PLATFORM_NAME, CL_PLATFORM_VENDOR, CL_PLATFORM_EXTENSIONS };
-		stream << "Platform: " << index << std::endl;
-		for (auto j (queries.begin ()), m (queries.end ()); j != m; ++j)
+		stream	<< '\t'	<< platform.getInfo<CL_PLATFORM_PROFILE> ()
+			<< "\n\t"	<< platform.getInfo<CL_PLATFORM_VERSION> ()
+			<< "\n\t"	<< platform.getInfo<CL_PLATFORM_NAME> ()
+			<< "\n\t"	<< platform.getInfo<CL_PLATFORM_VENDOR> ()
+			<< "\n\t"	<< platform.getInfo<CL_PLATFORM_EXTENSIONS> ()
+			<< std::endl;
+
+		std::vector<cl::Device> devices;
+		(void)platform.getDevices (CL_DEVICE_TYPE_ALL, &devices);
+		stream << "Number of devices: " << devices.size() << "\n";
+		for (auto & device: devices)
 		{
-			size_t platformInfoCount = 0;
-			clGetPlatformInfo (i->platform, *j, 0, nullptr, &platformInfoCount);
-			std::vector<char> info (platformInfoCount);
-			clGetPlatformInfo (i->platform, *j, info.size (), info.data (), nullptr);
-			stream << info.data () << std::endl;
-		}
-		for (auto j (i->devices.begin ()), m (i->devices.end ()); j != m; ++j)
-		{
-			std::vector<unsigned> queries = { CL_DEVICE_NAME, CL_DEVICE_VENDOR, CL_DEVICE_PROFILE };
-			stream << "Device: " << j - i->devices.begin () << std::endl;
-			for (auto k (queries.begin ()), o (queries.end ()); k != o; ++k)
-			{
-				size_t platformInfoCount = 0;
-				clGetDeviceInfo (*j, *k, 0, nullptr, &platformInfoCount);
-				std::vector<char> info (platformInfoCount);
-				clGetDeviceInfo (*j, *k, info.size (), info.data (), nullptr);
-				stream << '\t' << info.data () << std::endl;
-			}
-			cl_device_type deviceType;
-			clGetDeviceInfo (*j, CL_DEVICE_TYPE, sizeof(deviceType), &deviceType, nullptr);
+			auto device_type = device.getInfo<CL_DEVICE_TYPE>();
 			std::string device_type_string;
-			switch (deviceType)
+			switch (device_type)
 			{
-				case CL_DEVICE_TYPE_ACCELERATOR:
-					device_type_string = "ACCELERATOR";
-					break;
-				case CL_DEVICE_TYPE_CPU:
-					device_type_string = "CPU";
-					break;
-//				case CL_DEVICE_TYPE_CUSTOM:
-//					device_type_string = "CUSTOM";
-//					break;
-				case CL_DEVICE_TYPE_DEFAULT:
-					device_type_string = "DEFAULT";
-					break;
-				case CL_DEVICE_TYPE_GPU:
-					device_type_string = "GPU";
-					break;
-				default:
-					device_type_string = "Unknown";
-					break;
+			case CL_DEVICE_TYPE_ACCELERATOR:
+				device_type_string = "ACCELERATOR";
+				break;
+			case CL_DEVICE_TYPE_CPU:
+				device_type_string = "CPU";
+				break;
+			case CL_DEVICE_TYPE_DEFAULT:
+				device_type_string = "DEFAULT";
+				break;
+			case CL_DEVICE_TYPE_GPU:
+				device_type_string = "GPU";
+				break;
+			default:
+				device_type_string = "Unknown";
+				break;
 			}
-			stream << '\t' << device_type_string << std::endl;
-
-			cl_bool compilerAvailable;
-			clGetDeviceInfo (*j, CL_DEVICE_COMPILER_AVAILABLE, sizeof(compilerAvailable), &compilerAvailable, nullptr);
-			stream << '\t' << "Compiler available: " << (compilerAvailable ? "true" : "false") << std::endl;
-
-			cl_ulong globalMemSize;
-			clGetDeviceInfo (*j, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(globalMemSize), &globalMemSize, nullptr);
-			stream << '\t' << "Global mem size: " << globalMemSize << std::endl;
-
-			cl_uint computeUnitsAvailable;
-			clGetDeviceInfo (*j, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(computeUnitsAvailable), &computeUnitsAvailable, nullptr);
-			stream << '\t' << "Compute units available: " << computeUnitsAvailable << std::endl;
+			stream << '\t'	<< device_type_string
+				<< "\n\t"	<< device.getInfo<CL_DEVICE_NAME>()
+				<< "\n\t"	<< device.getInfo<CL_DEVICE_VENDOR>()
+				<< "\n\t"	<< device.getInfo<CL_DEVICE_PROFILE>()
+				<< "\n\t"	<< "Compiler available: " << (device.getInfo<CL_DEVICE_COMPILER_AVAILABLE>() ? "true" : "false")
+				<< "\n\t"	<< "Global mem size: " << device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>()
+				<< "\n\t"	<< "Compute units available: " << device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS> ()
+				<< std::endl;
 		}
 	}
 }
@@ -381,91 +339,38 @@ nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned sho
 threads (8192)
 {
 	auto & platform (environment.platforms[platform_id]);
-	selected_device = platform.devices[device_id];
-	cl_context_properties contextProperties[] = {
-		CL_CONTEXT_PLATFORM,
-		reinterpret_cast<cl_context_properties> (platform.platform),
-		0, 0
-	};
-	cl_int createContextError (0);
-	context = clCreateContext (contextProperties, 1, &selected_device, nullptr, nullptr, &createContextError);
-	if (createContextError == CL_SUCCESS)
-	{
-		cl_int program_error (0);
-		char const * program_data (opencl_program.data ());
-		size_t program_length (opencl_program.size ());
-		program = clCreateProgramWithSource (context, 1, &program_data, &program_length, &program_error);
-		if (program_error == CL_SUCCESS)
-		{
-			auto clBuildProgramError (clBuildProgram (program, 1, &selected_device, "", nullptr, nullptr));
-			if (clBuildProgramError == CL_SUCCESS)
-			{
-				cl_int error;
-				fill = clCreateKernel (program, "fill", &error);
-				search = clCreateKernel (program, "search", &error);
-				result_buffer = clCreateBuffer (context, CL_MEM_WRITE_ONLY, sizeof (uint64_t), nullptr, &error);
-				error = clSetKernelArg (search, 0, sizeof (result_buffer), &result_buffer);
-				nonce_buffer = clCreateBuffer (context, CL_MEM_READ_WRITE, sizeof (uint64_t) * 2, nullptr, &error);
-				error = clSetKernelArg (search, 3, sizeof (nonce_buffer), &nonce_buffer);
-				error = clSetKernelArg (fill, 2, sizeof (nonce_buffer), &nonce_buffer);
-				queue = clCreateCommandQueue (context, selected_device, 0, &error);
-				error = clFinish(queue);
-				error = clSetKernelArg (search, 4, sizeof (uint32_t), &stepping);
-				error = clSetKernelArg (fill, 3, sizeof (uint32_t), &stepping);
-			}
-			else
-			{
-				std::cerr << "Build program error " << clBuildProgramError << std::endl;
-				size_t log_size (0);
-				clGetProgramBuildInfo (program, selected_device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &log_size);
-				std::vector<char> log (log_size);
-				clGetProgramBuildInfo (program, selected_device, CL_PROGRAM_BUILD_LOG, log.size (), log.data (), nullptr);
-				std::cerr << (log.data ());
-			}
-		}
-		else
-		{
-			std::cerr << "Create program error " << program_error << std::endl;
-		}
+	std::vector<cl::Device> devices;
+	(void)platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	selected_device = devices[device_id];
+	auto platform_properties = selected_device.getInfo< CL_DEVICE_PLATFORM> ();
+	cl_context_properties contextProperties[3] { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platform_properties), 0 };
+	context = cl::Context (selected_device, contextProperties);
+	std::vector<cl::Device> program_devices{ selected_device };
+	program = cl::Program (context, opencl_program, false);
+	try {
+		program.build (program_devices, nullptr, nullptr);
+		fill = cl::Kernel(program, "fill");
+		search = cl::Kernel(program, "search");
+		result_buffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, sizeof(uint64_t));
+		search.setArg(0, result_buffer);
+		nonce_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(uint64_t) * 2);
+		search.setArg(3, nonce_buffer);
+		fill.setArg(2, nonce_buffer);
+		queue = cl::CommandQueue(context, selected_device);
+		queue.finish();
+		search.setArg(4, stepping);
+		fill.setArg(3, stepping);
 	}
-	else
-	{
-		std::cerr << "Unable to create context " << createContextError << std::endl;
+	catch (cl::Error const & err) {
+		saved_error = err.err ();
+		std::cerr << "Error while building the program: " << err.what() << " (" << err.err() << ')' << std::endl;
+		std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(selected_device) << std::endl;
 	}
 }
 
-nano_pow::opencl_driver::~opencl_driver ()
+bool nano_pow::opencl_driver::ok() const
 {
-	if (slab)
-	{
-		clReleaseMemObject (slab);
-		slab = 0;
-	}
-	if (fill)
-	{
-		clReleaseKernel (fill);
-		fill = 0;
-	}
-	if (search)
-	{
-		clReleaseKernel (search);
-		search = 0;
-	}
-	if (result_buffer)
-	{
-		clReleaseMemObject (result_buffer);
-		result_buffer = 0;
-	}
-	if (nonce_buffer)
-	{
-		clReleaseMemObject (nonce_buffer);
-		nonce_buffer = 0;
-	}
-	if (queue)
-	{
-		clReleaseCommandQueue (queue);
-		queue = 0;
-	}
+	return saved_error == CL_SUCCESS;
 }
 
 void nano_pow::opencl_driver::difficulty_set (uint64_t difficulty_a)
@@ -489,104 +394,100 @@ size_t nano_pow::opencl_driver::threads_get () const
 	return threads;
 }
 
-void nano_pow::opencl_driver::memory_set (size_t memory)
+bool nano_pow::opencl_driver::memory_set (size_t memory)
 {
 	slab_size = memory;
 	slab_entries = memory / sizeof (uint32_t);
-	if (slab)
-	{
-		clReleaseMemObject (slab);
-		slab = nullptr;
+	try	{
+		slab = cl::Buffer(context, CL_MEM_READ_WRITE, slab_size);
 	}
-	cl_int error;
-	slab = clCreateBuffer (context, CL_MEM_READ_WRITE, slab_size, nullptr, &error);
-	assert (error == CL_SUCCESS);
+	catch (cl::Error const & err) {
+		saved_error = err.err();
+		std::cerr << "Error while creating memory buffer: " << err.what () << " (" << err.err () << ')' << std::endl;
+		std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(selected_device);
+	}
+	return saved_error != CL_SUCCESS;
 }
 
-bool nano_pow::opencl_driver::error () const
+void nano_pow::opencl_driver::fill_loop ()
 {
-	return fill == nullptr || search == nullptr|| queue == nullptr || result_buffer == nullptr || slab == nullptr || nonce_buffer == nullptr;
-}
-
-namespace
-{
-void check (bool & error, int32_t & code, int32_t result)
-{
-	code = result;
-	error |= code != 0;
-}
-}
-
-void nano_pow::opencl_driver::fill_loop () const
-{
-	uint32_t current (0);
-	bool error (false);
-	int32_t code;
-	
+	auto current (0);
 	uint32_t thread_count (this->threads);
-	size_t threads[] = { thread_count, 0, 0 };
-	
-	check (error, code, clFinish (queue));
-	check (error, code, clSetKernelArg (fill, 4, sizeof (uint32_t), &current));
+
+	queue.finish ();
+	fill.setArg(4, sizeof(uint32_t), &current);
 	current += thread_count * stepping;
-	check (error, code, clEnqueueNDRangeKernel (queue, fill, 1, nullptr, threads, nullptr, 0, nullptr, nullptr));
-	while (!error && current < slab_entries)
+	queue.enqueueNDRangeKernel(fill, 0, thread_count);
+	while (current < slab_entries)
 	{
-		check (error, code, clSetKernelArg (fill, 4, sizeof (uint32_t), &current));
+		fill.setArg(4, sizeof(uint32_t), &current);
 		current += thread_count * stepping;
-		check (error, code, clEnqueueNDRangeKernel (queue, fill, 1, nullptr, threads, nullptr, 0, nullptr, nullptr));
+		queue.enqueueNDRangeKernel(fill, 0, thread_count);
 	}
-	check (error, code, clFinish (queue));
-	assert(!error);
+	queue.finish ();
 }
 
-uint64_t nano_pow::opencl_driver::search_loop () const
+uint64_t nano_pow::opencl_driver::search_loop ()
 {
-	std::array <cl_event, 2> events;
-	bool error (false);
-	int32_t code;
+	std::array <cl::Event , 2 > events;
+
 	uint32_t current (0);
 	uint64_t result (0);
 	
 	uint32_t thread_count (this->threads);
-	size_t threads[] = { thread_count, 0, 0 };
 	
-	check (error, code, clSetKernelArg (search, 5, sizeof (uint32_t), &current));
+	search.setArg (5, sizeof (uint32_t), &current);
 	current += thread_count * stepping;
-	check (error, code, clEnqueueNDRangeKernel (queue, search, 1, nullptr, threads, nullptr, 0, nullptr, nullptr));
-	check (error, code, clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[0]));
-	while (!error && result == 0)
+	queue.enqueueNDRangeKernel (search, 0, thread_count);
+	queue.enqueueReadBuffer (result_buffer, false, 0, sizeof(uint64_t), &result, nullptr, &events[0]);
+	while (result == 0)
 	{
-		check (error, code, clSetKernelArg (search, 5, sizeof (uint32_t), &current));
+		search.setArg (5, sizeof (uint32_t), &current);
 		current += thread_count * stepping;
-		check (error, code, clEnqueueNDRangeKernel (queue, search, 1, nullptr, threads, nullptr, 0, nullptr, nullptr));
-		check (error, code, clEnqueueReadBuffer (queue, result_buffer, false, 0, sizeof (uint64_t), &result, 0, nullptr, &events[1]));
-		check (error, code, clWaitForEvents(1, &events[0]));
+		queue.enqueueNDRangeKernel(search, 0, thread_count);
+		queue.enqueueReadBuffer(result_buffer, false, 0, sizeof(uint64_t), &result, nullptr, &events[0]);
+		events[0].wait ();
 		events[0] = events[1];
 	}
-	check (error, code, clFinish (queue));
-	assert (!error);
+	queue.finish ();
 	return result;
 }
 
-uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
+bool nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce, uint64_t & result)
 {
-	uint64_t result (0);
-	bool error (false);
 	int32_t code;
+	try {
+		search.setArg (1, slab);
+		search.setArg (2, slab_entries);
+		search.setArg (6, difficulty_inv);
 
-	check (error, code, clSetKernelArg (search, 1, sizeof (slab), &slab));
-	check (error, code, clSetKernelArg (search, 2, sizeof (uint64_t), &slab_entries));
-	check (error, code, clSetKernelArg (search, 6, sizeof (uint64_t), &difficulty_inv));
+		fill.setArg (0, slab);
+		fill.setArg (1, slab_entries);
 
-	check (error, code, clSetKernelArg (fill, 0, sizeof (slab), &slab));
-	check (error, code, clSetKernelArg (fill, 1, sizeof (uint64_t), &slab_entries));
-
-	check (error, code, clEnqueueWriteBuffer (queue, result_buffer, false, 0, sizeof (result), &result, 0, nullptr, nullptr));
-	check (error, code, clEnqueueWriteBuffer (queue, nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data (), 0, nullptr, nullptr));
-	fill_loop ();
-	result = search_loop ();
-	return result;
+		queue.enqueueWriteBuffer (result_buffer, false, 0, sizeof (result), &result);
+		queue.enqueueWriteBuffer (nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data ());
+	}
+	catch (cl::Error const & err) {
+		saved_error = err.err();
+		std::cerr << "Error during setup: " << err.what() << "(" << err.err() << ')' << std::endl;
+		return true;
+	}
+	try {
+		fill_loop();
+	}
+	catch (cl::Error const & err) {
+		saved_error = err.err();
+		std::cerr << "Error during fill (above maximum memory?): " << err.what() << "(" << err.err() << ')' << std::endl;
+		return true;
+	}
+	try {
+		result = search_loop ();
+	}
+	catch (cl::Error const& err) {
+		saved_error = err.err();
+		std::cerr << "Error during search: " << err.what() << "(" << err.err() << ')' << std::endl;
+	}
+	return saved_error != CL_SUCCESS;
 }
 
 void nano_pow::opencl_driver::dump () const
