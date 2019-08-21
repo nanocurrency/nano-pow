@@ -378,7 +378,7 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 }
 
 nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned short device_id) :
-threads (1024)
+threads (8192)
 {
 	auto & platform (environment.platforms[platform_id]);
 	selected_device = platform.devices[device_id];
