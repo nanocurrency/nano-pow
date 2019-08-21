@@ -28,10 +28,10 @@ std::string to_string_solution (nano_pow::context & context_a, uint64_t threshol
 	auto rhs_hash (nano_pow::context::H1 (context_a.nonce, rhs));
 	auto sum (lhs_hash + rhs_hash);
 	std::ostringstream oss;
-	oss << "H0(" << to_string_hex (lhs) << ")+H1(" << to_string_hex (rhs) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (context_a.difficulty (context_a.nonce, solution_a));
+	oss << "H0(" << to_string_hex (static_cast<uint32_t> (lhs)) << ")+H1(" << to_string_hex (static_cast<uint32_t> (rhs)) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (context_a.difficulty (context_a.nonce, solution_a));
 	return oss.str ();
 }
-float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t difficulty, uint64_t memory, unsigned count)
+uint64_t profile (nano_pow::driver & driver_a, unsigned threads, uint64_t difficulty, uint64_t memory, unsigned count)
 {
 	std::cerr << "Initializing driver" << std::endl;
 	if (threads != 0)
@@ -52,8 +52,9 @@ float profile (nano_pow::driver & driver_a, unsigned threads, uint64_t difficult
 		nano_pow::context context (nonce, nullptr, 0, nullptr, driver_a.difficulty_get ());
 		std::cerr << to_string_solution (context, driver_a.difficulty_get (), result) << " solution ms: " << std::to_string (search_time) << std::endl;
 	}
-	std::cerr << "Average solution time: " << std::to_string (total_time / count) << std::endl;
-	return total_time / count;
+	uint64_t average (total_time / count);
+	std::cerr << "Average solution time: " << std::to_string (average) << std::endl;
+	return average;
 }
 }
 
@@ -68,11 +69,18 @@ int main (int argc, char **argv)
 	("count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned> ()->default_value ("16"))
 	("operation", "Specify which driver operation to perform", cxxopts::value<std::string> ()->default_value ("gtest"))
 	("platform", "Defines the <platform> for OpenCL driver", cxxopts::value<unsigned short> ())
-	("device", "Defines <device> for OpenCL driver", cxxopts::value<unsigned short> ());
+	("device", "Defines <device> for OpenCL driver", cxxopts::value<unsigned short> ())
+	("help", "Print this message");
 	auto parsed = options.parse(argc, argv);
 	int result (1);
 	try
 	{
+		if (parsed.count("help"))
+		{
+			std::cerr << options.help() << std::endl;
+			return 0;
+		}
+
 		std::cerr << "Initializing driver" << std::endl;
 		std::unique_ptr<nano_pow::driver> driver;
 		auto driver_type (parsed["driver"].as<std::string> ());
@@ -83,12 +91,12 @@ int main (int argc, char **argv)
 		else if (driver_type == "opencl")
 		{
 			unsigned short platform (0);
-			if (parsed.count ("platform") > 0)
+			if (parsed.count ("platform"))
 			{
 				platform = parsed["platform"].as<unsigned short> ();
 			}
 			unsigned short device (0);
-			if (parsed.count ("device") > 0)
+			if (parsed.count ("device"))
 			{
 				device = parsed["device"].as<unsigned short> ();
 			}
@@ -105,7 +113,7 @@ int main (int argc, char **argv)
 			std::cerr << "Driver: " << driver_type << std::endl;
 			auto difficulty (parsed["difficulty"].as<unsigned> ());
 			auto lookup (difficulty / 2 + 1);
-			if (parsed.count ("lookup") > 0)
+			if (parsed.count ("lookup"))
 			{
 				lookup = parsed["lookup"].as <unsigned> ();
 			}
