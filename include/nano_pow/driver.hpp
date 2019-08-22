@@ -19,9 +19,7 @@ public:
 	// Returns true on error
 	virtual bool memory_set (size_t memory) = 0;
 	// Places result in given variable
-	// Returns true on error
-	virtual bool solve (std::array<uint64_t, 2> nonce, uint64_t & result) = 0;
-	virtual bool ok () const = 0;
+	virtual void solve (std::array<uint64_t, 2> nonce, uint64_t & result) = 0;
 	virtual void dump () const = 0;
 };
 }

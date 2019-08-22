@@ -12,7 +12,7 @@
 #include <vector>
 
 #ifdef _WIN32
-#include <include/plat/win/mman.h>
+#include <plat/win/mman.h>
 #else
 #include <sys/mman.h>
 #endif
@@ -39,7 +39,7 @@ void nano_pow::cpp_driver::barrier (std::unique_lock<std::mutex> & lock)
 	condition.wait (lock, [this] () { return ready == threads.size (); });
 }
 
-bool nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce, uint64_t & result)
+void nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce, uint64_t & result)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	barrier (lock);
@@ -52,12 +52,6 @@ bool nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce, uint64_t & res
 	condition.wait (lock);
 	enable = false;
 	result = generator.result;
-	return false;
-}
-
-bool nano_pow::cpp_driver::ok() const
-{
-	return true;
 }
 
 void nano_pow::cpp_driver::dump () const

@@ -362,15 +362,9 @@ threads (8192)
 		fill.setArg(3, stepping);
 	}
 	catch (cl::Error const & err) {
-		saved_error = err.err ();
-		std::cerr << "Error while building the program: " << err.what() << " (" << err.err() << ')' << std::endl;
-		std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(selected_device) << std::endl;
+		auto details (program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(selected_device));
+		throw OCLDriverException (err, OCLDriverError::build, details);
 	}
-}
-
-bool nano_pow::opencl_driver::ok() const
-{
-	return saved_error == CL_SUCCESS;
 }
 
 void nano_pow::opencl_driver::difficulty_set (uint64_t difficulty_a)
@@ -402,11 +396,9 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 		slab = cl::Buffer(context, CL_MEM_READ_WRITE, slab_size);
 	}
 	catch (cl::Error const & err) {
-		saved_error = err.err();
-		std::cerr << "Error while creating memory buffer: " << err.what () << " (" << err.err () << ')' << std::endl;
-		std::cerr << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(selected_device);
+		throw OCLDriverException(err, OCLDriverError::search);
 	}
-	return saved_error != CL_SUCCESS;
+	return false;
 }
 
 void nano_pow::opencl_driver::fill_loop ()
@@ -453,9 +445,10 @@ uint64_t nano_pow::opencl_driver::search_loop ()
 	return result;
 }
 
-bool nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce, uint64_t & result)
+void nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce, uint64_t & result)
 {
 	int32_t code;
+
 	try {
 		search.setArg (1, slab);
 		search.setArg (2, slab_entries);
@@ -468,26 +461,22 @@ bool nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce, uint64_t & r
 		queue.enqueueWriteBuffer (nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data ());
 	}
 	catch (cl::Error const & err) {
-		saved_error = err.err();
-		std::cerr << "Error during setup: " << err.what() << "(" << err.err() << ')' << std::endl;
-		return true;
+		throw OCLDriverException(err, OCLDriverError::setup);
 	}
+
 	try {
 		fill_loop();
 	}
 	catch (cl::Error const & err) {
-		saved_error = err.err();
-		std::cerr << "Error during fill (above maximum memory?): " << err.what() << "(" << err.err() << ')' << std::endl;
-		return true;
+		throw OCLDriverException(err, OCLDriverError::fill);
 	}
+
 	try {
 		result = search_loop ();
 	}
 	catch (cl::Error const& err) {
-		saved_error = err.err();
-		std::cerr << "Error during search: " << err.what() << "(" << err.err() << ')' << std::endl;
+		throw OCLDriverException(err, OCLDriverError::search);
 	}
-	return saved_error != CL_SUCCESS;
 }
 
 void nano_pow::opencl_driver::dump () const
