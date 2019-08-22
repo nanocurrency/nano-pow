@@ -34,3 +34,7 @@
 # Build
 build/
 *.DS_Store
+
+# IDEs
+.vs/
+CMakeSettings.json

@@ -39,7 +39,7 @@ void nano_pow::cpp_driver::barrier (std::unique_lock<std::mutex> & lock)
 	condition.wait (lock, [this] () { return ready == threads.size (); });
 }
 
-void nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce, uint64_t & result)
+uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	barrier (lock);
@@ -51,7 +51,7 @@ void nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce, uint64_t & res
 	worker_condition.notify_all ();
 	condition.wait (lock);
 	enable = false;
-	result = generator.result;
+	return generator.result;
 }
 
 void nano_pow::cpp_driver::dump () const

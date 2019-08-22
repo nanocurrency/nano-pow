@@ -445,9 +445,9 @@ uint64_t nano_pow::opencl_driver::search_loop ()
 	return result;
 }
 
-void nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce, uint64_t & result)
+uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 {
-	int32_t code;
+	uint64_t result{ 0 };
 
 	try {
 		search.setArg (1, slab);
@@ -477,6 +477,8 @@ void nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce, uint64_t & r
 	catch (cl::Error const& err) {
 		throw OCLDriverException(err, OCLDriverError::search);
 	}
+
+	return result;
 }
 
 void nano_pow::opencl_driver::dump () const

@@ -22,7 +22,7 @@ namespace nano_pow
 		void threads_set (unsigned threads) override;
 		size_t threads_get () const override;
 		bool memory_set (size_t memory) override;
-		void solve (std::array<uint64_t, 2> nonce, uint64_t & result) override;
+		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
 	private:
 		void barrier (std::unique_lock<std::mutex> & lock);

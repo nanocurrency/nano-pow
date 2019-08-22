@@ -50,8 +50,7 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, uint64_t diffic
 		{
 			auto start(std::chrono::steady_clock::now());
 			std::array <uint64_t, 2> nonce{ i + 1, 0 };
-			uint64_t result{ 0 };
-			driver_a.solve(nonce, result);
+			auto result = driver_a.solve(nonce);
 			auto search_time(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
 			total_time += search_time;
 			nano_pow::context context(nonce, nullptr, 0, nullptr, driver_a.difficulty_get());

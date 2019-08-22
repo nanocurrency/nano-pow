@@ -18,8 +18,8 @@ public:
 	// Value must be a power of 2
 	// Returns true on error
 	virtual bool memory_set (size_t memory) = 0;
-	// Places result in given variable
-	virtual void solve (std::array<uint64_t, 2> nonce, uint64_t & result) = 0;
+	// Can throw
+	virtual uint64_t solve (std::array<uint64_t, 2> nonce) = 0;
 	virtual void dump () const = 0;
 };
 }
