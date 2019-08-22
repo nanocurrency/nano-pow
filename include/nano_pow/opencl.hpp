@@ -6,7 +6,7 @@
 
 #if defined(__APPLE__) || defined(__MACOSX)
 #define CL_SILENCE_DEPRECATION
-#include <OpenCL/opencl.hpp>
+#include <OpenCL/cl.hpp>
 #else
 #include <CL/cl.hpp>
 #endif
