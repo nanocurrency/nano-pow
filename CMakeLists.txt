@@ -46,11 +46,12 @@ include_directories (cxxopts/include)
 
 add_library (nano_pow
 	${PLATFORM_SOURCE}
-	cpp_driver.cpp
-	include/nano_pow/cpp_driver.hpp
-	include/nano_pow/driver.hpp
-	include/nano_pow/opencl_driver.hpp
 	include/nano_pow/pow.hpp
+	include/nano_pow/driver.hpp
+	include/nano_pow/cpp_driver.hpp
+	include/nano_pow/opencl.hpp
+	include/nano_pow/opencl_driver.hpp
+	cpp_driver.cpp
 	opencl_driver.cpp
 )
 

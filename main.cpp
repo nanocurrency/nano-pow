@@ -33,27 +33,37 @@ std::string to_string_solution (nano_pow::context & context_a, uint64_t threshol
 }
 uint64_t profile (nano_pow::driver & driver_a, unsigned threads, uint64_t difficulty, uint64_t memory, unsigned count)
 {
-	std::cerr << "Initializing driver" << std::endl;
+	std::cout << "Initializing driver" << std::endl;
 	if (threads != 0)
 	{
 		driver_a.threads_set (threads);
 	}
 	driver_a.difficulty_set (difficulty);
-	driver_a.memory_set (memory);
-	std::cerr << "Starting profile" << std::endl;
-	uint64_t total_time (0);
-	for (auto i (0UL); i < count; ++i)
+	if (driver_a.memory_set(memory))
 	{
-		auto start (std::chrono::steady_clock::now ());
-		std::array <uint64_t, 2> nonce = { i + 1, 0 };
-		auto result (driver_a.solve (nonce));
-		auto search_time (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now () - start).count ());
-		total_time += search_time;
-		nano_pow::context context (nonce, nullptr, 0, nullptr, driver_a.difficulty_get ());
-		std::cerr << to_string_solution (context, driver_a.difficulty_get (), result) << " solution ms: " << std::to_string (search_time) << std::endl;
+		exit (1);
+	}
+	std::cout << "Starting profile" << std::endl;
+	uint64_t total_time (0);
+	try {
+		for (auto i(0UL); i < count; ++i)
+		{
+			auto start(std::chrono::steady_clock::now());
+			std::array <uint64_t, 2> nonce{ i + 1, 0 };
+			uint64_t result{ 0 };
+			driver_a.solve(nonce, result);
+			auto search_time(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
+			total_time += search_time;
+			nano_pow::context context(nonce, nullptr, 0, nullptr, driver_a.difficulty_get());
+			std::cerr << to_string_solution(context, driver_a.difficulty_get(), result) << " solution ms: " << std::to_string(search_time) << std::endl;
+		}
+	}
+	catch (nano_pow::OCLDriverException const& err) {
+		std::cerr << "Failed to profile OpenCL" << std::endl;
+		err.print (std::cerr);
 	}
 	uint64_t average (total_time / count);
-	std::cerr << "Average solution time: " << std::to_string (average) << std::endl;
+	std::cout << "Average solution time: " << std::to_string (average) << std::endl;
 	return average;
 }
 }
@@ -77,83 +87,93 @@ int main (int argc, char **argv)
 	{
 		if (parsed.count("help"))
 		{
-			std::cerr << options.help() << std::endl;
-			return 0;
-		}
-
-		std::cerr << "Initializing driver" << std::endl;
-		std::unique_ptr<nano_pow::driver> driver;
-		auto driver_type (parsed["driver"].as<std::string> ());
-		if (driver_type == "cpp")
-		{
-			driver = std::make_unique<nano_pow::cpp_driver> ();
-		}
-		else if (driver_type == "opencl")
-		{
-			unsigned short platform (0);
-			if (parsed.count ("platform"))
-			{
-				platform = parsed["platform"].as<unsigned short> ();
-			}
-			unsigned short device (0);
-			if (parsed.count ("device"))
-			{
-				device = parsed["device"].as<unsigned short> ();
-			}
-			driver = std::make_unique<nano_pow::opencl_driver> (platform, device);
+			std::cout << options.help() << std::endl;
 		}
 		else
 		{
-			std::cerr << "Invalid driver. Available: {cpp, opencl}" << std::endl;
-			result = -1;
-		}
-
-		if (result)
-		{
-			std::cerr << "Driver: " << driver_type << std::endl;
-			auto difficulty (parsed["difficulty"].as<unsigned> ());
-			auto lookup (difficulty / 2 + 1);
-			if (parsed.count ("lookup"))
+			std::cout << "Initializing driver" << std::endl;
+			std::unique_ptr<nano_pow::driver> driver{ nullptr };
+			auto driver_type(parsed["driver"].as<std::string>());
+			if (driver_type == "cpp")
 			{
-				lookup = parsed["lookup"].as <unsigned> ();
+				driver = std::make_unique<nano_pow::cpp_driver>();
 			}
-			auto lookup_entries (1ULL << lookup);
-			auto count (parsed["count"].as<unsigned> ());
-			unsigned threads (0);
-			if (parsed.count ("threads"))
+			else if (driver_type == "opencl")
 			{
-				threads = parsed["threads"].as <unsigned> ();
-			}
-			auto operation (parsed["operation"].as<std::string> ());
-
-			if (operation == "gtest")
-			{
-				testing::InitGoogleTest(&argc, argv);
-				result = RUN_ALL_TESTS();
-			}
-			else if (operation == "dump")
-			{
-				if (driver != nullptr)
-					driver->dump ();
-			}
-			else if (operation == "profile")
-			{
-				if (driver != nullptr)
+				unsigned short platform(0);
+				if (parsed.count("platform"))
 				{
-					std::string threads_l (std::to_string (threads != 0 ? threads : driver->threads_get ()));
-					std::cerr << "Profiling threads: " << threads_l << " lookup: " << std::to_string ((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64 ((1ULL << difficulty) - 1) << std::endl;
-					profile (*driver, threads, nano_pow::context::reverse ((1ULL << difficulty) - 1), lookup_entries * sizeof (uint32_t), count);
+					platform = parsed["platform"].as<unsigned short>();
+				}
+				unsigned short device(0);
+				if (parsed.count("device"))
+				{
+					device = parsed["device"].as<unsigned short>();
+				}
+				driver = std::make_unique<nano_pow::opencl_driver>(platform, device);
+			}
+			else
+			{
+				std::cerr << "Invalid driver. Available: {cpp, opencl}" << std::endl;
+			}
+			if (driver != nullptr)
+			{
+				if (result)
+				{
+					std::cout << "Driver: " << driver_type << std::endl;
+					auto difficulty(parsed["difficulty"].as<unsigned>());
+					auto lookup(difficulty / 2 + 1);
+					if (parsed.count("lookup"))
+					{
+						lookup = parsed["lookup"].as <unsigned>();
+					}
+					auto lookup_entries(1ULL << lookup);
+					auto count(parsed["count"].as<unsigned>());
+					unsigned threads(0);
+					if (parsed.count("threads"))
+					{
+						threads = parsed["threads"].as <unsigned>();
+					}
+					auto operation(parsed["operation"].as<std::string>());
+
+					if (operation == "gtest")
+					{
+						testing::InitGoogleTest(&argc, argv);
+						result = RUN_ALL_TESTS();
+					}
+					else if (operation == "dump")
+					{
+						if (driver != nullptr)
+							driver->dump();
+					}
+					else if (operation == "profile")
+					{
+						if (driver != nullptr)
+						{
+							std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
+							std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64((1ULL << difficulty) - 1) << std::endl;
+							profile(*driver, threads, nano_pow::context::reverse((1ULL << difficulty) - 1), lookup_entries * sizeof(uint32_t), count);
+						}
+					}
+					else {
+						std::cerr << "Invalid operation. Available: {gtest, dump, profile}" << std::endl;
+						result = -1;
+					}
 				}
 			}
-			else{
-				std::cerr << "Invalid operation. Available: {gtest, dump, profile}" << std::endl;
-				result = -1;
+			else
+			{
+				std::cerr << "Driver errored" << std::endl;
 			}
 		}
 	}
 	catch (cxxopts::OptionException const & err)
 	{
 		std::cerr << err.what () << std::endl;
+	}
+	catch (nano_pow::OCLDriverException const& err) {
+		std::cerr << "OpenCL error" << std::endl;
+		err.print(std::cerr);
 	}
 	return result;
 }
