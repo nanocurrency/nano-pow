@@ -62,7 +62,24 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, uint64_t diffic
 		err.print (std::cerr);
 	}
 	uint64_t average (total_time / count);
-	std::cout << "Average solution time: " << std::to_string (average) << std::endl;
+	std::cout << "Average solution time: " << std::to_string (average) << " ms" << std::endl;
+	return average;
+}
+uint64_t profile_verify (uint64_t count)
+{
+	std::array<uint64_t, 2> nonce = { 0, 0 };
+	uint64_t random_difficulty{ 0xffffffc000000000 };
+	std::cout << "Starting verification profile" << std::endl;
+	auto start (std::chrono::steady_clock::now ());
+	bool passes{ false };
+	for (uint64_t i (0); i < count; ++i)
+	{
+		passes = nano_pow::context::passes (nonce, i, random_difficulty);
+	}
+	auto total_time (std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::steady_clock::now () - start).count ());
+	std::ostringstream oss (passes); // IO forces compiler to not dismiss the variable
+	uint64_t average (total_time / count);
+	std::cout << "Average verification time: " << std::to_string (average) << " ns" << std::endl;
 	return average;
 }
 }
@@ -154,8 +171,10 @@ int main (int argc, char **argv)
 							profile(*driver, threads, nano_pow::context::reverse((1ULL << difficulty) - 1), lookup_entries * sizeof(uint32_t), count);
 						}
 					}
+					else if (operation == "profile_verify")
+						profile_verify (count);
 					else {
-						std::cerr << "Invalid operation. Available: {gtest, dump, profile}" << std::endl;
+						std::cerr << "Invalid operation. Available: {gtest, dump, profile, profile_verify}" << std::endl;
 						result = -1;
 					}
 				}
