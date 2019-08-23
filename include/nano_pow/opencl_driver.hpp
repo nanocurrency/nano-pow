@@ -65,6 +65,10 @@ namespace nano_pow
 		void print (std::ostream & stream) const
 		{
 			stream << "During " << origin () << ": " << what () << " (" << err () << ")" << std::endl;
+			if (!err_details_.empty())
+			{
+				stream << err_details_ << std::endl;
+			}
 		}
 	};
 
