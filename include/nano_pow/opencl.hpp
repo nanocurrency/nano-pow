@@ -4,7 +4,7 @@
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #define __CL_ENABLE_EXCEPTIONS
 
-#if defined(__APPLE__) || defined(__MACOSX)
+#if defined(__APPLE__) || defined(__MACOSX) || defined(_WIN32)
 #define CL_SILENCE_DEPRECATION
 #include <OpenCL/cl.hpp>
 #else

@@ -6,15 +6,14 @@
 TEST (context, difficulty)
 {
 	std::array<uint64_t, 2> nonce = { 0, 0 };
-	nano_pow::generator generator;
-	std::array <uint32_t, 8> slab;
-	nano_pow::context context (nonce, slab.data (), 8, nullptr, nano_pow::context::bit_difficulty (8));
-	generator.find (context, 0, 0, 1);
-	auto difficulty (context.difficulty (nonce, generator.result));
+	nano_pow::cpp_driver driver;
+	driver.nonce = nonce;
+	driver.find (0, 0, 1);
+	auto difficulty (nano_pow::difficulty (nonce, driver.result));
 	ASSERT_NE (0, difficulty);
 	ASSERT_EQ (0xff, difficulty >> 56);
-	ASSERT_TRUE (context.passes (nonce, generator.result, 0xff00'0000'0000'0000ULL));
-	ASSERT_FALSE (context.passes (nonce, generator.result, 0xffff'ffff'0000'0000ULL));
+	ASSERT_TRUE (nano_pow::passes (nonce, driver.result, 0xff00'0000'0000'0000ULL));
+	ASSERT_FALSE (nano_pow::passes (nonce, driver.result, 0xffff'ffff'0000'0000ULL));
 }
 
 TEST (cpp_driver, threads)

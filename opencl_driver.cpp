@@ -369,7 +369,7 @@ threads (8192)
 
 void nano_pow::opencl_driver::difficulty_set (uint64_t difficulty_a)
 {
-	this->difficulty_inv = nano_pow::context::reverse (difficulty_a);
+	this->difficulty_inv = nano_pow::reverse (difficulty_a);
 	this->difficulty = difficulty_a;
 }
 

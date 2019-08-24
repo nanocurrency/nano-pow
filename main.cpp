@@ -20,15 +20,15 @@ std::string to_string_hex64 (uint64_t value_a)
 	stream << value_a;
 	return stream.str ();
 }
-std::string to_string_solution (nano_pow::context & context_a, uint64_t threshold_a, uint64_t solution_a)
+std::string to_string_solution (std::array<uint64_t, 2> nonce_a, uint64_t threshold_a, uint64_t solution_a)
 {
 	auto lhs (solution_a >> 32);
-	auto lhs_hash (nano_pow::context::H0 (context_a.nonce, lhs));
+	auto lhs_hash (nano_pow::H0 (nonce_a, lhs));
 	auto rhs (solution_a & 0xffffffffULL);
-	auto rhs_hash (nano_pow::context::H1 (context_a.nonce, rhs));
+	auto rhs_hash (nano_pow::H1 (nonce_a, rhs));
 	auto sum (lhs_hash + rhs_hash);
 	std::ostringstream oss;
-	oss << "H0(" << to_string_hex (static_cast<uint32_t> (lhs)) << ")+H1(" << to_string_hex (static_cast<uint32_t> (rhs)) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (context_a.difficulty (context_a.nonce, solution_a));
+	oss << "H0(" << to_string_hex (static_cast<uint32_t> (lhs)) << ")+H1(" << to_string_hex (static_cast<uint32_t> (rhs)) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (nano_pow::difficulty (nonce_a, solution_a));
 	return oss.str ();
 }
 uint64_t profile (nano_pow::driver & driver_a, unsigned threads, uint64_t difficulty, uint64_t memory, unsigned count)
@@ -53,8 +53,7 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, uint64_t diffic
 			auto result = driver_a.solve(nonce);
 			auto search_time(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
 			total_time += search_time;
-			nano_pow::context context(nonce, nullptr, 0, nullptr, driver_a.difficulty_get());
-			std::cerr << to_string_solution(context, driver_a.difficulty_get(), result) << " solution ms: " << std::to_string(search_time) << std::endl;
+			std::cerr << to_string_solution (nonce, driver_a.difficulty_get (), result) << " solution ms: " << std::to_string (search_time) << std::endl;
 		}
 	}
 	catch (nano_pow::OCLDriverException const& err) {
@@ -74,7 +73,7 @@ uint64_t profile_validate (uint64_t count)
 	bool valid{ false };
 	for (uint64_t i (0); i < count; ++i)
 	{
-		valid = nano_pow::context::passes (nonce, i, random_difficulty);
+		valid = nano_pow::passes (nonce, i, random_difficulty);
 	}
 	auto total_time (std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::steady_clock::now () - start).count ());
 	std::ostringstream oss (valid ? "true" : "false"); // IO forces compiler to not dismiss the variable
@@ -168,7 +167,7 @@ int main (int argc, char **argv)
 						{
 							std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
 							std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64((1ULL << difficulty) - 1) << std::endl;
-							profile(*driver, threads, nano_pow::context::reverse((1ULL << difficulty) - 1), lookup_entries * sizeof(uint32_t), count);
+							profile(*driver, threads, nano_pow::reverse ((1ULL << difficulty) - 1), lookup_entries * sizeof(uint32_t), count);
 						}
 					}
 					else if (operation == "profile_validation")

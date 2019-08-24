@@ -24,10 +24,35 @@ namespace nano_pow
 		bool memory_set (size_t memory) override;
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
+		bool find (unsigned ticket_a, size_t thread, size_t total_threads);
+		std::atomic<uint64_t> result { 0 };
 	private:
+		/**
+		 * Populates memory with `count` pre-images
+		 *
+		 * These preimages are used as the RHS to the summing problem
+		 * basically does:
+		 *     slab_a[hash(x) % size_a] = x
+		 *
+		 * @param count How many slots in slab_a to fill
+		 * @param begin starting value to hash
+		 */
+		void fill (uint32_t const count, uint32_t const begin = 0);
+		
+		/**
+		 * Searches for a solution to difficulty problem
+		 *
+		 * Generates `count` LHS hashes and searches for associated RHS hashes already in the slab
+		 *
+		 * @param count How many slots in slab_a to fill
+		 * @param begin starting value to hash
+		 */
+		uint64_t search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
+		std::atomic<uint64_t> current { 0 };
+		std::atomic_flag can_set;
+		std::atomic_bool complete;
+		static uint32_t constexpr stepping { 1024 };
 		void barrier (std::unique_lock<std::mutex> & lock);
-		nano_pow::context context;
-		nano_pow::generator generator;
 		void run_loop (size_t);
 		std::atomic<unsigned> ready { 0 };
 		bool enable { false };
@@ -35,5 +60,11 @@ namespace nano_pow
 		std::mutex mutex;
 		std::condition_variable condition;
 		std::condition_variable worker_condition;
+		uint64_t difficulty_m;
+		uint64_t difficulty_inv;
+		size_t size;
+		uint32_t * slab;
+	public:
+		std::array<uint64_t, 2> nonce;
 	};
 }

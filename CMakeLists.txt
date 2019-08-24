@@ -27,12 +27,6 @@ else ()
 	link_directories (${OpenCL_LIBRARY})
 endif ()
 
-add_library (siphash
-	highwayhash/highwayhash/sip_hash.cc
-	highwayhash/highwayhash/sip_hash.h)
-
-include_directories (siphash PUBLIC highwayhash)
-
 if (${NANO_POW_TEST})
 	add_subdirectory (googletest/googletest)
 	include_directories (googletest/googletest/include)
@@ -57,7 +51,6 @@ add_library (nano_pow
 
 target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/highwayhash)
 
 if (${NANO_POW_TEST})
 	add_executable (nano_pow_driver
