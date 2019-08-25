@@ -385,23 +385,31 @@ void nano_pow::cpp_driver::fill (uint32_t const count, uint32_t const begin)
 	}
 }
 
-uint64_t nano_pow::cpp_driver::search (uint32_t const count, uint32_t const begin)
+void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
 {
-	auto incomplete (true);
 	uint32_t lhs, rhs;
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab);
-	for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
+	for (uint32_t current (begin), end (current + count); result == 0 && current < end; ++current)
 	{
 		rhs = current;
 		auto hash_l (::H1 (nonce_l, rhs));
 		lhs = slab_l [slot (size_l, 0 - hash_l)];
 		auto sum (::H0 (nonce_l, lhs) + hash_l);
 		// Check if the solution passes through the quick path then check it through the long path
-		incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (sum, difficulty_m);
+		if (!passes_quick (sum, difficulty_inv))
+		{
+			// Likely
+		}
+		else
+		{
+			if (passes_sum (sum, difficulty_m))
+			{
+				result = (static_cast <uint64_t> (lhs) << 32) | rhs;
+			}
+		}
 	}
-	return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 }
 
 void nano_pow::cpp_driver::find (size_t thread, size_t total_threads)
@@ -411,7 +419,6 @@ void nano_pow::cpp_driver::find (size_t thread, size_t total_threads)
 	{
 		uint64_t current_l (current.fetch_add (stepping));
 		uint32_t fill_iteration (static_cast<uint32_t> (current_l >> 32));
-		uint32_t search_iteration (static_cast<uint32_t> (current_l >> 0));
 		if (fill_iteration != last_fill) // top half of current_l
 		{
 			// fill the memory with 1/threads preimages
@@ -421,11 +428,9 @@ void nano_pow::cpp_driver::find (size_t thread, size_t total_threads)
 			uint32_t fill_count (static_cast<uint32_t> (last_fill * size + thread * allowance));
 			fill (allowance, fill_count);
 		}
-		auto result_l (search (stepping, search_iteration));
-		if (result_l != 0)
-		{
-			result = result_l;
-		}
+		uint32_t search_count (std::numeric_limits<uint32_t>::max () / total_threads);
+		uint32_t search_begin (search_count * thread);
+		search (search_begin, search_count);
 	}
 }
 

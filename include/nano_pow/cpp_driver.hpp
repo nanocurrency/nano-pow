@@ -64,7 +64,7 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		uint64_t search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
+		void search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
 		std::atomic<uint64_t> current { 0 };
 		static uint32_t constexpr stepping { 1024 };
 		thread_pool threads;
