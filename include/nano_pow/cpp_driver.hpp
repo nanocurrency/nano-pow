@@ -12,6 +12,23 @@
 
 namespace nano_pow
 {
+	class thread_pool
+	{
+	public:
+		void resize (size_t);
+		void barrier ();
+		void execute (std::function<void(size_t, size_t)>);
+		void stop ();
+		size_t size () const;
+	private:
+		void loop (size_t thread_id);
+		size_t ready { 0 };
+		std::function<void(size_t, size_t)> operation;
+		std::vector<std::unique_ptr<std::thread>> threads;
+		std::condition_variable finish;
+		std::condition_variable start;
+		mutable std::mutex mutex;
+	};
 	class cpp_driver : public driver
 	{
 	public:
@@ -50,14 +67,9 @@ namespace nano_pow
 		uint64_t search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
 		std::atomic<uint64_t> current { 0 };
 		static uint32_t constexpr stepping { 1024 };
-		void barrier (std::unique_lock<std::mutex> & lock);
-		void run_loop (size_t);
-		std::atomic<unsigned> ready { 0 };
-		bool enable { false };
-		std::vector<std::unique_ptr<std::thread>> threads;
-		std::mutex mutex;
+		thread_pool threads;
 		std::condition_variable condition;
-		std::condition_variable worker_condition;
+		mutable std::mutex mutex;
 		uint64_t difficulty_m;
 		uint64_t difficulty_inv;
 		size_t size { 0 };

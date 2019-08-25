@@ -319,23 +319,15 @@ nano_pow::cpp_driver::~cpp_driver ()
 	memory_set (0);
 }
 
-void nano_pow::cpp_driver::barrier (std::unique_lock<std::mutex> & lock)
-{
-	condition.wait (lock, [this] () { return ready == threads.size (); });
-}
-
 uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 {
-	std::unique_lock<std::mutex> lock (mutex);
-	barrier (lock);
+	threads.barrier ();
 	result = 0;
 	current = 0;
-	enable = true;
 	this->nonce [0] = nonce [0];
 	this->nonce [1] = nonce [1];
-	worker_condition.notify_all ();
-	condition.wait (lock);
-	enable = false;
+	threads.execute ([this] (size_t thread_id, size_t total_threads) { find (thread_id, total_threads); });
+	threads.barrier ();
 	return result;
 }
 
@@ -363,24 +355,7 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 
 void nano_pow::cpp_driver::threads_set (unsigned threads)
 {
-	std::unique_lock<std::mutex> lock (mutex);
-	barrier (lock);
-	while (this->threads.size () < threads)
-	{
-		this->threads.push_back (std::make_unique<std::thread> ([this, i=this->threads.size ()] () {
-			run_loop (i);
-			condition.notify_one ();
-		}));
-	}
-	while (this->threads.size () > threads)
-	{
-		auto thread (std::move (this->threads.back ()));
-		worker_condition.notify_all ();
-		lock.unlock ();
-		thread->join ();
-		lock.lock ();
-		this->threads.pop_back ();
-	}
+	this->threads.resize (threads);
 }
 
 size_t nano_pow::cpp_driver::threads_get () const
@@ -454,22 +429,73 @@ void nano_pow::cpp_driver::find (size_t thread, size_t total_threads)
 	}
 }
 
-void nano_pow::cpp_driver::run_loop (size_t thread_id)
+void nano_pow::thread_pool::barrier ()
+{
+	std::unique_lock<std::mutex> lock (mutex);
+	finish.wait (lock, [this] () { return ready == threads.size (); });
+}
+
+void nano_pow::thread_pool::resize (size_t threads)
+{
+	barrier ();
+	{
+		std::unique_lock<std::mutex> lock (mutex);
+		while (this->threads.size () < threads)
+		{
+			this->threads.push_back (std::make_unique<std::thread> ([this, i=this->threads.size ()] () {
+				loop (i);
+			}));
+		}
+		while (this->threads.size () > threads)
+		{
+			auto thread (std::move (this->threads.back ()));
+			ready = 0;
+			start.notify_all ();
+			lock.unlock ();
+			thread->join ();
+			lock.lock ();
+			this->threads.pop_back ();
+		}
+	}
+	barrier ();
+}
+
+void nano_pow::thread_pool::execute (std::function<void(size_t, size_t)> operation)
+{
+	barrier ();
+	this->operation = operation;
+	ready = 0;
+	start.notify_all ();
+}
+
+void nano_pow::thread_pool::stop ()
+{
+	barrier ();
+	resize (0);
+	assert (ready == 0);
+	assert (!operation);
+}
+
+void nano_pow::thread_pool::loop (size_t thread_id)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	while (threads [thread_id] != nullptr)
 	{
 		++ready;
-		condition.notify_one ();
-		worker_condition.wait (lock);
-		--ready;
-		if (enable && threads [thread_id] != nullptr)
+		finish.notify_all ();
+		start.wait (lock);
+		if (operation && threads [thread_id] != nullptr)
 		{
 			auto threads_size (threads.size ());
 			lock.unlock ();
-			find (thread_id, threads_size);
+			operation (thread_id, threads_size);
 			lock.lock ();
-			condition.notify_one ();
 		}
 	}
+}
+
+size_t nano_pow::thread_pool::size () const
+{
+	std::lock_guard<std::mutex> lock (mutex);
+	return threads.size ();
 }
