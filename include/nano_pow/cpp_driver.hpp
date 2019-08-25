@@ -62,9 +62,9 @@ namespace nano_pow
 		std::condition_variable worker_condition;
 		uint64_t difficulty_m;
 		uint64_t difficulty_inv;
-		size_t size;
-		uint32_t * slab;
+		size_t size { 0 };
+		uint32_t * slab { nullptr };
 	public:
-		std::array<uint64_t, 2> nonce;
+		std::array<uint64_t, 2> nonce { { 0, 0 } };
 	};
 }

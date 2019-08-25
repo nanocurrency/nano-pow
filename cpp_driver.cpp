@@ -308,9 +308,7 @@ NP_INLINE static bool passes_quick (uint64_t const sum_a, uint64_t const difficu
 
 nano_pow::cpp_driver::cpp_driver () :
 difficulty_m (nano_pow::bit_difficulty (8)),
-difficulty_inv (::reverse (difficulty_m)),
-size (0),
-nonce ({ 0, 0 })
+difficulty_inv (::reverse (difficulty_m))
 {
 	threads_set (std::thread::hardware_concurrency ());
 }
