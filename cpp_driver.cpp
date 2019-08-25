@@ -11,6 +11,9 @@
 #include <thread>
 #include <vector>
 
+#define NOMINMAX
+#include <windows.h>
+
 #ifdef _WIN32
 #include <plat/win/mman.h>
 #define NP_INLINE __forceinline
@@ -310,6 +313,14 @@ nano_pow::cpp_driver::cpp_driver () :
 difficulty_m (nano_pow::bit_difficulty (8)),
 difficulty_inv (::reverse (difficulty_m))
 {
+	HANDLE hToken;
+	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken);
+	TOKEN_PRIVILEGES tp;
+	LookupPrivilegeValue(NULL, "SeLockMemoryPrivilege", &tp.Privileges[0].Luid);
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	auto success (AdjustTokenPrivileges (hToken, FALSE, &tp, 0, nullptr, nullptr));
+	auto size(GetLargePageMinimum());
 	threads_set (std::thread::hardware_concurrency ());
 }
 
@@ -350,10 +361,10 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 	assert ((memory & (memory - 1)) == 0);
 	if (slab)
 	{
-		munmap (slab, size * sizeof (uint32_t));
+		VirtualFree (slab, 0, MEM_RELEASE);
 	}
 	size = memory / sizeof (uint32_t);
-	slab = memory == 0 ? nullptr : reinterpret_cast <uint32_t *> (mmap (0, memory, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_NOCACHE, -1, 0));
+	slab = memory == 0 ? nullptr : reinterpret_cast <uint32_t *> (VirtualAlloc (nullptr, memory, MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE));
 	bool error (slab == MAP_FAILED);
 	if (error)
 	{
