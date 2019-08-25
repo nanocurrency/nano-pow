@@ -407,15 +407,13 @@ void nano_pow::opencl_driver::fill_loop ()
 	uint32_t thread_count (this->threads);
 
 	queue.finish ();
-	fill.setArg(4, sizeof(uint32_t), &current);
-	current += thread_count * stepping;
-	queue.enqueueNDRangeKernel(fill, 0, thread_count);
-	while (current < slab_entries)
+	do
 	{
 		fill.setArg(4, sizeof(uint32_t), &current);
 		current += thread_count * stepping;
 		queue.enqueueNDRangeKernel(fill, 0, thread_count);
 	}
+	while (current < slab_entries);
 	queue.finish ();
 }
 
@@ -425,14 +423,10 @@ uint64_t nano_pow::opencl_driver::search_loop ()
 
 	uint32_t current (0);
 	uint64_t result (0);
-	
+
 	uint32_t thread_count (this->threads);
 	
-	search.setArg (5, sizeof (uint32_t), &current);
-	current += thread_count * stepping;
-	queue.enqueueNDRangeKernel (search, 0, thread_count);
-	queue.enqueueReadBuffer (result_buffer, false, 0, sizeof(uint64_t), &result, nullptr, &events[0]);
-	while (result == 0)
+	do
 	{
 		search.setArg (5, sizeof (uint32_t), &current);
 		current += thread_count * stepping;
@@ -441,6 +435,7 @@ uint64_t nano_pow::opencl_driver::search_loop ()
 		events[0].wait ();
 		events[0] = events[1];
 	}
+	while (result == 0);
 	queue.finish ();
 	return result;
 }
@@ -461,23 +456,25 @@ uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 		queue.enqueueWriteBuffer (nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data ());
 	}
 	catch (cl::Error const & err) {
-		throw OCLDriverException(err, OCLDriverError::setup);
+		throw OCLDriverException (err, OCLDriverError::setup);
 	}
 
-	try {
-		fill_loop();
-	}
-	catch (cl::Error const & err) {
-		throw OCLDriverException(err, OCLDriverError::fill);
-	}
+	while (!result)
+	{
+		try {
+			fill_loop();
+		}
+		catch (cl::Error const & err) {
+			throw OCLDriverException (err, OCLDriverError::fill);
+		}
 
-	try {
-		result = search_loop ();
+		try {
+			result = search_loop ();
+		}
+		catch (cl::Error const & err) {
+			throw OCLDriverException (err, OCLDriverError::search);
+		}
 	}
-	catch (cl::Error const& err) {
-		throw OCLDriverException(err, OCLDriverError::search);
-	}
-
 	return result;
 }
 
