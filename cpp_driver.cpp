@@ -404,9 +404,10 @@ void nano_pow::cpp_driver::fill (uint32_t const count, uint32_t const begin)
 {
 	auto size_l (size);
 	auto nonce_l (nonce);
+	auto slab_l(slab);
 	for (uint32_t current (begin), end (current + count); current < end; ++current)
 	{
-		slab [slot (size_l, ::H0 (nonce_l, current))] = current;
+		slab_l [slot (size_l, ::H0 (nonce_l, current))] = current;
 	}
 }
 
@@ -416,11 +417,12 @@ uint64_t nano_pow::cpp_driver::search (uint32_t const count, uint32_t const begi
 	uint32_t lhs, rhs;
 	auto size_l (size);
 	auto nonce_l (nonce);
+	auto slab_l(slab);
 	for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
 	{
 		rhs = current;
 		auto hash_l (::H1 (nonce_l, rhs));
-		lhs = slab [slot (size_l, 0 - hash_l)];
+		lhs = slab_l [slot (size_l, 0 - hash_l)];
 		auto sum (::H0 (nonce_l, lhs) + hash_l);
 		// Check if the solution passes through the quick path then check it through the long path
 		incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (sum, difficulty_m);
