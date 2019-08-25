@@ -24,7 +24,7 @@ namespace nano_pow
 		bool memory_set (size_t memory) override;
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
-		bool find (size_t thread, size_t total_threads);
+		void find (size_t thread, size_t total_threads);
 		std::atomic<uint64_t> result { 0 };
 	private:
 		/**

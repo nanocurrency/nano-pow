@@ -429,10 +429,9 @@ uint64_t nano_pow::cpp_driver::search (uint32_t const count, uint32_t const begi
 	return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
 }
 
-bool nano_pow::cpp_driver::find (size_t thread, size_t total_threads)
+void nano_pow::cpp_driver::find (size_t thread, size_t total_threads)
 {
 	uint32_t last_fill (~0); // 0xFFFFFFFF
-	auto found (false);
 	while (result == 0) // job identifier, if we're still working on this job
 	{
 		uint64_t current_l (current.fetch_add (stepping));
@@ -451,10 +450,8 @@ bool nano_pow::cpp_driver::find (size_t thread, size_t total_threads)
 		if (result_l != 0)
 		{
 			result = result_l;
-			found = true;
 		}
 	}
-	return found;
 }
 
 void nano_pow::cpp_driver::run_loop (size_t thread_id)
@@ -470,12 +467,9 @@ void nano_pow::cpp_driver::run_loop (size_t thread_id)
 		{
 			auto threads_size (threads.size ());
 			lock.unlock ();
-			auto found (find (thread_id, threads_size));
+			find (thread_id, threads_size);
 			lock.lock ();
-			if (found)
-			{
-				condition.notify_one ();
-			}
+			condition.notify_one ();
 		}
 	}
 }
