@@ -328,8 +328,7 @@ uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	barrier (lock);
-	complete = false;
-	can_set.clear ();
+	result = 0;
 	current = 0;
 	enable = true;
 	this->nonce [0] = nonce [0];
@@ -434,7 +433,7 @@ bool nano_pow::cpp_driver::find (unsigned ticket_a, size_t thread, size_t total_
 {
 	uint32_t last_fill (~0); // 0xFFFFFFFF
 	auto found (false);
-	while (!complete) // job identifier, if we're still working on this job
+	while (result == 0) // job identifier, if we're still working on this job
 	{
 		uint64_t current_l (current.fetch_add (stepping));
 		uint32_t fill_iteration (static_cast<uint32_t> (current_l >> 32));
@@ -451,14 +450,8 @@ bool nano_pow::cpp_driver::find (unsigned ticket_a, size_t thread, size_t total_
 		auto result_l (search (stepping, search_iteration));
 		if (result_l != 0)
 		{
-			// solution found!
-			// Increment the job counter, and set the results to the found preimage
-			if (!can_set.test_and_set ())
-			{
-				complete = true;
-				result = result_l;
-				found = true;
-			}
+			result = result_l;
+			found = true;
 		}
 	}
 	return found;

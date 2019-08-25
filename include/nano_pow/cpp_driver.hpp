@@ -49,8 +49,6 @@ namespace nano_pow
 		 */
 		uint64_t search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
 		std::atomic<uint64_t> current { 0 };
-		std::atomic_flag can_set;
-		std::atomic_bool complete;
 		static uint32_t constexpr stepping { 1024 };
 		void barrier (std::unique_lock<std::mutex> & lock);
 		void run_loop (size_t);
