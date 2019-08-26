@@ -330,24 +330,15 @@ nano_pow::cpp_driver::~cpp_driver ()
 	memory_set (0);
 }
 
-void nano_pow::cpp_driver::barrier (std::unique_lock<std::mutex> & lock)
-{
-	condition.wait (lock, [this] () { return ready == threads.size (); });
-}
-
 uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 {
-	std::unique_lock<std::mutex> lock (mutex);
-	barrier (lock);
-	complete = false;
-	can_set.clear ();
+	threads.barrier ();
+	result = 0;
 	current = 0;
-	enable = true;
 	this->nonce [0] = nonce [0];
 	this->nonce [1] = nonce [1];
-	worker_condition.notify_all ();
-	condition.wait (lock);
-	enable = false;
+	find ();
+	threads.barrier ();
 	return result;
 }
 
@@ -375,24 +366,7 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 
 void nano_pow::cpp_driver::threads_set (unsigned threads)
 {
-	std::unique_lock<std::mutex> lock (mutex);
-	barrier (lock);
-	while (this->threads.size () < threads)
-	{
-		this->threads.push_back (std::make_unique<std::thread> ([this, i=this->threads.size ()] () {
-			run_loop (i);
-			condition.notify_one ();
-		}));
-	}
-	while (this->threads.size () > threads)
-	{
-		auto thread (std::move (this->threads.back ()));
-		worker_condition.notify_all ();
-		lock.unlock ();
-		thread->join ();
-		lock.lock ();
-		this->threads.pop_back ();
-	}
+	this->threads.resize (threads);
 }
 
 size_t nano_pow::cpp_driver::threads_get () const
@@ -411,8 +385,17 @@ uint64_t nano_pow::cpp_driver::difficulty_get () const
 	return difficulty_m;
 }
 
-void nano_pow::cpp_driver::fill (uint32_t const count, uint32_t const begin)
+std::string to_string_hex (uint32_t value_a)
 {
+	std::stringstream stream;
+	stream << std::hex << std::noshowbase << std::setw (8) << std::setfill ('0');
+	stream << value_a;
+	return stream.str ();
+}
+
+void nano_pow::cpp_driver::fill (uint32_t const begin, uint32_t const count)
+{
+	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab);
@@ -422,78 +405,134 @@ void nano_pow::cpp_driver::fill (uint32_t const count, uint32_t const begin)
 	}
 }
 
-uint64_t nano_pow::cpp_driver::search (uint32_t const count, uint32_t const begin)
+void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
 {
-	auto incomplete (true);
-	uint32_t lhs, rhs;
+	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab);
-	for (uint32_t current (begin), end (current + count); incomplete && current < end; ++current)
+	for (uint32_t i (begin), n (begin + count); result == 0 && i < n; i += stepping)
 	{
-		rhs = current;
-		auto hash_l (::H1 (nonce_l, rhs));
-		lhs = slab_l [slot (size_l, 0 - hash_l)];
-		auto sum (::H0 (nonce_l, lhs) + hash_l);
-		// Check if the solution passes through the quick path then check it through the long path
-		incomplete = !passes_quick (sum, difficulty_inv) || !passes_sum (sum, difficulty_m);
-	}
-	return incomplete ? 0 : (static_cast <uint64_t> (lhs) << 32) | rhs;
-}
-
-bool nano_pow::cpp_driver::find (unsigned ticket_a, size_t thread, size_t total_threads)
-{
-	uint32_t last_fill (~0); // 0xFFFFFFFF
-	auto found (false);
-	while (!complete) // job identifier, if we're still working on this job
-	{
-		uint64_t current_l (current.fetch_add (stepping));
-		uint32_t fill_iteration (static_cast<uint32_t> (current_l >> 32));
-		uint32_t search_iteration (static_cast<uint32_t> (current_l >> 0));
-		if (fill_iteration != last_fill) // top half of current_l
+		//std::cerr << (std::string ("Between ") + to_string_hex(i) + ' ' + to_string_hex(n) + '\n');
+		uint64_t result_l (0);
+		for (uint32_t j (0), m (stepping); result_l == 0 && j < m; ++j)
 		{
-			// fill the memory with 1/threads preimages
-			// i.e. this thread's fair share.
-			uint32_t allowance (static_cast<uint32_t> (size / total_threads));
-			last_fill = fill_iteration;
-			uint32_t fill_count (static_cast<uint32_t> (last_fill * size + thread * allowance));
-			fill (allowance, fill_count);
-		}
-		auto result_l (search (stepping, search_iteration));
-		if (result_l != 0)
-		{
-			// solution found!
-			// Increment the job counter, and set the results to the found preimage
-			if (!can_set.test_and_set ())
+			uint32_t rhs = i + j;
+			auto hash_l (::H1 (nonce_l, rhs));
+			uint32_t lhs = slab_l [slot (size_l, 0 - hash_l)];
+			auto sum (::H0 (nonce_l, lhs) + hash_l);
+			// Check if the solution passes through the quick path then check it through the long path
+			if (!passes_quick (sum, difficulty_inv))
 			{
-				complete = true;
-				result = result_l;
-				found = true;
+				// Likely
+			}
+			else
+			{
+				if (passes_sum (sum, difficulty_m))
+				{
+					result_l = (static_cast <uint64_t> (lhs) << 32) | rhs;
+				}
 			}
 		}
+		if (result_l != 0)
+		{
+			result = result_l;
+		}
 	}
-	return found;
 }
 
-void nano_pow::cpp_driver::run_loop (size_t thread_id)
+void nano_pow::cpp_driver::find ()
+{
+	threads.barrier();
+	while (result == 0)
+	{
+		auto fill_start(std::chrono::system_clock::now());
+		threads.execute ([this] (size_t thread_id, size_t total_threads) {
+			auto count (fill_count ());
+			fill (current.fetch_add (count / total_threads), count / total_threads);
+		});
+		threads.barrier ();
+		auto search_start(std::chrono::system_clock::now());
+		threads.execute ([this] (size_t thread_id, size_t total_threads) { search (std::numeric_limits<uint32_t>::max () / total_threads * thread_id, std::numeric_limits<uint32_t>::max () / total_threads); });
+		threads.barrier ();
+		std::cerr << (std::string ("Fill: ") + std::to_string (std::chrono::duration_cast<std::chrono::milliseconds> (search_start - fill_start).count ()) + " search: " + std::to_string (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now () - search_start).count()) + "\t\t");
+	}
+}
+
+void nano_pow::thread_pool::barrier ()
+{
+	std::unique_lock<std::mutex> lock (mutex);
+	finish.wait (lock, [this] () { return ready == threads.size (); });
+}
+
+void nano_pow::thread_pool::resize (size_t threads)
+{
+	barrier ();
+	{
+		std::unique_lock<std::mutex> lock (mutex);
+		while (this->threads.size () < threads)
+		{
+			this->threads.push_back (std::make_unique<std::thread> ([this, i=this->threads.size ()] () {
+				loop (i);
+			}));
+		}
+		while (this->threads.size () > threads)
+		{
+			auto thread (std::move (this->threads.back ()));
+			ready = 0;
+			start.notify_all ();
+			lock.unlock ();
+			thread->join ();
+			lock.lock ();
+			this->threads.pop_back ();
+		}
+	}
+	barrier ();
+}
+
+void nano_pow::thread_pool::execute (std::function<void(size_t, size_t)> operation)
+{
+	barrier ();
+	this->operation = operation;
+	ready = 0;
+	start.notify_all ();
+}
+
+void nano_pow::thread_pool::stop ()
+{
+	barrier ();
+	resize (0);
+	assert (ready == 0);
+	assert (!operation);
+}
+
+void nano_pow::thread_pool::loop (size_t thread_id)
 {
 	std::unique_lock<std::mutex> lock (mutex);
 	while (threads [thread_id] != nullptr)
 	{
 		++ready;
-		condition.notify_one ();
-		worker_condition.wait (lock);
-		--ready;
-		if (enable && threads [thread_id] != nullptr)
+		finish.notify_all ();
+		start.wait (lock);
+		if (operation && threads [thread_id] != nullptr)
 		{
 			auto threads_size (threads.size ());
 			lock.unlock ();
-			auto found (find (0, thread_id, threads_size));
+			operation (thread_id, threads_size);
 			lock.lock ();
-			if (found)
-			{
-				condition.notify_one ();
-			}
 		}
 	}
+}
+
+size_t nano_pow::thread_pool::size () const
+{
+	std::lock_guard<std::mutex> lock (mutex);
+	return threads.size ();
+}
+
+uint32_t nano_pow::cpp_driver::fill_count () const
+{
+	auto low_fill = std::min (std::numeric_limits<uint32_t>::max () / 3, static_cast<uint32_t>(size)) * 3;
+	auto critical_size (size * size >= (difficulty_inv + 1));
+	return critical_size ? size : low_fill;
 }

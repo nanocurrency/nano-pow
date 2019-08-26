@@ -6,12 +6,30 @@
 
 #include <array>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <thread>
 #include <vector>
 
 namespace nano_pow
 {
+	class thread_pool
+	{
+	public:
+		void resize (size_t);
+		void barrier ();
+		void execute (std::function<void(size_t, size_t)>);
+		void stop ();
+		size_t size () const;
+	private:
+		void loop (size_t thread_id);
+		size_t ready { 0 };
+		std::function<void(size_t, size_t)> operation;
+		std::vector<std::unique_ptr<std::thread>> threads;
+		std::condition_variable finish;
+		std::condition_variable start;
+		mutable std::mutex mutex;
+	};
 	class cpp_driver : public driver
 	{
 	public:
@@ -24,7 +42,7 @@ namespace nano_pow
 		bool memory_set (size_t memory) override;
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
-		bool find (unsigned ticket_a, size_t thread, size_t total_threads);
+		void find ();
 		std::atomic<uint64_t> result { 0 };
 	private:
 		/**
@@ -47,21 +65,15 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		uint64_t search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
+		void search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
 		std::atomic<uint64_t> current { 0 };
-		std::atomic_flag can_set;
-		std::atomic_bool complete;
 		static uint32_t constexpr stepping { 1024 };
-		void barrier (std::unique_lock<std::mutex> & lock);
-		void run_loop (size_t);
-		std::atomic<unsigned> ready { 0 };
-		bool enable { false };
-		std::vector<std::unique_ptr<std::thread>> threads;
-		std::mutex mutex;
+		thread_pool threads;
 		std::condition_variable condition;
-		std::condition_variable worker_condition;
+		mutable std::mutex mutex;
 		uint64_t difficulty_m;
 		uint64_t difficulty_inv;
+		uint32_t fill_count () const;
 		size_t size { 0 };
 		uint32_t * slab { nullptr };
 	public:
