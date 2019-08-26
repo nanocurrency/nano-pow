@@ -374,7 +374,7 @@ uint64_t nano_pow::cpp_driver::difficulty_get () const
 	return difficulty_m;
 }
 
-void nano_pow::cpp_driver::fill (uint32_t const count, uint32_t const begin)
+void nano_pow::cpp_driver::fill (uint32_t const begin, uint32_t const count)
 {
 	auto size_l (size);
 	auto nonce_l (nonce);
@@ -385,49 +385,55 @@ void nano_pow::cpp_driver::fill (uint32_t const count, uint32_t const begin)
 	}
 }
 
+std::string to_string_hex (uint32_t value_a)
+{
+	std::stringstream stream;
+	stream << std::hex << std::noshowbase << std::setw (8) << std::setfill ('0');
+	stream << value_a;
+	return stream.str ();
+}
+
 void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
 {
-	uint32_t lhs, rhs;
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab);
-	for (uint32_t current (begin), end (current + count); result == 0 && current < end; ++current)
+	for (uint32_t i (begin), n (begin + count / stepping); result == 0 && i < n; i += stepping)
 	{
-		rhs = current;
-		auto hash_l (::H1 (nonce_l, rhs));
-		lhs = slab_l [slot (size_l, 0 - hash_l)];
-		auto sum (::H0 (nonce_l, lhs) + hash_l);
-		// Check if the solution passes through the quick path then check it through the long path
-		if (!passes_quick (sum, difficulty_inv))
+		uint64_t result_l (0);
+		for (uint32_t j (0), m (stepping); result_l == 0 && j < m; ++j)
 		{
-			// Likely
-		}
-		else
-		{
-			if (passes_sum (sum, difficulty_m))
+			uint32_t rhs = i + j;
+			auto hash_l (::H1 (nonce_l, rhs));
+			uint32_t lhs = slab_l [slot (size_l, 0 - hash_l)];
+			auto sum (::H0 (nonce_l, lhs) + hash_l);
+			// Check if the solution passes through the quick path then check it through the long path
+			if (!passes_quick (sum, difficulty_inv))
 			{
-				result = (static_cast <uint64_t> (lhs) << 32) | rhs;
+				// Likely
 			}
+			else
+			{
+				if (passes_sum (sum, difficulty_m))
+				{
+					result_l = (static_cast <uint64_t> (lhs) << 32) | rhs;
+				}
+			}
+		}
+		if (result_l != 0)
+		{
+			result = result_l;
 		}
 	}
 }
 
 void nano_pow::cpp_driver::find (size_t thread, size_t total_threads)
 {
-	uint32_t last_fill (~0); // 0xFFFFFFFF
-	while (result == 0) // job identifier, if we're still working on this job
+	while (result == 0)
 	{
-		uint64_t current_l (current.fetch_add (stepping));
-		uint32_t fill_iteration (static_cast<uint32_t> (current_l >> 32));
-		if (fill_iteration != last_fill) // top half of current_l
-		{
-			// fill the memory with 1/threads preimages
-			// i.e. this thread's fair share.
-			uint32_t allowance (static_cast<uint32_t> (size / total_threads));
-			last_fill = fill_iteration;
-			uint32_t fill_count (static_cast<uint32_t> (last_fill * size + thread * allowance));
-			fill (allowance, fill_count);
-		}
+		uint32_t fill_count (static_cast<uint32_t> (size / total_threads));
+		uint64_t fill_begin (current.fetch_add (fill_count));
+		fill (fill_begin, fill_count);
 		uint32_t search_count (std::numeric_limits<uint32_t>::max () / total_threads);
 		uint32_t search_begin (search_count * thread);
 		search (search_begin, search_count);
