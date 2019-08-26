@@ -42,7 +42,7 @@ namespace nano_pow
 		bool memory_set (size_t memory) override;
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
-		void find (size_t thread, size_t total_threads);
+		void find ();
 		std::atomic<uint64_t> result { 0 };
 	private:
 		/**
@@ -73,6 +73,7 @@ namespace nano_pow
 		mutable std::mutex mutex;
 		uint64_t difficulty_m;
 		uint64_t difficulty_inv;
+		uint32_t fill_count () const;
 		size_t size { 0 };
 		uint32_t * slab { nullptr };
 	public:

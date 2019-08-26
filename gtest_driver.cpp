@@ -8,7 +8,7 @@ TEST (context, difficulty)
 	std::array<uint64_t, 2> nonce = { 0, 0 };
 	nano_pow::cpp_driver driver;
 	driver.nonce = nonce;
-	driver.find (0, 1);
+	driver.find ();
 	auto difficulty (nano_pow::difficulty (nonce, driver.result));
 	ASSERT_NE (0, difficulty);
 	ASSERT_EQ (0xff, difficulty >> 56);

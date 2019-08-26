@@ -326,7 +326,7 @@ uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 	current = 0;
 	this->nonce [0] = nonce [0];
 	this->nonce [1] = nonce [1];
-	threads.execute ([this] (size_t thread_id, size_t total_threads) { find (thread_id, total_threads); });
+	find ();
 	threads.barrier ();
 	return result;
 }
@@ -374,8 +374,17 @@ uint64_t nano_pow::cpp_driver::difficulty_get () const
 	return difficulty_m;
 }
 
+std::string to_string_hex (uint32_t value_a)
+{
+	std::stringstream stream;
+	stream << std::hex << std::noshowbase << std::setw (8) << std::setfill ('0');
+	stream << value_a;
+	return stream.str ();
+}
+
 void nano_pow::cpp_driver::fill (uint32_t const begin, uint32_t const count)
 {
+	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab);
@@ -385,21 +394,15 @@ void nano_pow::cpp_driver::fill (uint32_t const begin, uint32_t const count)
 	}
 }
 
-std::string to_string_hex (uint32_t value_a)
-{
-	std::stringstream stream;
-	stream << std::hex << std::noshowbase << std::setw (8) << std::setfill ('0');
-	stream << value_a;
-	return stream.str ();
-}
-
 void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
 {
+	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab);
-	for (uint32_t i (begin), n (begin + count / stepping); result == 0 && i < n; i += stepping)
+	for (uint32_t i (begin), n (begin + count); result == 0 && i < n; i += stepping)
 	{
+		//std::cerr << (std::string ("Between ") + to_string_hex(i) + ' ' + to_string_hex(n) + '\n');
 		uint64_t result_l (0);
 		for (uint32_t j (0), m (stepping); result_l == 0 && j < m; ++j)
 		{
@@ -427,16 +430,18 @@ void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
 	}
 }
 
-void nano_pow::cpp_driver::find (size_t thread, size_t total_threads)
+void nano_pow::cpp_driver::find ()
 {
 	while (result == 0)
 	{
-		uint32_t fill_count (static_cast<uint32_t> (size / total_threads));
-		uint64_t fill_begin (current.fetch_add (fill_count));
-		fill (fill_begin, fill_count);
-		uint32_t search_count (std::numeric_limits<uint32_t>::max () / total_threads);
-		uint32_t search_begin (search_count * thread);
-		search (search_begin, search_count);
+		threads.barrier ();
+		threads.execute ([this] (size_t thread_id, size_t total_threads) {
+			auto count (fill_count ());
+			fill (current.fetch_add (count / total_threads), count / total_threads);
+			
+		});
+		threads.barrier ();
+		threads.execute ([this] (size_t thread_id, size_t total_threads) { search (std::numeric_limits<uint32_t>::max () / total_threads * thread_id, std::numeric_limits<uint32_t>::max () / total_threads); });
 	}
 }
 
@@ -509,4 +514,18 @@ size_t nano_pow::thread_pool::size () const
 {
 	std::lock_guard<std::mutex> lock (mutex);
 	return threads.size ();
+}
+
+uint32_t nano_pow::cpp_driver::fill_count () const
+{
+	// Amount to fill if we're lookup bound i.e. lookup table is smaller than optimal
+	// We want to fill a large portion of the entries in the table since our table is already tight
+	// Too low of a fill ratio and we have a lot of uninitialized entries in the table
+	// Too high of a fill ratio and we're overwriting too many correct values to be beneficial
+	auto lookup_bound_fill_ratio (3);
+	auto lookup_bound (std::min (std::numeric_limits<uint32_t>::max () / lookup_bound_fill_ratio, static_cast<uint32_t>(size)) * lookup_bound_fill_ratio);
+	// Amount to fill if we're difficulty bound
+	auto difficulty_bound (difficulty_inv + 1);
+	for (uint64_t i (difficulty_bound); i != 0; i >>= 2, difficulty_bound >>= 1);
+	return std::min (lookup_bound, static_cast<uint32_t>(difficulty_bound));
 }
