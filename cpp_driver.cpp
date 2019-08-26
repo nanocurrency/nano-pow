@@ -432,16 +432,19 @@ void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
 
 void nano_pow::cpp_driver::find ()
 {
+	threads.barrier();
 	while (result == 0)
 	{
-		threads.barrier ();
+		auto fill_start(std::chrono::system_clock::now());
 		threads.execute ([this] (size_t thread_id, size_t total_threads) {
 			auto count (fill_count ());
 			fill (current.fetch_add (count / total_threads), count / total_threads);
-			
 		});
 		threads.barrier ();
+		auto search_start(std::chrono::system_clock::now());
 		threads.execute ([this] (size_t thread_id, size_t total_threads) { search (std::numeric_limits<uint32_t>::max () / total_threads * thread_id, std::numeric_limits<uint32_t>::max () / total_threads); });
+		threads.barrier ();
+		std::cerr << (std::string ("Fill: ") + std::to_string (std::chrono::duration_cast<std::chrono::milliseconds> (search_start - fill_start).count ()) + " search: " + std::to_string (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now () - search_start).count()) + "\t\t");
 	}
 }
 
@@ -518,14 +521,7 @@ size_t nano_pow::thread_pool::size () const
 
 uint32_t nano_pow::cpp_driver::fill_count () const
 {
-	// Amount to fill if we're lookup bound i.e. lookup table is smaller than optimal
-	// We want to fill a large portion of the entries in the table since our table is already tight
-	// Too low of a fill ratio and we have a lot of uninitialized entries in the table
-	// Too high of a fill ratio and we're overwriting too many correct values to be beneficial
-	auto lookup_bound_fill_ratio (3);
-	auto lookup_bound (std::min (std::numeric_limits<uint32_t>::max () / lookup_bound_fill_ratio, static_cast<uint32_t>(size)) * lookup_bound_fill_ratio);
-	// Amount to fill if we're difficulty bound
-	auto difficulty_bound (difficulty_inv + 1);
-	for (uint64_t i (difficulty_bound); i != 0; i >>= 2, difficulty_bound >>= 1);
-	return std::min (lookup_bound, static_cast<uint32_t>(difficulty_bound));
+	auto low_fill = std::min (std::numeric_limits<uint32_t>::max () / 3, static_cast<uint32_t>(size)) * 3;
+	auto critical_size (size * size >= (difficulty_inv + 1));
+	return critical_size ? size : low_fill;
 }
