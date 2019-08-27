@@ -93,8 +93,6 @@ namespace nano_pow
 	private:
 		void fill () override;
 		uint64_t search () override;
-		void fill_loop ();
-		uint64_t search_loop ();
 		opencl_environment environment;
 		cl::Context context;
 		cl::Program program;
@@ -111,5 +109,6 @@ namespace nano_pow
 		cl::Buffer result_buffer { 0 };
 		cl::Buffer nonce_buffer { 0 };
 		uint32_t stepping { 256 };
+		uint32_t current_fill { 0 };
 	};
 }

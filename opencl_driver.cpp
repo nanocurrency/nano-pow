@@ -403,7 +403,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 
 void nano_pow::opencl_driver::fill ()
 {
-	auto current (0);
+	uint64_t current (current_fill);
 	uint32_t thread_count (this->threads);
 
 	do
@@ -412,14 +412,15 @@ void nano_pow::opencl_driver::fill ()
 		current += thread_count * stepping;
 		queue.enqueueNDRangeKernel(fill_impl, 0, thread_count);
 	}
-	while (current < slab_entries);
+	while (current < current_fill + slab_entries);
+	current_fill += slab_entries;
 }
 
 uint64_t nano_pow::opencl_driver::search ()
 {
 	std::array <cl::Event , 2 > events;
 
-	uint32_t current (0);
+	uint64_t current (0);
 	uint64_t result (0);
 
 	uint32_t thread_count (this->threads);
@@ -433,7 +434,7 @@ uint64_t nano_pow::opencl_driver::search ()
 		events[0].wait ();
 		events[0] = events[1];
 	}
-	while (result == 0);
+	while (result == 0 && current < std::numeric_limits<uint32_t>::max ());
 	return result;
 }
 
