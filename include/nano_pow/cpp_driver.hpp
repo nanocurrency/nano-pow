@@ -42,7 +42,6 @@ namespace nano_pow
 		bool memory_set (size_t memory) override;
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
-		void find ();
 		std::atomic<uint64_t> result { 0 };
 	private:
 		/**
@@ -55,7 +54,8 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		void fill (uint32_t const count, uint32_t const begin = 0);
+		void fill_impl (uint32_t const count, uint32_t const begin = 0);
+		virtual void fill () override;
 		
 		/**
 		 * Searches for a solution to difficulty problem
@@ -65,7 +65,8 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		void search (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
+		void search_impl (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
+		virtual uint64_t search () override;
 		std::atomic<uint64_t> current { 0 };
 		static uint32_t constexpr stepping { 1024 };
 		thread_pool threads;

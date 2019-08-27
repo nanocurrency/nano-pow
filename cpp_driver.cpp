@@ -321,14 +321,11 @@ nano_pow::cpp_driver::~cpp_driver ()
 
 uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 {
-	threads.barrier ();
 	result = 0;
 	current = 0;
 	this->nonce [0] = nonce [0];
 	this->nonce [1] = nonce [1];
-	find ();
-	threads.barrier ();
-	return result;
+	return nano_pow::driver::solve (nonce);
 }
 
 void nano_pow::cpp_driver::dump () const
@@ -382,7 +379,7 @@ std::string to_string_hex (uint32_t value_a)
 	return stream.str ();
 }
 
-void nano_pow::cpp_driver::fill (uint32_t const begin, uint32_t const count)
+void nano_pow::cpp_driver::fill_impl (uint32_t const begin, uint32_t const count)
 {
 	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
@@ -394,7 +391,7 @@ void nano_pow::cpp_driver::fill (uint32_t const begin, uint32_t const count)
 	}
 }
 
-void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
+void nano_pow::cpp_driver::search_impl (uint32_t const begin, uint32_t const count)
 {
 	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
@@ -430,22 +427,31 @@ void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
 	}
 }
 
-void nano_pow::cpp_driver::find ()
+void nano_pow::cpp_driver::fill ()
 {
-	threads.barrier();
+	threads.execute ([this] (size_t thread_id, size_t total_threads) {
+		auto count (fill_count ());
+		fill_impl (current.fetch_add (count / total_threads), count / total_threads);
+	});
+	threads.barrier ();
+}
+
+uint64_t nano_pow::cpp_driver::search ()
+{
+	threads.execute ([this] (size_t thread_id, size_t total_threads) { search_impl (std::numeric_limits<uint32_t>::max () / total_threads * thread_id, std::numeric_limits<uint32_t>::max () / total_threads); });
+	threads.barrier ();
+	return result;
+}
+
+uint64_t nano_pow::driver::solve (std::array<uint64_t, 2> nonce)
+{
+	uint64_t result (0);
 	while (result == 0)
 	{
-		auto fill_start(std::chrono::system_clock::now());
-		threads.execute ([this] (size_t thread_id, size_t total_threads) {
-			auto count (fill_count ());
-			fill (current.fetch_add (count / total_threads), count / total_threads);
-		});
-		threads.barrier ();
-		auto search_start(std::chrono::system_clock::now());
-		threads.execute ([this] (size_t thread_id, size_t total_threads) { search (std::numeric_limits<uint32_t>::max () / total_threads * thread_id, std::numeric_limits<uint32_t>::max () / total_threads); });
-		threads.barrier ();
-		std::cerr << (std::string ("Fill: ") + std::to_string (std::chrono::duration_cast<std::chrono::milliseconds> (search_start - fill_start).count ()) + " search: " + std::to_string (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now () - search_start).count()) + "\t\t");
+		fill ();
+		result = search ();
 	}
+	return result;
 }
 
 void nano_pow::thread_pool::barrier ()
