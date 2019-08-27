@@ -12,9 +12,10 @@
 #include <vector>
 
 #ifdef _WIN32
-#include <plat/win/mman.h>
 #define NP_INLINE __forceinline
+#include <plat/win/mman.h>
 #else
+#define NP_INLINE __attribute__((always_inline))
 #include <sys/mman.h>
 #endif
 
