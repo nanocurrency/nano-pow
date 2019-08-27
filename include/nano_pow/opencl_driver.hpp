@@ -91,8 +91,8 @@ namespace nano_pow
 		uint64_t solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
 	private:
-		void fill_loop ();
-		uint64_t search_loop ();
+		void fill () override;
+		uint64_t search () override;
 		opencl_environment environment;
 		cl::Context context;
 		cl::Program program;
@@ -103,11 +103,12 @@ namespace nano_pow
 		uint64_t slab_size;
 		uint64_t slab_entries;
 		cl::Device selected_device;
-		cl::Kernel fill { 0 };
-		cl::Kernel search { 0 };
+		cl::Kernel fill_impl { 0 };
+		cl::Kernel search_impl { 0 };
 		cl::CommandQueue queue;
 		cl::Buffer result_buffer { 0 };
 		cl::Buffer nonce_buffer { 0 };
 		uint32_t stepping { 256 };
+		uint32_t current_fill { 0 };
 	};
 }
