@@ -243,21 +243,21 @@ static bool passes_sum (ulong const sum_a, ulong threshold_a)
 	return passed;
 }
 
-__kernel void search (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, uint const count, uint const begin, ulong const threshold_a)
+__kernel void search (__global ulong * result_a, __global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, uint const count_a, uint const begin_a, ulong const threshold_a)
 {
-	//printf ("[%lu] Search %llu %llu %llx\n", get_global_id (0), slab_a, size_a, threshold_a);
+	//printf ("[%llu] Search (%llx) size %llu begin %lu count %lu\n", get_global_id (0), threshold_a, size_a, begin_a, count_a);
 	bool incomplete = true;
 	uint lhs, rhs;
 	nonce_t nonce_l;
 	nonce_l.values [0] = nonce_a [0];
 	nonce_l.values [1] = nonce_a [1];
-	for (uint current = begin + get_global_id (0) * count, end = current + count; incomplete && current < end; ++current)
+	for (uint current = begin_a + get_global_id (0) * count_a, end = current + count_a; incomplete && current < end; ++current)
 	{
 		rhs = current;
 		ulong hash_l = H1 (nonce_l, rhs);
 		lhs = slab_a [slot (size_a, 0 - hash_l)];
 		ulong sum = H0 (nonce_l, lhs) + hash_l;
-		//printf ("%lu %lx %lu %lx\n", lhs, hash_l, rhs, hash2);
+		//printf ("%lu %lx %lu %lx\n", lhs, hash_l, rhs, sum);
 		incomplete = !passes_quick (sum, threshold_a) || !passes_sum (sum, reverse (threshold_a));
 	}
 	if (!incomplete)
@@ -266,17 +266,17 @@ __kernel void search (__global ulong * result_a, __global uint * const slab_a, u
 	}
 }
 
-__kernel void fill (__global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, uint const count, uint const begin)
+__kernel void fill (__global uint * const slab_a, ulong const size_a, __global ulong * const nonce_a, uint const count_a, uint const begin_a)
 {
+	//printf ("[%llu] Fill size %llu begin %lu count %lu\n", get_global_id (0), size_a, begin_a, count_a);
 	nonce_t nonce_l;
 	nonce_l.values [0] = nonce_a [0];
 	nonce_l.values [1] = nonce_a [1];
-	//printf ("[%lu] Fill %llu %llu\n", get_global_id (0), slab_a, size_a);
-	for (uint current = begin + get_global_id (0) * count, end = current + count; current < end && current < size_a; ++current)
+	for (uint current = begin_a + get_global_id (0) * count_a, end = current + count_a; current < end; ++current)
 	{
 		ulong slot_l = slot (size_a, H0 (nonce_l, current));
-		//printf ("Writing %llu to %llu\n", current, slot_l);
 		slab_a [slot_l] = current;
+		//printf ("[%llu] Writing current %lu to slot %llu\n", get_global_id (0), current, slot_l);
 	}
 }
 )%%%";
@@ -356,10 +356,10 @@ threads (8192)
 		nonce_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(uint64_t) * 2);
 		search_impl.setArg(3, nonce_buffer);
 		fill_impl.setArg(2, nonce_buffer);
-		queue = cl::CommandQueue(context, selected_device);
-		queue.finish();
 		search_impl.setArg(4, stepping);
 		fill_impl.setArg(3, stepping);
+		queue = cl::CommandQueue(context, selected_device);
+		queue.finish();
 	}
 	catch (cl::Error const & err) {
 		auto details (program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(selected_device));
@@ -406,13 +406,12 @@ void nano_pow::opencl_driver::fill ()
 	uint64_t current (current_fill);
 	uint32_t thread_count (this->threads);
 	try {
-		do
+		while (current < current_fill + slab_entries)
 		{
-			fill_impl.setArg(4, sizeof(uint32_t), &current);
-			current += thread_count * stepping;
+			fill_impl.setArg(4, static_cast<uint32_t> (current));
 			queue.enqueueNDRangeKernel(fill_impl, 0, thread_count);
+			current += thread_count * stepping;
 		}
-		while (current < current_fill + slab_entries);
 		current_fill += slab_entries;
 	}
 	catch (cl::Error const& err) {
@@ -430,16 +429,15 @@ uint64_t nano_pow::opencl_driver::search ()
 	uint32_t thread_count (this->threads);
 	
 	try {
-		do
+		while (result == 0 && current < std::numeric_limits<uint32_t>::max())
 		{
-			search_impl.setArg(5, sizeof(uint32_t), &current);
+			search_impl.setArg(5, static_cast<uint32_t> (current));
 			current += thread_count * stepping;
 			queue.enqueueNDRangeKernel(search_impl, 0, thread_count);
 			queue.enqueueReadBuffer(result_buffer, false, 0, sizeof(uint64_t), &result, nullptr, &events[0]);
 			events[0].wait();
 			events[0] = events[1];
 		}
-		while (result == 0 && current < std::numeric_limits<uint32_t>::max());
 	}
 	catch (cl::Error const& err) {
 		throw OCLDriverException(err, OCLDriverError::search);
@@ -450,7 +448,6 @@ uint64_t nano_pow::opencl_driver::search ()
 uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 {
 	uint64_t result{ 0 };
-
 	try {
 		search_impl.setArg (1, slab);
 		search_impl.setArg (2, slab_entries);
