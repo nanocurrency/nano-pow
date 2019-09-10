@@ -2,6 +2,7 @@
 #include <nano_pow/cpp_driver.hpp>
 #include <nano_pow/opencl_driver.hpp>
 #include <gtest/gtest.h>
+#include <fstream>
 #include <cxxopts.hpp>
 
 namespace
@@ -191,6 +192,9 @@ int main (int argc, char **argv)
 	catch (nano_pow::OCLDriverException const& err) {
 		std::cerr << "OpenCL error" << std::endl;
 		err.print(std::cerr);
+	}
+	catch (std::ifstream::failure const&) {
+		std::cerr << "Unable to read file " << OPENCL_PROGRAM_FILE << std::endl;
 	}
 	return result;
 }

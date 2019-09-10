@@ -13,6 +13,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # add_compile_options(-Wall -Wextra -pedantic)
 
+add_definitions (-DOPENCL_PROGRAM_FILE="${CMAKE_SOURCE_DIR}/opencl_program.cl")
+
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
 	SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINK_FLAGS}" )
