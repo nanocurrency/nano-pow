@@ -8,9 +8,10 @@
 #include <string>
 #include <chrono>
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
+namespace nano_pow
+{
+	extern std::string opencl_program;
+}
 
 nano_pow::opencl_environment::opencl_environment ()
 {
@@ -77,15 +78,8 @@ threads (8192)
 	cl_context_properties contextProperties[3] { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platform_properties), 0 };
 	context = cl::Context (selected_device, contextProperties);
 	std::vector<cl::Device> program_devices{ selected_device };
-	{
-		std::ifstream program_file;
-		program_file.open(OPENCL_PROGRAM_FILE);
-		program_file.exceptions(std::ifstream::badbit);
-		std::stringstream program_source;
-		program_source << program_file.rdbuf();
-		program = cl::Program(context, program_source.str(), false);
-	}
 	try {
+		program = cl::Program(context, nano_pow::opencl_program, false);
 		program.build (program_devices, nullptr, nullptr);
 		fill_impl = cl::Kernel(program, "fill");
 		search_impl = cl::Kernel(program, "search");

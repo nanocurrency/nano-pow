@@ -76,7 +76,7 @@ namespace nano_pow
 		uint64_t difficulty_inv;
 		uint32_t fill_count () const;
 		size_t size { 0 };
-		uint32_t * slab { nullptr };
+		uint8_t * slab { nullptr };
 	public:
 		std::array<uint64_t, 2> nonce { { 0, 0 } };
 	};

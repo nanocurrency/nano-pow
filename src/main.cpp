@@ -193,8 +193,5 @@ int main (int argc, char **argv)
 		std::cerr << "OpenCL error" << std::endl;
 		err.print(std::cerr);
 	}
-	catch (std::ifstream::failure const&) {
-		std::cerr << "Unable to read file " << OPENCL_PROGRAM_FILE << std::endl;
-	}
 	return result;
 }
