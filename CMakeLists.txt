@@ -14,13 +14,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # add_compile_options(-Wall -Wextra -pedantic)
 
 file(READ src/opencl_program.cl opencl_program)
-file(WRITE src/opencl_program.cpp "#include <string>
-namespace nano_pow
-{
-std::string opencl_program = R\"OCL(
-${opencl_program}
-)OCL\";
-}")
+file(WRITE src/opencl_program.cpp "#include <string>\n"
+"namespace nano_pow\n"
+"{\n"
+"std::string opencl_program = R\"OCL(\n"
+"${opencl_program}\n"
+")OCL\";\n"
+"}")
 
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
