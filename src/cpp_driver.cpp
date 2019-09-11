@@ -15,9 +15,10 @@
 #include <windows.h>
 
 #ifdef _WIN32
-#include <plat/win/mman.h>
 #define NP_INLINE __forceinline
+#include <plat/win/mman.h>
 #else
+#define NP_INLINE __attribute__((always_inline))
 #include <sys/mman.h>
 #endif
 
@@ -42,8 +43,7 @@
  worldwide. This software is distributed without any warranty.
  
  You should have received a copy of the CC0 Public Domain Dedication along
- with
- this software. If not, see
+ with this software. If not, see
  <http://creativecommons.org/publicdomain/zero/1.0/>.
  */
 
@@ -332,14 +332,11 @@ nano_pow::cpp_driver::~cpp_driver ()
 
 uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 {
-	threads.barrier ();
 	result = 0;
 	current = 0;
 	this->nonce [0] = nonce [0];
 	this->nonce [1] = nonce [1];
-	find ();
-	threads.barrier ();
-	return result;
+	return nano_pow::driver::solve (nonce);
 }
 
 void nano_pow::cpp_driver::dump () const
@@ -349,7 +346,7 @@ void nano_pow::cpp_driver::dump () const
 
 bool nano_pow::cpp_driver::memory_set (size_t memory)
 {
-	assert ((memory & (memory - 1)) == 0);
+	assert (memory % NP_VALUE_SIZE == 0);
 	if (slab)
 	{
 		VirtualFree (slab, 0, MEM_RELEASE);
@@ -393,24 +390,56 @@ std::string to_string_hex (uint32_t value_a)
 	return stream.str ();
 }
 
-void nano_pow::cpp_driver::fill (uint32_t const begin, uint32_t const count)
+NP_INLINE static void write_value(uint8_t* slab_a, size_t index, uint64_t value)
+{
+	auto offset = index * 4;
+	slab_a[offset + 0] = static_cast<uint8_t> (value >> 0x00);
+	slab_a[offset + 1] = static_cast<uint8_t> (value >> 0x08);
+	slab_a[offset + 2] = static_cast<uint8_t> (value >> 0x10);
+	slab_a[offset + 3] = static_cast<uint8_t> (value >> 0x18);
+#if NP_VALUE_SIZE > 4
+	slab_a[offset + 4] = static_cast<uint8_t> (value >> 0x20);
+#endif
+#if NP_VALUE_SIZE > 5
+	slab_a[offset + 5] = static_cast<uint8_t> (value >> 0x28);
+#endif
+}
+
+void nano_pow::cpp_driver::fill_impl (uint32_t const begin, uint32_t const count)
 {
 	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
-	auto slab_l(slab);
+	auto slab_l = reinterpret_cast<uint8_t *>(slab);
 	for (uint32_t current (begin), end (current + count); current < end; ++current)
 	{
-		slab_l [slot (size_l, ::H0 (nonce_l, current))] = current;
+		write_value(slab_l, slot(size_l, ::H0(nonce_l, current)), current);
 	}
 }
 
-void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
+NP_INLINE static uint64_t read_value(uint8_t const * slab_a, size_t index)
+{
+	auto offset = index * 4;
+	uint64_t result(0);
+	result |= static_cast<uint64_t> (slab_a[offset + 0]) << 0x00;
+	result |= static_cast<uint64_t> (slab_a[offset + 1]) << 0x08;
+	result |= static_cast<uint64_t> (slab_a[offset + 2]) << 0x10;
+	result |= static_cast<uint64_t> (slab_a[offset + 3]) << 0x18;
+#if NP_VALUE_SIZE > 4
+	result |= static_cast<uint64_t> (slab_a[offset + 4]) << 0x20;
+#endif
+#if NP_VALUE_SIZE > 5
+	result |= static_cast<uint64_t> (slab_a[offset + 5]) << 0x28;
+#endif
+	return result;
+}
+
+void nano_pow::cpp_driver::search_impl (uint32_t const begin, uint32_t const count)
 {
 	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
-	auto slab_l(slab);
+	auto slab_l = reinterpret_cast<uint8_t const *>(slab);
 	for (uint32_t i (begin), n (begin + count); result == 0 && i < n; i += stepping)
 	{
 		//std::cerr << (std::string ("Between ") + to_string_hex(i) + ' ' + to_string_hex(n) + '\n');
@@ -419,7 +448,7 @@ void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
 		{
 			uint32_t rhs = i + j;
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint32_t lhs = slab_l [slot (size_l, 0 - hash_l)];
+			uint32_t lhs = read_value (slab_l, slot (size_l, 0 - hash_l));
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
@@ -441,22 +470,31 @@ void nano_pow::cpp_driver::search (uint32_t const begin, uint32_t const count)
 	}
 }
 
-void nano_pow::cpp_driver::find ()
+void nano_pow::cpp_driver::fill ()
 {
-	threads.barrier();
+	threads.execute ([this] (size_t thread_id, size_t total_threads) {
+		auto count (fill_count ());
+		fill_impl (current.fetch_add (count / total_threads), count / total_threads);
+	});
+	threads.barrier ();
+}
+
+uint64_t nano_pow::cpp_driver::search ()
+{
+	threads.execute ([this] (size_t thread_id, size_t total_threads) { search_impl (std::numeric_limits<uint32_t>::max () / total_threads * thread_id, std::numeric_limits<uint32_t>::max () / total_threads); });
+	threads.barrier ();
+	return result;
+}
+
+uint64_t nano_pow::driver::solve (std::array<uint64_t, 2> nonce)
+{
+	uint64_t result (0);
 	while (result == 0)
 	{
-		auto fill_start(std::chrono::system_clock::now());
-		threads.execute ([this] (size_t thread_id, size_t total_threads) {
-			auto count (fill_count ());
-			fill (current.fetch_add (count / total_threads), count / total_threads);
-		});
-		threads.barrier ();
-		auto search_start(std::chrono::system_clock::now());
-		threads.execute ([this] (size_t thread_id, size_t total_threads) { search (std::numeric_limits<uint32_t>::max () / total_threads * thread_id, std::numeric_limits<uint32_t>::max () / total_threads); });
-		threads.barrier ();
-		std::cerr << (std::string ("Fill: ") + std::to_string (std::chrono::duration_cast<std::chrono::milliseconds> (search_start - fill_start).count ()) + " search: " + std::to_string (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::system_clock::now () - search_start).count()) + "\t\t");
+		fill ();
+		result = search ();
 	}
+	return result;
 }
 
 void nano_pow::thread_pool::barrier ()

@@ -2,6 +2,7 @@
 #include <nano_pow/cpp_driver.hpp>
 #include <nano_pow/opencl_driver.hpp>
 #include <gtest/gtest.h>
+#include <fstream>
 #include <cxxopts.hpp>
 
 namespace
@@ -167,7 +168,7 @@ int main (int argc, char **argv)
 						{
 							std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
 							std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64((1ULL << difficulty) - 1) << std::endl;
-							profile(*driver, threads, nano_pow::reverse ((1ULL << difficulty) - 1), lookup_entries * sizeof(uint32_t), count);
+							profile(*driver, threads, nano_pow::reverse ((1ULL << difficulty) - 1), lookup_entries * NP_VALUE_SIZE, count);
 						}
 					}
 					else if (operation == "profile_validation")

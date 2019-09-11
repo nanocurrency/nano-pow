@@ -13,6 +13,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # add_compile_options(-Wall -Wextra -pedantic)
 
+file(READ src/opencl_program.cl opencl_program)
+file(WRITE src/opencl_program.cpp "#include <string>\n"
+"namespace nano_pow\n"
+"{\n"
+"std::string opencl_program = R\"OCL(\n"
+"${opencl_program}\n"
+")OCL\";\n"
+"}")
+
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
 	SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINK_FLAGS}" )
@@ -45,8 +54,9 @@ add_library (nano_pow
 	include/nano_pow/cpp_driver.hpp
 	include/nano_pow/opencl.hpp
 	include/nano_pow/opencl_driver.hpp
-	cpp_driver.cpp
-	opencl_driver.cpp
+	src/cpp_driver.cpp
+	src/opencl_driver.cpp
+	src/opencl_program.cpp
 )
 
 target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -54,8 +64,8 @@ target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 if (${NANO_POW_TEST})
 	add_executable (nano_pow_driver
-		gtest_driver.cpp
-		main.cpp
+		src/gtest_driver.cpp
+		src/main.cpp
 		cxxopts/include/cxxopts.hpp)
 
 	target_link_libraries (nano_pow_driver
