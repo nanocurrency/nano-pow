@@ -234,12 +234,12 @@ static bool passes_sum(ulong const sum_a, ulong threshold_a)
 
 static ulong read_value(__global uchar* const slab_a, ulong const index_a)
 {
-	const ulong offset_l = index_a * 4;
+	const ulong offset_l = index_a * NP_VALUE_SIZE;
 	ulong result_l = 0;
-	result_l |= (ulong) (slab_a[offset_l + 0]) << 0x00;
-	result_l |= (ulong) (slab_a[offset_l + 1]) << 0x08;
-	result_l |= (ulong) (slab_a[offset_l + 2]) << 0x10;
-	result_l |= (ulong) (slab_a[offset_l + 3]) << 0x18;
+	result_l |= ((ulong) slab_a[offset_l + 0]) << 0x00;
+	result_l |= ((ulong) slab_a[offset_l + 1]) << 0x08;
+	result_l |= ((ulong) slab_a[offset_l + 2]) << 0x10;
+	result_l |= ((ulong) slab_a[offset_l + 3]) << 0x18;
 #if NP_VALUE_SIZE > 4
 	result_l |= (ulong) (slab_a[offset_l + 4]) << 0x20;
 #endif
@@ -275,7 +275,7 @@ __kernel void search(__global ulong* result_a, __global uchar* const slab_a, ulo
 
 static void write_value(__global uchar* const slab_a, ulong const index_a, uint value_a)
 {
-	const ulong offset_l = index_a * 4;
+	const ulong offset_l = index_a * NP_VALUE_SIZE;
 	slab_a[offset_l + 0] = (uchar) (value_a >> 0x00);
 	slab_a[offset_l + 1] = (uchar) (value_a >> 0x08);
 	slab_a[offset_l + 2] = (uchar) (value_a >> 0x10);

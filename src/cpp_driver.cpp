@@ -381,7 +381,7 @@ std::string to_string_hex (uint32_t value_a)
 
 NP_INLINE static void write_value(uint8_t* slab_a, size_t index, uint64_t value)
 {
-	auto offset = index * 4;
+	auto offset = index * NP_VALUE_SIZE;
 	slab_a[offset + 0] = static_cast<uint8_t> (value >> 0x00);
 	slab_a[offset + 1] = static_cast<uint8_t> (value >> 0x08);
 	slab_a[offset + 2] = static_cast<uint8_t> (value >> 0x10);
@@ -408,7 +408,7 @@ void nano_pow::cpp_driver::fill_impl (uint32_t const begin, uint32_t const count
 
 NP_INLINE static uint64_t read_value(uint8_t const * slab_a, size_t index)
 {
-	auto offset = index * 4;
+	auto offset = index * NP_VALUE_SIZE;
 	uint64_t result(0);
 	result |= static_cast<uint64_t> (slab_a[offset + 0]) << 0x00;
 	result |= static_cast<uint64_t> (slab_a[offset + 1]) << 0x08;
