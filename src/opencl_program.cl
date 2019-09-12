@@ -232,7 +232,24 @@ static bool passes_sum(ulong const sum_a, ulong threshold_a)
 	return passed;
 }
 
-__kernel void search(__global ulong* result_a, __global uint* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a, ulong const threshold_a)
+static ulong read_value(__global uchar* const slab_a, ulong const index_a)
+{
+	const ulong offset_l = index_a * 4;
+	ulong result_l = 0;
+	result_l |= (ulong) (slab_a[offset_l + 0]) << 0x00;
+	result_l |= (ulong) (slab_a[offset_l + 1]) << 0x08;
+	result_l |= (ulong) (slab_a[offset_l + 2]) << 0x10;
+	result_l |= (ulong) (slab_a[offset_l + 3]) << 0x18;
+#if NP_VALUE_SIZE > 4
+	result_l |= (ulong) (slab_a[offset_l + 4]) << 0x20;
+#endif
+#if NP_VALUE_SIZE > 5
+	result_l |= (ulong) (slab_a[offset_l + 5]) << 0x28;
+#endif
+	return result_l;
+}
+
+__kernel void search(__global ulong* result_a, __global uchar* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a, ulong const threshold_a)
 {
 	//printf ("[%llu] Search (%llx) size %llu begin %lu count %lu\n", get_global_id (0), threshold_a, size_a, begin_a, count_a);
 	bool incomplete = true;
@@ -244,7 +261,8 @@ __kernel void search(__global ulong* result_a, __global uint* const slab_a, ulon
 	{
 		rhs = current;
 		ulong hash_l = H1(nonce_l, rhs);
-		lhs = slab_a[slot(size_a, 0 - hash_l)];
+		lhs = read_value(slab_a, slot(size_a, 0 - hash_l));
+		//lhs = slab_a[slot(size_a, 0 - hash_l)];
 		ulong sum = H0(nonce_l, lhs) + hash_l;
 		//printf ("%lu %lx %lu %lx\n", lhs, hash_l, rhs, sum);
 		incomplete = !passes_quick(sum, threshold_a) || !passes_sum(sum, reverse(threshold_a));
@@ -255,7 +273,22 @@ __kernel void search(__global ulong* result_a, __global uint* const slab_a, ulon
 	}
 }
 
-__kernel void fill(__global uint* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a)
+static void write_value(__global uchar* const slab_a, ulong const index_a, uint value_a)
+{
+	const ulong offset_l = index_a * 4;
+	slab_a[offset_l + 0] = (uchar) (value_a >> 0x00);
+	slab_a[offset_l + 1] = (uchar) (value_a >> 0x08);
+	slab_a[offset_l + 2] = (uchar) (value_a >> 0x10);
+	slab_a[offset_l + 3] = (uchar) (value_a >> 0x18);
+#if NP_VALUE_SIZE > 4
+	slab_a[offset_l + 4] = (uchar) (value_a >> 0x20);
+#endif
+#if NP_VALUE_SIZE > 5
+	slab_a[offset_l + 5] = (uchar) (value_a >> 0x28);
+#endif
+}
+
+__kernel void fill(__global uchar* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a)
 {
 	//printf ("[%llu] Fill size %llu begin %lu count %lu\n", get_global_id (0), size_a, begin_a, count_a);
 	nonce_t nonce_l;
@@ -264,7 +297,8 @@ __kernel void fill(__global uint* const slab_a, ulong const size_a, __global ulo
 	for (uint current = begin_a + get_global_id(0) * count_a, end = current + count_a; current < end; ++current)
 	{
 		ulong slot_l = slot(size_a, H0(nonce_l, current));
-		slab_a[slot_l] = current;
+		write_value(slab_a, slot_l, current);
+		//slab_a[slot_l] = current;
 		//printf ("[%llu] Writing current %lu to slot %llu\n", get_global_id (0), current, slot_l);
 	}
 }

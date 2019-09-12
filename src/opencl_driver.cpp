@@ -80,7 +80,8 @@ threads (8192)
 	std::vector<cl::Device> program_devices{ selected_device };
 	try {
 		program = cl::Program(context, nano_pow::opencl_program, false);
-		program.build (program_devices, nullptr, nullptr);
+		std::string options{ "-D NP_VALUE_SIZE=" + std::to_string(NP_VALUE_SIZE) };
+		program.build (program_devices, options.c_str (), nullptr);
 		fill_impl = cl::Kernel(program, "fill");
 		search_impl = cl::Kernel(program, "search");
 		result_buffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, sizeof(uint64_t));
@@ -122,8 +123,9 @@ size_t nano_pow::opencl_driver::threads_get () const
 
 bool nano_pow::opencl_driver::memory_set (size_t memory)
 {
+	assert (memory % NP_VALUE_SIZE == 0);
 	slab_size = memory;
-	slab_entries = memory / sizeof (uint32_t);
+	slab_entries = memory / NP_VALUE_SIZE;
 	try	{
 		slab = cl::Buffer(context, CL_MEM_READ_WRITE, slab_size);
 	}
