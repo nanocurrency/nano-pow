@@ -2,6 +2,7 @@
 
 #include <nano_pow/driver.hpp>
 
+#include <nano_pow/memory.hpp>
 #include <nano_pow/pow.hpp>
 
 #include <array>
@@ -55,7 +56,7 @@ namespace nano_pow
 		 * @param begin starting value to hash
 		 */
 		void fill_impl (uint32_t const count, uint32_t const begin = 0);
-		virtual void fill () override;
+		void fill () override;
 		
 		/**
 		 * Searches for a solution to difficulty problem
@@ -66,7 +67,7 @@ namespace nano_pow
 		 * @param begin starting value to hash
 		 */
 		void search_impl (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
-		virtual uint64_t search () override;
+		uint64_t search () override;
 		std::atomic<uint64_t> current { 0 };
 		static uint32_t constexpr stepping { 1024 };
 		thread_pool threads;
@@ -76,7 +77,7 @@ namespace nano_pow
 		uint64_t difficulty_inv;
 		uint32_t fill_count () const;
 		size_t size { 0 };
-		uint8_t * slab { nullptr };
+		std::unique_ptr<uint8_t, std::function <void(uint8_t*)>> slab{nullptr, [](uint8_t*){}};
 	public:
 		std::array<uint64_t, 2> nonce { { 0, 0 } };
 	};

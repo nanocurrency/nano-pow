@@ -11,20 +11,10 @@
 #include <thread>
 #include <vector>
 
-#define NOMINMAX
-#include <windows.h>
-
 #ifdef _WIN32
 #define NP_INLINE __forceinline
-#include <plat/win/mman.h>
 #else
 #define NP_INLINE __attribute__((always_inline))
-#include <sys/mman.h>
-#endif
-
-#ifndef MAP_NOCACHE
-/* No MAP_NOCACHE on Linux */
-#define MAP_NOCACHE (0)
 #endif
 
 #ifndef NP_INLINE
@@ -313,21 +303,13 @@ nano_pow::cpp_driver::cpp_driver () :
 difficulty_m (nano_pow::bit_difficulty (8)),
 difficulty_inv (::reverse (difficulty_m))
 {
-	HANDLE hToken;
-	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken);
-	TOKEN_PRIVILEGES tp;
-	LookupPrivilegeValue(NULL, "SeLockMemoryPrivilege", &tp.Privileges[0].Luid);
-	tp.PrivilegeCount = 1;
-	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-	auto success (AdjustTokenPrivileges (hToken, FALSE, &tp, 0, nullptr, nullptr));
-	auto size(GetLargePageMinimum());
-	threads_set (std::thread::hardware_concurrency ());
+	nano_pow::memory_init ();
+	threads_set (std::thread::hardware_concurrency ());	
 }
 
 nano_pow::cpp_driver::~cpp_driver ()
 {
 	threads_set (0);
-	memory_set (0);
 }
 
 uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
@@ -346,17 +328,14 @@ void nano_pow::cpp_driver::dump () const
 
 bool nano_pow::cpp_driver::memory_set (size_t memory)
 {
+	assert (memory > 0);
 	assert (memory % NP_VALUE_SIZE == 0);
-	if (slab)
-	{
-		VirtualFree (slab, 0, MEM_RELEASE);
-	}
 	size = memory / sizeof (uint32_t);
-	slab = memory == 0 ? nullptr : reinterpret_cast <uint32_t *> (VirtualAlloc (nullptr, memory, MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE));
-	bool error (slab == MAP_FAILED);
+	bool error = false;
+	slab = std::unique_ptr <uint8_t, std::function <void(uint8_t*)>> (nano_pow::alloc (memory, error), [size = this->size](uint8_t * slab) { free_page_memory (slab, size); });
 	if (error)
 	{
-		std::cerr << "Error while creating memory buffer: MAP_FAILED" << std::endl;
+		std::cerr << "Error while creating memory buffer" << std::endl;
 	}
 	return error;
 }
@@ -410,10 +389,9 @@ void nano_pow::cpp_driver::fill_impl (uint32_t const begin, uint32_t const count
 	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
-	auto slab_l = reinterpret_cast<uint8_t *>(slab);
 	for (uint32_t current (begin), end (current + count); current < end; ++current)
 	{
-		write_value(slab_l, slot(size_l, ::H0(nonce_l, current)), current);
+		write_value(slab.get (), slot(size_l, ::H0(nonce_l, current)), current);
 	}
 }
 
@@ -439,7 +417,6 @@ void nano_pow::cpp_driver::search_impl (uint32_t const begin, uint32_t const cou
 	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
-	auto slab_l = reinterpret_cast<uint8_t const *>(slab);
 	for (uint32_t i (begin), n (begin + count); result == 0 && i < n; i += stepping)
 	{
 		//std::cerr << (std::string ("Between ") + to_string_hex(i) + ' ' + to_string_hex(n) + '\n');
@@ -448,7 +425,7 @@ void nano_pow::cpp_driver::search_impl (uint32_t const begin, uint32_t const cou
 		{
 			uint32_t rhs = i + j;
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint32_t lhs = read_value (slab_l, slot (size_l, 0 - hash_l));
+			uint32_t lhs = read_value (slab.get (), slot (size_l, 0 - hash_l));
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
