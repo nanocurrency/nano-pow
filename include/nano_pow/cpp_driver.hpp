@@ -54,7 +54,7 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		void fill_impl (uint32_t const count, uint32_t const begin = 0);
+		void fill_impl (uint32_t const count, uint64_t const begin = 0);
 		virtual void fill () override;
 		
 		/**
@@ -65,7 +65,7 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		void search_impl (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
+		void search_impl (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint64_t const begin = 0);
 		virtual uint64_t search () override;
 		std::atomic<uint64_t> current { 0 };
 		static uint32_t constexpr stepping { 1024 };

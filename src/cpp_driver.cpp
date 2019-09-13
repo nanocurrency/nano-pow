@@ -394,13 +394,13 @@ NP_INLINE static void write_value(uint8_t* slab_a, size_t index, uint64_t value)
 #endif
 }
 
-void nano_pow::cpp_driver::fill_impl (uint32_t const begin, uint32_t const count)
+void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint64_t const begin)
 {
 	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l = reinterpret_cast<uint8_t *>(slab);
-	for (uint32_t current (begin), end (current + count); current < end; ++current)
+	for (uint64_t current (begin), end (current + count); current < end; ++current)
 	{
 		write_value(slab_l, slot(size_l, ::H0(nonce_l, current)), current);
 	}
@@ -423,13 +423,13 @@ NP_INLINE static uint64_t read_value(uint8_t const * slab_a, size_t index)
 	return result;
 }
 
-void nano_pow::cpp_driver::search_impl (uint32_t const begin, uint32_t const count)
+void nano_pow::cpp_driver::search_impl (uint32_t const count, uint64_t const begin)
 {
 	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l = reinterpret_cast<uint8_t const *>(slab);
-	for (uint32_t i (begin), n (begin + count); result == 0 && i < n; i += stepping)
+	for (uint64_t i (begin), n (begin + count); result == 0 && i < n; i += stepping)
 	{
 		//std::cerr << (std::string ("Between ") + to_string_hex(i) + ' ' + to_string_hex(n) + '\n');
 		uint64_t result_l (0);
@@ -463,14 +463,14 @@ void nano_pow::cpp_driver::fill ()
 {
 	threads.execute ([this] (size_t thread_id, size_t total_threads) {
 		auto count (fill_count ());
-		fill_impl (current.fetch_add (count / total_threads), count / total_threads);
+		fill_impl (count / total_threads, current.fetch_add(count / total_threads));
 	});
 	threads.barrier ();
 }
 
 uint64_t nano_pow::cpp_driver::search ()
 {
-	threads.execute ([this] (size_t thread_id, size_t total_threads) { search_impl (std::numeric_limits<uint32_t>::max () / total_threads * thread_id, std::numeric_limits<uint32_t>::max () / total_threads); });
+	threads.execute ([this] (size_t thread_id, size_t total_threads) { search_impl (std::numeric_limits<uint32_t>::max () / total_threads, std::numeric_limits<uint32_t>::max() / total_threads * thread_id); });
 	threads.barrier ();
 	return result;
 }
