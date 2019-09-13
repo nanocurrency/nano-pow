@@ -1,7 +1,7 @@
 file(READ ${CL_FILE} opencl_program)
 file(WRITE ${CPP_FILE} "#include <string>\n"
 "#ifndef NP_VALUE_SIZE\n"
-"#define NP_VALUE_SIZE 4\n"
+"#define NP_VALUE_SIZE 5\n"
 "#endif\n"
 "namespace nano_pow\n"
 "{\n"

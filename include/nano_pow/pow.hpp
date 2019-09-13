@@ -18,7 +18,7 @@
 #define NP_SIZE_GIANT 6
 
 #ifndef NP_VALUE_SIZE
-#define NP_VALUE_SIZE NP_SIZE_STANDARD
+#define NP_VALUE_SIZE NP_SIZE_LARGE
 #endif
 
 namespace nano_pow
@@ -32,4 +32,3 @@ namespace nano_pow
 	uint64_t difficulty (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a);
 	bool passes (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a, uint64_t difficulty_a);
 }
-
