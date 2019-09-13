@@ -273,7 +273,7 @@ __kernel void search(__global ulong* result_a, __global uint* const slab_a, ulon
 	}
 }
 
-static void write_value(__global uchar* const slab_a, ulong const index_a, uint value_a)
+static void write_value(__global uchar* slab_a, ulong const index_a, uint value_a)
 {
 	const ulong offset_l = index_a * NP_VALUE_SIZE;
 	slab_a[offset_l + 0] = (uchar) (value_a >> 0x00);
