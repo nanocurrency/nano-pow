@@ -232,24 +232,21 @@ static bool passes_sum(ulong const sum_a, ulong threshold_a)
 	return passed;
 }
 
-static ulong read_value(__global uchar* const slab_a, ulong const index_a)
+static ulong read_value(__global uint* const slab_a, ulong const index_a)
 {
-	const ulong offset_l = index_a * NP_VALUE_SIZE;
 	ulong result_l = 0;
-	result_l |= ((ulong) slab_a[offset_l + 0]) << 0x00;
-	result_l |= ((ulong) slab_a[offset_l + 1]) << 0x08;
-	result_l |= ((ulong) slab_a[offset_l + 2]) << 0x10;
-	result_l |= ((ulong) slab_a[offset_l + 3]) << 0x18;
-#if NP_VALUE_SIZE > 4
-	result_l |= (ulong) (slab_a[offset_l + 4]) << 0x20;
-#endif
-#if NP_VALUE_SIZE > 5
-	result_l |= (ulong) (slab_a[offset_l + 5]) << 0x28;
+	result_l |= (ulong) slab_a[index_a];
+#if NP_VALUE_SIZE == 5
+	__global uchar* slab_b = &slab_a[index_a + 1];
+	result_l |= (ulong) (*slab_b) << 0x20;
+#elif NP_VALUE_SIZE == 6
+	__global unsigned* slab_b = &slab_a[index_a + 1];
+	result_l |= (unsigned) (*slab_b) << 0x20;
 #endif
 	return result_l;
 }
 
-__kernel void search(__global ulong* result_a, __global uchar* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, ulong const begin_a, ulong const threshold_a)
+__kernel void search(__global ulong* result_a, __global uint* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, ulong const begin_a, ulong const threshold_a)
 {
 	bool incomplete = true;
 	__local ulong lhs, rhs;
@@ -270,22 +267,19 @@ __kernel void search(__global ulong* result_a, __global uchar* const slab_a, ulo
 	}
 }
 
-static void write_value(__global uchar* slab_a, ulong const index_a, ulong const value_a)
+static void write_value(__global uint* slab_a, ulong const index_a, ulong const value_a)
 {
-	const ulong offset_l = index_a * NP_VALUE_SIZE;
-	slab_a[offset_l + 0] = (uchar) (value_a >> 0x00);
-	slab_a[offset_l + 1] = (uchar) (value_a >> 0x08);
-	slab_a[offset_l + 2] = (uchar) (value_a >> 0x10);
-	slab_a[offset_l + 3] = (uchar) (value_a >> 0x18);
-#if NP_VALUE_SIZE > 4
-	slab_a[offset_l + 4] = (uchar) (value_a >> 0x20);
-#endif
-#if NP_VALUE_SIZE > 5
-	slab_a[offset_l + 5] = (uchar) (value_a >> 0x28);
+	slab_a[index_a] = (uint) value_a;
+#if NP_VALUE_SIZE == 5
+	__global uchar* slab_b = &slab_a[index_a + 1];
+	slab_b[0] = (uchar) (value_a >> 0x20);
+#elif NP_VALUE_SIZE == 6
+	__global unsigned* slab_b = &slab_a[index_a + 1];
+	slab_b[0] = (unsigned) (value_a >> 0x20);
 #endif
 }
 
-__kernel void fill(__global uchar* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, ulong const begin_a)
+__kernel void fill(__global uint* slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, ulong const begin_a)
 {
 	__local nonce_t nonce_l;
 	nonce_l.values[0] = nonce_a[0];

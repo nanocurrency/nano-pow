@@ -92,7 +92,6 @@ threads (8192)
 		search_impl.setArg(4, stepping);
 		fill_impl.setArg(3, stepping);
 		queue = cl::CommandQueue(context, selected_device);
-		queue.finish();
 	}
 	catch (cl::Error const & err) {
 		auto details (program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(selected_device));
