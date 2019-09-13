@@ -249,7 +249,7 @@ static ulong read_value(__global uchar* const slab_a, ulong const index_a)
 	return result_l;
 }
 
-__kernel void search(__global ulong* result_a, __global uchar* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a, ulong const threshold_a)
+__kernel void search(__global ulong* result_a, __global uint* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a, ulong const threshold_a)
 {
 	//printf ("[%llu] Search (%llx) size %llu begin %lu count %lu\n", get_global_id (0), threshold_a, size_a, begin_a, count_a);
 	bool incomplete = true;
@@ -288,7 +288,7 @@ static void write_value(__global uchar* const slab_a, ulong const index_a, uint 
 #endif
 }
 
-__kernel void fill(__global uchar* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a)
+__kernel void fill(__global uint* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a)
 {
 	//printf ("[%llu] Fill size %llu begin %lu count %lu\n", get_global_id (0), size_a, begin_a, count_a);
 	nonce_t nonce_l;
