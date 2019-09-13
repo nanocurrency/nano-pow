@@ -142,7 +142,7 @@ void nano_pow::opencl_driver::fill ()
 	try {
 		while (current < current_fill + slab_entries)
 		{
-			fill_impl.setArg(4, static_cast<uint32_t> (current));
+			fill_impl.setArg(4, current);
 			queue.enqueueNDRangeKernel(fill_impl, 0, thread_count);
 			current += thread_count * stepping;
 		}
@@ -165,7 +165,7 @@ uint64_t nano_pow::opencl_driver::search ()
 	try {
 		while (result == 0 && current < std::numeric_limits<uint32_t>::max())
 		{
-			search_impl.setArg(5, static_cast<uint32_t> (current));
+			search_impl.setArg(5, current);
 			current += thread_count * stepping;
 			queue.enqueueNDRangeKernel(search_impl, 0, thread_count);
 			queue.enqueueReadBuffer(result_buffer, false, 0, sizeof(uint64_t), &result, nullptr, &events[0]);

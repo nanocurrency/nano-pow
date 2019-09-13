@@ -249,34 +249,31 @@ static ulong read_value(__global uchar* const slab_a, ulong const index_a)
 	return result_l;
 }
 
-__kernel void search(__global ulong* result_a, __global uint* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a, ulong const threshold_a)
+__kernel void search(__global ulong* result_a, __global uchar* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, ulong const begin_a, ulong const threshold_a)
 {
-	//printf ("[%llu] Search (%llx) size %llu begin %lu count %lu\n", get_global_id (0), threshold_a, size_a, begin_a, count_a);
 	bool incomplete = true;
-	uint lhs, rhs;
-	nonce_t nonce_l;
+	__local ulong lhs, rhs;
+	__local nonce_t nonce_l;
 	nonce_l.values[0] = nonce_a[0];
 	nonce_l.values[1] = nonce_a[1];
-	for (uint current = begin_a + get_global_id(0) * count_a, end = current + count_a; incomplete && current < end; ++current)
+	for (ulong current = begin_a + get_global_id(0) * count_a, end = current + count_a; incomplete && current < end; ++current)
 	{
 		rhs = current;
 		ulong hash_l = H1(nonce_l, rhs);
 		lhs = read_value(slab_a, slot(size_a, 0 - hash_l));
-		//lhs = slab_a[slot(size_a, 0 - hash_l)];
 		ulong sum = H0(nonce_l, lhs) + hash_l;
-		//printf ("%lu %lx %lu %lx\n", lhs, hash_l, rhs, sum);
 		incomplete = !passes_quick(sum, threshold_a) || !passes_sum(sum, reverse(threshold_a));
 	}
 	if (!incomplete)
 	{
-		*result_a = (((ulong)(lhs)) << 32) | rhs;
+		*result_a = (lhs << 32) | rhs;
 	}
 }
 
-static void write_value(__global uchar* slab_a, ulong const index_a, uint value_a)
+static void write_value(__global uchar* slab_a, ulong const index_a, ulong const value_a)
 {
 	const ulong offset_l = index_a * NP_VALUE_SIZE;
-	slab_a[offset_l + 0] = (uchar) (value_a >> 0x00);
+	slab_a[offset_l + 0] = (uint) (value_a >> 0x00);
 	slab_a[offset_l + 1] = (uchar) (value_a >> 0x08);
 	slab_a[offset_l + 2] = (uchar) (value_a >> 0x10);
 	slab_a[offset_l + 3] = (uchar) (value_a >> 0x18);
@@ -288,17 +285,14 @@ static void write_value(__global uchar* slab_a, ulong const index_a, uint value_
 #endif
 }
 
-__kernel void fill(__global uint* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a)
+__kernel void fill(__global uchar* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, ulong const begin_a)
 {
-	//printf ("[%llu] Fill size %llu begin %lu count %lu\n", get_global_id (0), size_a, begin_a, count_a);
-	nonce_t nonce_l;
+	__local nonce_t nonce_l;
 	nonce_l.values[0] = nonce_a[0];
 	nonce_l.values[1] = nonce_a[1];
-	for (uint current = begin_a + get_global_id(0) * count_a, end = current + count_a; current < end; ++current)
+	for (ulong current = begin_a + get_global_id(0) * count_a, end = current + count_a; current < end; ++current)
 	{
 		ulong slot_l = slot(size_a, H0(nonce_l, current));
 		write_value(slab_a, slot_l, current);
-		//slab_a[slot_l] = current;
-		//printf ("[%llu] Writing current %lu to slot %llu\n", get_global_id (0), current, slot_l);
 	}
 }
