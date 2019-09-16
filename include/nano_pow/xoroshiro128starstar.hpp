@@ -1,4 +1,4 @@
-/* Extends http://prng.di.unimi.it/xoshiro128starstar.c to allow state to be passed into the API */
+/* Extends http://prng.di.unimi.it/xoroshiro128starstar.c to allow state to be passed into the API */
 
 #include <stdint.h>
 #include <cassert>
