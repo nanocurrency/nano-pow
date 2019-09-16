@@ -1,5 +1,6 @@
 #include <nano_pow/cpp_driver.hpp>
 
+#include <nano_pow/plat.hpp>
 #include <nano_pow/pow.hpp>
 
 #include <atomic>
@@ -12,20 +13,14 @@
 #include <vector>
 
 #ifdef _WIN32
-#define NP_INLINE __forceinline
 #include <plat/win/mman.h>
 #else
-#define NP_INLINE __attribute__((always_inline))
 #include <sys/mman.h>
 #endif
 
 #ifndef MAP_NOCACHE
 /* No MAP_NOCACHE on Linux */
 #define MAP_NOCACHE (0)
-#endif
-
-#ifndef NP_INLINE
-#define NP_INLINE
 #endif
 
 /*

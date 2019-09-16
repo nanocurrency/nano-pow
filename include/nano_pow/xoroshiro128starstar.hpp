@@ -3,12 +3,14 @@
 #include <stdint.h>
 #include <cassert>
 
+#include <nano_pow/plat.hpp>
+
 namespace xor_shift
 {
 class hash final
 {
 	uint64_t s[2];
-	static inline uint64_t rotl(const uint64_t x, int k) {
+	NP_INLINE uint64_t rotl(const uint64_t x, int k) {
 		return (x << k) | (x >> (64 - k));
 	}
 public:
@@ -26,11 +28,11 @@ public:
 		const uint64_t s0 = s[0];
 		uint64_t s1 = s[1];
 		const uint64_t result = rotl(s0 * 5, 7) * 9;
-		
+
 		s1 ^= s0;
 		s[0] = rotl(s0, 24) ^ s1 ^ (s1 << 16); // a, b
 		s[1] = rotl(s1, 37); // c
-		
+
 		return result;
 	}
 
@@ -63,7 +65,7 @@ public:
 	void long_jump()
 	{
 		static const uint64_t LONG_JUMP[] = { 0xd2a98b26625eee7b, 0xdddf9b1090aa7ac1 };
-		
+
 		uint64_t s0 = 0;
 		uint64_t s1 = 0;
 		for(int i = 0; i < sizeof LONG_JUMP / sizeof *LONG_JUMP; i++)
@@ -74,7 +76,7 @@ public:
 				}
 				next();
 			}
-		
+
 		s[0] = s0;
 		s[1] = s1;
 	}

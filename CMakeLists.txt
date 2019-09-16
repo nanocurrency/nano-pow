@@ -50,6 +50,7 @@ include_directories (cxxopts/include)
 
 add_library (nano_pow
 	${PLATFORM_SOURCE}
+	include/nano_pow/plat.hpp
 	include/nano_pow/pow.hpp
 	include/nano_pow/driver.hpp
 	include/nano_pow/cpp_driver.hpp
