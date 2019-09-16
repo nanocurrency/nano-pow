@@ -423,21 +423,21 @@ NP_INLINE static uint64_t read_value(uint8_t const * slab_a, size_t index)
 	return result;
 }
 
-void nano_pow::cpp_driver::search_impl (uint32_t const begin, uint32_t const count)
+void nano_pow::cpp_driver::search_impl (xor_shift::hash & prng)
 {
 	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l = reinterpret_cast<uint8_t const *>(slab);
-	for (uint32_t i (begin), n (begin + count); result == 0 && i < n; i += stepping)
+	while (result == 0)
 	{
 		//std::cerr << (std::string ("Between ") + to_string_hex(i) + ' ' + to_string_hex(n) + '\n');
 		uint64_t result_l (0);
 		for (uint32_t j (0), m (stepping); result_l == 0 && j < m; ++j)
 		{
-			uint32_t rhs = i + j;
+			uint64_t rhs = prng.next ();
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint32_t lhs = read_value (slab_l, slot (size_l, 0 - hash_l));
+			uint64_t lhs = read_value (slab_l, slot (size_l, 0 - hash_l));
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
@@ -470,7 +470,10 @@ void nano_pow::cpp_driver::fill ()
 
 uint64_t nano_pow::cpp_driver::search ()
 {
-	threads.execute ([this] (size_t thread_id, size_t total_threads) { search_impl (std::numeric_limits<uint32_t>::max () / total_threads * thread_id, std::numeric_limits<uint32_t>::max () / total_threads); });
+	threads.execute ([this] (size_t thread_id, size_t total_threads) {
+		xor_shift::hash prng_state (thread_id + 1);
+		search_impl (prng_state);
+	});
 	threads.barrier ();
 	return result;
 }

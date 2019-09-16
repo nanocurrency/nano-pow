@@ -55,6 +55,7 @@ add_library (nano_pow
 	include/nano_pow/cpp_driver.hpp
 	include/nano_pow/opencl.hpp
 	include/nano_pow/opencl_driver.hpp
+	include/nano_pow/xoroshiro128starstar.hpp
 	src/cpp_driver.cpp
 	src/opencl_driver.cpp
 	src/opencl_program.cpp
