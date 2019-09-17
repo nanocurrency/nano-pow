@@ -235,11 +235,12 @@ static uint slab(uint const slabs_a, ulong const size_a, ulong const item_a)
 static ulong slot(uint const slabs_a, ulong const size_a, ulong const item_a)
 {
 	ulong mask = size_a - 1;
-	return (item_a & mask) / slabs_a;;
+	return (item_a & mask) / slabs_a;
 }
 
-__kernel void search (__global ulong * result_a, ulong const size_a, __global ulong * const nonce_a, uint const count_a, uint const begin_a, ulong const threshold_a, uint const slabs_a,
-					  __global uint * const slab_0, __global uint * const slab_1, __global uint * const slab_2, __global uint * const slab_3)
+__kernel void search (ulong const size_a, __global ulong * const nonce_a, uint const count_a, uint const begin_a, uint const slabs_a,
+					  __global uint * const slab_0, __global uint * const slab_1, __global uint * const slab_2, __global uint * const slab_3,
+					  ulong const threshold_a, __global ulong* result_a)
 {
 	//printf ("[%llu] Search (%llx) size %llu begin %lu count %lu\n", get_global_id (0), threshold_a, size_a, begin_a, count_a);
 	bool incomplete = true;
@@ -247,7 +248,12 @@ __kernel void search (__global ulong * result_a, ulong const size_a, __global ul
 	nonce_t nonce_l;
 	nonce_l.values[0] = nonce_a[0];
 	nonce_l.values[1] = nonce_a[1];
-	__global uint* const slabs[4] = { slab_0, slab_1, slab_2, slab_3 };
+	// Local array of pointers to golbal memory, ~2% better performance than using a global array
+	__global uint* __local slabs[4];
+	slabs[0] = slab_0;
+	slabs[1] = slab_1;
+	slabs[2] = slab_2;
+	slabs[3] = slab_3;
 	for (uint current = begin_a + get_global_id(0) * count_a, end = current + count_a; incomplete && current < end; ++current)
 	{
 		rhs = current;
@@ -266,16 +272,25 @@ __kernel void search (__global ulong * result_a, ulong const size_a, __global ul
 	}
 }
 
-__kernel void fill(__global uint* const slab_a, ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a, uint const slabs_a)
+__kernel void fill(ulong const size_a, __global ulong* const nonce_a, uint const count_a, uint const begin_a, uint const slabs_a,
+				   __global uint* slab_0, __global uint* slab_1, __global uint* slab_2, __global uint* slab_3)
 {
 	//printf ("[%llu] Fill size %llu begin %lu count %lu\n", get_global_id (0), size_a, begin_a, count_a);
 	nonce_t nonce_l;
 	nonce_l.values[0] = nonce_a[0];
 	nonce_l.values[1] = nonce_a[1];
+	// Local array of pointers to golbal memory, ~2% better performance than using a global array
+	__global uint* __local slabs[4];
+	slabs[0] = slab_0;
+	slabs[1] = slab_1;
+	slabs[2] = slab_2;
+	slabs[3] = slab_3;
 	for (uint current = begin_a + get_global_id(0) * count_a, end = current + count_a; current < end; ++current)
 	{
-		ulong slot_l = slot(slabs_a, size_a, H0(nonce_l, current));
-		slab_a[slot_l] = current;
-		//printf ("[%llu] Writing current %lu to slot %llu\n", get_global_id (0), current, slot_l);
+		ulong const hash_l = H0(nonce_l, current);
+		uint const slab_l = slab(slabs_a, size_a, hash_l);
+		ulong const slot_l = slot(slabs_a, size_a, hash_l);
+		slabs[slab_l][slot_l] = current;
+		//printf ("[%llu] Writing current %lu to slab %lu slot %llu\n", get_global_id (0), current, slab_l, slot_l);
 	}
 }

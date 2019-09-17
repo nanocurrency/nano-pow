@@ -87,12 +87,12 @@ threads (8192)
 		fill_impl = cl::Kernel(program, "fill");
 		search_impl = cl::Kernel(program, "search");
 		result_buffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, sizeof(uint64_t));
-		search_impl.setArg(0, result_buffer);
+		search_impl.setArg(10, result_buffer);
 		nonce_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(uint64_t) * 2);
-		search_impl.setArg(2, nonce_buffer);
-		fill_impl.setArg(2, nonce_buffer);
-		search_impl.setArg(3, stepping);
-		fill_impl.setArg(3, stepping);
+		search_impl.setArg(1, nonce_buffer);
+		fill_impl.setArg(1, nonce_buffer);
+		search_impl.setArg(2, stepping);
+		fill_impl.setArg(2, stepping);
 		queue = cl::CommandQueue(context, selected_device);
 		queue.finish();
 	}
@@ -129,34 +129,32 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 	static unsigned constexpr max_slabs{ 4 };
 
 	assert(memory % sizeof(uint32_t) == 0);
-	assert(global_mem_size % max_alloc_size == 0);
+	assert(memory % max_alloc_size == 0);
 
-	auto number_slabs{ static_cast<unsigned> (global_mem_size / max_alloc_size) };
-	assert(number_slabs <= 4 && number_slabs % 2 == 0);
+	auto number_slabs = std::max (1u, static_cast<unsigned> (memory / max_alloc_size));
+	assert(number_slabs <= 4);
 	assert(memory % number_slabs == 0);
 
-	// TODO remove, force number slabs
-	number_slabs = 4;
-
 	slab_size = memory / number_slabs;
-	slab_entries = slab_size / sizeof(uint32_t);
+	slab_entries = memory / sizeof(uint32_t);
 
-	std::cerr << number_slabs << "x " << slab_size / (1024 * 1024) << "MB " << std::endl;
-
+	// std::cerr << number_slabs << "x " << slab_size / (1024 * 1024) << "MB " << std::endl;
 	try	{
-		fill_impl.setArg(1, slab_entries);
-		search_impl.setArg(1, slab_entries);
-		fill_impl.setArg(5, number_slabs);
-		search_impl.setArg(6, number_slabs);
+		fill_impl.setArg(0, slab_entries);
+		search_impl.setArg(0, slab_entries);
+		fill_impl.setArg(4, number_slabs);
+		search_impl.setArg(4, number_slabs);
 
 		for (auto i{ 0 }; i < number_slabs; ++i)
 		{
 			slabs.emplace_back(cl::Buffer(context, CL_MEM_READ_WRITE, slab_size));
-			search_impl.setArg(7 + i, slabs[i]);
+			search_impl.setArg(5 + i, slabs[i]);
+			fill_impl.setArg(5 + i, slabs[i]);
 		}
 		for (auto i{ number_slabs }; i < max_slabs; ++i)
 		{
-			search_impl.setArg(7 + i, nullptr);
+			search_impl.setArg(5 + i, nullptr);
+			fill_impl.setArg(5 + i, nullptr);
 		}
 	}
 	catch (cl::Error const & err) {
@@ -171,23 +169,19 @@ void nano_pow::opencl_driver::fill ()
 	uint32_t thread_count (this->threads);
 	auto start = std::chrono::steady_clock::now ();
 	try {
-		for (auto& slab : slabs)
+		while (current < current_fill + slab_entries)
 		{
-			fill_impl.setArg(0, slab);
-			while (current < current_fill + slab_entries)
-			{
-				fill_impl.setArg(4, static_cast<uint32_t> (current));
-				queue.enqueueNDRangeKernel(fill_impl, 0, thread_count);
-				current += thread_count * stepping;
-			}
-			current_fill += slab_entries;
+			fill_impl.setArg(3, static_cast<uint32_t> (current));
+			queue.enqueueNDRangeKernel(fill_impl, 0, thread_count);
+			current += thread_count * stepping;
 		}
+		current_fill += slab_entries;
 		queue.finish();
 	}
 	catch (cl::Error const& err) {
 		throw OCLDriverException(err, OCLDriverError::fill);
 	}
-	std::cerr << "Fill took " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+	// std::cerr << "Fill took " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
 }
 
 uint64_t nano_pow::opencl_driver::search ()
@@ -200,7 +194,7 @@ uint64_t nano_pow::opencl_driver::search ()
 	try {
 		while (result == 0 && current < std::numeric_limits<uint32_t>::max())
 		{
-			search_impl.setArg(4, static_cast<uint32_t> (current));
+			search_impl.setArg(3, static_cast<uint32_t> (current));
 			current += thread_count * stepping;
 			queue.enqueueNDRangeKernel(search_impl, 0, thread_count);
 			queue.enqueueReadBuffer(result_buffer, false, 0, sizeof(uint64_t), &result, nullptr, &events[0]);
@@ -211,7 +205,7 @@ uint64_t nano_pow::opencl_driver::search ()
 	catch (cl::Error const& err) {
 		throw OCLDriverException(err, OCLDriverError::search);
 	}
-	std::cerr << "Search took " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+	// std::cerr << "Search took " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
 	return result;
 }
 
@@ -219,7 +213,7 @@ uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 {
 	uint64_t result{ 0 };
 	try {
-		search_impl.setArg (5, difficulty_inv);
+		search_impl.setArg(9, difficulty_inv);
 		queue.enqueueWriteBuffer (result_buffer, false, 0, sizeof (result), &result);
 		queue.enqueueWriteBuffer (nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data ());
 	}
