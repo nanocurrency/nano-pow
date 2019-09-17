@@ -1,3 +1,6 @@
+# OpenCL generated source
+src/opencl_program.cpp
+
 # Prerequisites
 *.d
 

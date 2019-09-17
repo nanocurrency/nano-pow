@@ -4,6 +4,7 @@
 
 #include <nano_pow/memory.hpp>
 #include <nano_pow/pow.hpp>
+#include <nano_pow/xoroshiro128starstar.hpp>
 
 #include <array>
 #include <condition_variable>
@@ -66,7 +67,7 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		void search_impl (uint32_t const count = std::numeric_limits<uint32_t>::max (), uint32_t const begin = 0);
+		void search_impl (xor_shift::hash & prng_state);
 		uint64_t search () override;
 		std::atomic<uint64_t> current { 0 };
 		static uint32_t constexpr stepping { 1024 };

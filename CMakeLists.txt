@@ -12,15 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set(CMAKE_CXX_EXTENSIONS OFF)
 
 # add_compile_options(-Wall -Wextra -pedantic)
-
-file(READ src/opencl_program.cl opencl_program)
-file(WRITE src/opencl_program.cpp "#include <string>\n"
-"namespace nano_pow\n"
-"{\n"
-"std::string opencl_program = R\"OCL(\n"
-"${opencl_program}\n"
-")OCL\";\n"
-"}")
+# add_definitions (-DNP_VALUE_SIZE=NP_SIZE_LARGE)
 
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
@@ -35,6 +27,15 @@ else ()
 	include_directories (${OpenCL_INCLUDE_DIRS})
 	link_directories (${OpenCL_LIBRARY})
 endif ()
+
+add_custom_command (
+	OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/opencl_program.cpp
+	MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/src/opencl_program.cl
+	WORKING_DIRECTORY  ${CMAKE_CURRENT_SOURCE_DIR}/src
+	COMMAND ${CMAKE_COMMAND} -DCL_FILE=opencl_program.cl -DCPP_FILE=opencl_program.cpp -P "${CMAKE_CURRENT_SOURCE_DIR}/ConvertOpenCL.cmake"
+	COMMENT "Generating OpenCL source file"
+	VERBATIM
+)
 
 if (${NANO_POW_TEST})
 	add_subdirectory (googletest/googletest)
@@ -51,12 +52,14 @@ include_directories (cxxopts/include)
 
 add_library (nano_pow
 	${PLATFORM_SOURCE}
+	include/nano_pow/plat.hpp
 	include/nano_pow/pow.hpp
 	include/nano_pow/driver.hpp
 	include/nano_pow/cpp_driver.hpp
 	include/nano_pow/memory.hpp
 	include/nano_pow/opencl.hpp
 	include/nano_pow/opencl_driver.hpp
+	include/nano_pow/xoroshiro128starstar.hpp
 	src/cpp_driver.cpp
 	src/opencl_driver.cpp
 	src/opencl_program.cpp
