@@ -21,7 +21,11 @@ std::string to_string_hex64 (uint64_t value_a)
 	stream << value_a;
 	return stream.str ();
 }
-std::string to_string_solution (std::array<uint64_t, 2> nonce_a, uint64_t threshold_a, uint64_t solution_a)
+std::string to_string_hex128 (nano_pow::uint128_t value_a)
+{
+	return to_string_hex64 (static_cast<nano_pow::uint128_t> (value_a >> 64)) + to_string_hex64 (static_cast<nano_pow::uint128_t> (value_a));
+}
+std::string to_string_solution (std::array<uint64_t, 2> nonce_a, nano_pow::uint128_t threshold_a, uint64_t solution_a)
 {
 	auto lhs (solution_a >> 32);
 	auto lhs_hash (nano_pow::H0 (nonce_a, lhs));
@@ -29,10 +33,10 @@ std::string to_string_solution (std::array<uint64_t, 2> nonce_a, uint64_t thresh
 	auto rhs_hash (nano_pow::H1 (nonce_a, rhs));
 	auto sum (lhs_hash + rhs_hash);
 	std::ostringstream oss;
-	oss << "H0(" << to_string_hex (static_cast<uint32_t> (lhs)) << ")+H1(" << to_string_hex (static_cast<uint32_t> (rhs)) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (nano_pow::difficulty (nonce_a, solution_a));
+	oss << "H0(" << to_string_hex (static_cast<uint32_t> (lhs)) << ")+H1(" << to_string_hex (static_cast<uint32_t> (rhs)) << ")=" << to_string_hex128 (sum) << " " << to_string_hex128 (nano_pow::difficulty (nonce_a, solution_a));
 	return oss.str ();
 }
-uint64_t profile (nano_pow::driver & driver_a, unsigned threads, uint64_t difficulty, uint64_t memory, unsigned count)
+uint64_t profile (nano_pow::driver & driver_a, unsigned threads, nano_pow::uint128_t difficulty, uint64_t memory, unsigned count)
 {
 	std::cout << "Initializing driver" << std::endl;
 	if (threads != 0)
@@ -167,8 +171,8 @@ int main (int argc, char **argv)
 						if (driver != nullptr)
 						{
 							std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
-							std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64((1ULL << difficulty) - 1) << std::endl;
-							profile(*driver, threads, nano_pow::reverse ((1ULL << difficulty) - 1), lookup_entries * NP_VALUE_SIZE, count);
+							std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex128((static_cast<nano_pow::uint128_t> (1ULL) << difficulty) - 1) << std::endl;
+							profile(*driver, threads, nano_pow::reverse ((static_cast<nano_pow::uint128_t> (1ULL) << difficulty) - 1), lookup_entries * NP_VALUE_SIZE, count);
 						}
 					}
 					else if (operation == "profile_validation")

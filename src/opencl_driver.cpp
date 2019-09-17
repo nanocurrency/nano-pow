@@ -102,13 +102,13 @@ threads (8192)
 	}
 }
 
-void nano_pow::opencl_driver::difficulty_set (uint64_t difficulty_a)
+void nano_pow::opencl_driver::difficulty_set (nano_pow::uint128_t difficulty_a)
 {
 	this->difficulty_inv = nano_pow::reverse (difficulty_a);
 	this->difficulty = difficulty_a;
 }
 
-uint64_t nano_pow::opencl_driver::difficulty_get () const
+nano_pow::uint128_t nano_pow::opencl_driver::difficulty_get () const
 {
 	return difficulty;
 }

@@ -198,39 +198,39 @@ NP_INLINE static std::array<uint64_t, 2> rhs_nonce (std::array<uint64_t, 2> item
 	return result;
 }
 
-NP_INLINE static uint64_t hash (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+NP_INLINE static nano_pow::uint128_t hash (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
-	uint64_t result;
+	nano_pow::uint128_t result;
 	auto error (siphash (reinterpret_cast<uint8_t const *> (&item_a), sizeof (item_a), reinterpret_cast<uint8_t const *> (nonce_a.data ()), reinterpret_cast<uint8_t *> (&result), sizeof (result)));
 	assert (!error);
 	return result;
 }
 
 // Hash function H0 sets the high order bit
-NP_INLINE static uint64_t H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+NP_INLINE static nano_pow::uint128_t H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
 	return hash (lhs_nonce (nonce_a), item_a);
 }
 
 // Hash function H0 sets the high order bit
-uint64_t nano_pow::H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+nano_pow::uint128_t nano_pow::H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
 	return ::H0 (nonce_a, item_a);
 }
 
 // Hash function H1 clears the high order bit
-NP_INLINE static uint64_t H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+NP_INLINE static nano_pow::uint128_t H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
 	return hash (rhs_nonce (nonce_a), item_a);
 }
 
 // Hash function H1 clears the high order bit
-uint64_t nano_pow::H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+nano_pow::uint128_t nano_pow::H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
 	return ::H1 (nonce_a, item_a);
 }
 
-NP_INLINE static uint64_t reverse (uint64_t const item_a)
+NP_INLINE static uint64_t reverse_64 (uint64_t const item_a)
 {
 	auto result (item_a);
 	result = ((result >>  1) & 0x5555555555555555) | ((result & 0x5555555555555555) <<  1);
@@ -242,41 +242,47 @@ NP_INLINE static uint64_t reverse (uint64_t const item_a)
 	return result;
 }
 
-uint64_t nano_pow::reverse (uint64_t const item_a)
+NP_INLINE static nano_pow::uint128_t reverse (nano_pow::uint128_t const item_a)
+{
+	nano_pow::uint128_t result = (static_cast<nano_pow::uint128_t> (::reverse_64 (static_cast<uint64_t> (item_a))) << 64) + ::reverse_64 (static_cast<uint64_t> (item_a >> 64));
+	return result;
+}
+
+nano_pow::uint128_t nano_pow::reverse (nano_pow::uint128_t const item_a)
 {
 	return ::reverse (item_a);
 }
 
-uint64_t nano_pow::bit_difficulty (unsigned bits_a)
+nano_pow::uint128_t nano_pow::bit_difficulty (unsigned bits_a)
 {
-	assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
-	return ::reverse ((1ULL << bits_a) - 1);
+	assert (bits_a > 0 && bits_a < 128 && "Difficulty must be greater than 0 and less than 128");
+	return ::reverse ((static_cast<nano_pow::uint128_t> (1ULL) << bits_a) - 1);
 }
 
-static uint64_t sum (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
+static nano_pow::uint128_t sum (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
 {
-	auto result (::H0 (nonce_a, solution_a >> 32) + ::H1 (nonce_a, (solution_a << 32) >> 32));
+	nano_pow::uint128_t result (::H0 (nonce_a, solution_a >> 32) + ::H1 (nonce_a, (solution_a << 32) >> 32));
 	return result;
 }
 
-uint64_t nano_pow::difficulty (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
+nano_pow::uint128_t nano_pow::difficulty (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
 {
 	return ::reverse (~sum (nonce_a,  solution_a));
 }
 
-static bool passes_sum (uint64_t const sum_a, uint64_t difficulty_a)
+static bool passes_sum (nano_pow::uint128_t const sum_a, nano_pow::uint128_t difficulty_a)
 {
 	auto passed (::reverse (~sum_a) > difficulty_a);
 	return passed;
 }
 
-bool nano_pow::passes (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a, uint64_t difficulty_a)
+bool nano_pow::passes (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a, nano_pow::uint128_t difficulty_a)
 {
 	auto passed (passes_sum (sum (nonce_a, solution_a), difficulty_a));
 	return passed;
 }
 
-NP_INLINE static uint64_t difficulty_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
+NP_INLINE static nano_pow::uint128_t difficulty_quick (uint64_t const sum_a, nano_pow::uint128_t const difficulty_inv_a)
 {
 	assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 	return sum_a & difficulty_inv_a;
@@ -294,7 +300,7 @@ NP_INLINE static uint64_t slot (uint64_t const size_a, uint64_t const item_a)
 	return item_a & mask;
 }
 
-NP_INLINE static bool passes_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
+NP_INLINE static bool passes_quick (uint64_t const sum_a, nano_pow::uint128_t const difficulty_inv_a)
 {
 	assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 	auto passed (difficulty_quick (sum_a, difficulty_inv_a) == 0);
@@ -355,13 +361,13 @@ size_t nano_pow::cpp_driver::threads_get () const
 	return threads.size ();
 }
 
-void nano_pow::cpp_driver::difficulty_set (uint64_t difficulty_a)
+void nano_pow::cpp_driver::difficulty_set (nano_pow::uint128_t difficulty_a)
 {
 	difficulty_inv = ::reverse (difficulty_a);
 	difficulty_m = difficulty_a;
 }
 
-uint64_t nano_pow::cpp_driver::difficulty_get () const
+nano_pow::uint128_t nano_pow::cpp_driver::difficulty_get () const
 {
 	return difficulty_m;
 }

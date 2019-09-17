@@ -36,8 +36,8 @@ namespace nano_pow
 	public:
 		cpp_driver ();
 		~cpp_driver ();
-		void difficulty_set (uint64_t difficulty) override;
-		uint64_t difficulty_get () const override;
+		void difficulty_set (nano_pow::uint128_t difficulty) override;
+		nano_pow::uint128_t difficulty_get () const override;
 		void threads_set (unsigned threads) override;
 		size_t threads_get () const override;
 		bool memory_set (size_t memory) override;
@@ -73,8 +73,8 @@ namespace nano_pow
 		thread_pool threads;
 		std::condition_variable condition;
 		mutable std::mutex mutex;
-		uint64_t difficulty_m;
-		uint64_t difficulty_inv;
+		nano_pow::uint128_t difficulty_m;
+		nano_pow::uint128_t difficulty_inv;
 		uint32_t fill_count () const;
 		size_t size { 0 };
 		uint8_t * slab { nullptr };
