@@ -237,10 +237,10 @@ static ulong read_value(__global uint* const slab_a, ulong const index_a)
 	ulong result_l = 0;
 	result_l |= (ulong) slab_a[index_a];
 #if NP_VALUE_SIZE == 5
-	__global uchar* slab_b = &slab_a[index_a + 1];
+	__global uchar* const slab_b = &slab_a[index_a + 1];
 	result_l |= (ulong) (*slab_b) << 0x20;
 #elif NP_VALUE_SIZE == 6
-	__global unsigned* slab_b = &slab_a[index_a + 1];
+	__global unsigned* const slab_b = &slab_a[index_a + 1];
 	result_l |= (unsigned) (*slab_b) << 0x20;
 #endif
 	return result_l;
