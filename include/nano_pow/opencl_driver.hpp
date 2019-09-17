@@ -99,9 +99,11 @@ namespace nano_pow
 		uint32_t threads;
 		uint64_t difficulty;
 		uint64_t difficulty_inv;
-		cl::Buffer slab { 0 };
+		std::vector<cl::Buffer> slabs { 0 };
+		uint64_t global_mem_size;
+		uint64_t max_alloc_size;
+		uint64_t slab_entries{ 0 };
 		uint64_t slab_size;
-		uint64_t slab_entries;
 		cl::Device selected_device;
 		cl::Kernel fill_impl { 0 };
 		cl::Kernel search_impl { 0 };
