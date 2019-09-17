@@ -145,6 +145,7 @@ void nano_pow::opencl_driver::fill ()
 			current += thread_count * stepping;
 		}
 		current_fill += slab_entries;
+		queue.finish();
 	}
 	catch (cl::Error const& err) {
 		throw OCLDriverException(err, OCLDriverError::fill);
