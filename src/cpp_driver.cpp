@@ -389,7 +389,7 @@ NP_INLINE static void write_value(uint8_t* slab_a, size_t index, uint64_t value)
 #endif
 }
 
-void nano_pow::cpp_driver::fill_impl (uint32_t const begin, uint32_t const count)
+void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin)
 {
 	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
@@ -420,13 +420,12 @@ NP_INLINE static uint64_t read_value(uint8_t const * slab_a, size_t index)
 
 void nano_pow::cpp_driver::search_impl (xor_shift::hash & prng)
 {
-	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
+	//std::cerr << "Search" << std::endl;
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l = reinterpret_cast<uint8_t const *>(slab);
 	while (result == 0)
 	{
-		//std::cerr << (std::string ("Between ") + to_string_hex(i) + ' ' + to_string_hex(n) + '\n');
 		uint64_t result_l (0);
 		for (uint32_t j (0), m (stepping); result_l == 0 && j < m; ++j)
 		{
@@ -458,7 +457,7 @@ void nano_pow::cpp_driver::fill ()
 {
 	threads.execute ([this] (size_t thread_id, size_t total_threads) {
 		auto count (fill_count ());
-		fill_impl (current.fetch_add (count / total_threads), count / total_threads);
+		fill_impl (count / total_threads, current.fetch_add(count / total_threads));
 	});
 	threads.barrier ();
 }
