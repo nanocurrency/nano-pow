@@ -17,6 +17,42 @@ nonce_t rhs_nonce(nonce_t item_a)
 	return result;
 }
 
+typedef struct { ulong low, high; } uint128_t;
+uint128_t sum(uint128_t const item_1, uint128_t const item_2)
+{
+	uint128_t result;
+	result.low = item_1.low + item_2.low;
+	if (result.low < item_1.low || result.low < item_2.low)
+	{
+		result.high = item_1.high + item_2.high + 1;
+	}
+	else
+	{
+		result.high = item_1.high + item_2.high;
+	}
+	return result;
+}
+bool greater(uint128_t const item_1, uint128_t const item_2)
+{
+	bool result = false;
+	if (item_1.high > item_2.high)
+	{
+		result = true;
+	}
+	else if (item_1.high == item_2.high & item_1.low > item_2.low)
+	{
+		result = true;
+	}
+	return result;
+}
+uint128_t unary(uint128_t const item_a)
+{
+	uint128_t result;
+	result.high = ~item_a.high;
+	result.low = ~item_a.low;
+	return result;
+}
+
 typedef ulong uint64_t;
 typedef uint uint32_t;
 typedef uchar uint8_t;
@@ -180,35 +216,30 @@ int siphash(const uint8_t* in, const size_t inlen, const uint8_t* k,
 	return 0;
 }
 
-static ulong hash(nonce_t const nonce_a, ulong const item_a)
+static uint128_t hash(nonce_t const nonce_a, ulong const item_a)
 {
-	ulong result;
+	uint128_t result;
 	int code = siphash((uchar*)& item_a, sizeof(item_a), (uchar*)nonce_a.values, (uchar*)& result, sizeof(result));
 	return result;
 }
 
-static ulong H0(nonce_t nonce_a, ulong const item_a)
+static uint128_t H0(nonce_t nonce_a, ulong const item_a)
 {
 	return hash(lhs_nonce(nonce_a), item_a);
 }
 
-static ulong H1(nonce_t nonce_a, ulong const item_a)
+static uint128_t H1(nonce_t nonce_a, ulong const item_a)
 {
 	return hash(rhs_nonce(nonce_a), item_a);
 }
 
-static ulong difficulty_quick(ulong const sum_a, ulong const difficulty_inv_a)
+static bool passes_quick(uint128_t const sum_a, uint128_t const difficulty_inv_a)
 {
-	return sum_a & difficulty_inv_a;
-}
-
-static bool passes_quick(ulong const sum_a, ulong const difficulty_inv_a)
-{
-	bool passed = difficulty_quick(sum_a, difficulty_inv_a) == 0;
+	bool passed = ((sum_a.high & difficulty_inv_a.high) == 0) & ((sum_a.low & difficulty_inv_a.low) == 0);
 	return passed;
 }
 
-static ulong reverse(ulong const item_a)
+static ulong reverse_64(ulong const item_a)
 {
 	ulong result = item_a;
 	result = ((result >> 1) & 0x5555555555555555) | ((result & 0x5555555555555555) << 1);
@@ -220,9 +251,17 @@ static ulong reverse(ulong const item_a)
 	return result;
 }
 
-static bool passes_sum(ulong const sum_a, ulong threshold_a)
+static uint128_t reverse (uint128_t const item_a)
 {
-	bool passed = reverse(~sum_a) > threshold_a;
+	uint128_t result;
+	result.high = reverse_64 (item_a.low);
+	result.low = reverse_64 (item_a.high);
+	return result;
+}
+
+static bool passes_sum(uint128_t const sum_a, uint128_t const threshold_a)
+{
+	bool passed = greater (reverse(unary(sum_a)), threshold_a);
 	return passed;
 }
 
@@ -240,9 +279,9 @@ static ulong slot(uint const slabs_a, ulong const size_a, ulong const item_a)
 
 __kernel void search (ulong const size_a, __global ulong * const nonce_a, uint const count_a, uint const begin_a, uint const slabs_a,
 					  __global uint * const slab_0, __global uint * const slab_1, __global uint * const slab_2, __global uint * const slab_3,
-					  ulong const threshold_a, __global ulong* result_a)
+					  uint128_t const threshold_a, __global ulong* result_a)
 {
-	//printf ("[%llu] Search (%llx) size %llu begin %lu count %lu\n", get_global_id (0), threshold_a, size_a, begin_a, count_a);
+	//printf ("[%llu] Search (%llx%llx) size %llu begin %lu count %lu\n", get_global_id (0), threshold_a.high, threshold_a.low, size_a, begin_a, count_a);
 	bool incomplete = true;
 	uint lhs, rhs;
 	nonce_t nonce_l;
@@ -257,14 +296,14 @@ __kernel void search (ulong const size_a, __global ulong * const nonce_a, uint c
 	for (uint current = begin_a + get_global_id(0) * count_a, end = current + count_a; incomplete && current < end; ++current)
 	{
 		rhs = current;
-		ulong const hash_l = H1(nonce_l, rhs);
-		uint const slab_l = slab(slabs_a, size_a, 0 - hash_l);
-		ulong const slot_l = slot(slabs_a, size_a, 0 - hash_l);
+		uint128_t const hash_l = H1(nonce_l, rhs);
+		uint const slab_l = slab(slabs_a, size_a, 0 - hash_l.low);
+		ulong const slot_l = slot(slabs_a, size_a, 0 - hash_l.low);
 		//printf("%llu %llu %lu --- %llu\n", size_a, 0 - hash_l, slab_l, (0 - hash_l) & (size_a - 1));
 		lhs = slabs[slab_l][slot_l];
-		ulong sum = H0(nonce_l, lhs) + hash_l;
-		//printf ("%lu %lx %lu %lx\n", lhs, hash_l, rhs, sum);
-		incomplete = !passes_quick(sum, threshold_a) || !passes_sum(sum, reverse(threshold_a));
+		uint128_t summ = sum (H0(nonce_l, lhs), hash_l);
+		//printf ("%lu %lx %lu %lx\n", lhs, hash_l, rhs, summ);
+		incomplete = !passes_quick(summ, threshold_a) || !passes_sum(summ, reverse(threshold_a));
 	}
 	if (!incomplete)
 	{
@@ -287,9 +326,9 @@ __kernel void fill(ulong const size_a, __global ulong* const nonce_a, uint const
 	slabs[3] = slab_3;
 	for (uint current = begin_a + get_global_id(0) * count_a, end = current + count_a; current < end; ++current)
 	{
-		ulong const hash_l = H0(nonce_l, current);
-		uint const slab_l = slab(slabs_a, size_a, hash_l);
-		ulong const slot_l = slot(slabs_a, size_a, hash_l);
+		uint128_t const hash_l = H0(nonce_l, current);
+		uint const slab_l = slab(slabs_a, size_a, hash_l.low);
+		ulong const slot_l = slot(slabs_a, size_a, hash_l.low);
 		slabs[slab_l][slot_l] = current;
 		//printf ("[%llu] Writing current %lu to slab %lu slot %llu\n", get_global_id (0), current, slab_l, slot_l);
 	}
