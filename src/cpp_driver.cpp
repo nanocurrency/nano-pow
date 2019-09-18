@@ -233,7 +233,7 @@ NP_INLINE static uint64_t reverse_64 (uint64_t const item_a)
 
 NP_INLINE static nano_pow::uint128_t reverse (nano_pow::uint128_t const item_a)
 {
-	nano_pow::uint128_t result = (static_cast<nano_pow::uint128_t> (::reverse_64 (static_cast<uint64_t> (item_a))) << 64) + ::reverse_64 (static_cast<uint64_t> (item_a >> 64));
+	nano_pow::uint128_t result = (static_cast<nano_pow::uint128_t> (::reverse_64 (static_cast<uint64_t> (item_a))) << 64) | ::reverse_64 (static_cast<uint64_t> (item_a >> 64));
 	return result;
 }
 
