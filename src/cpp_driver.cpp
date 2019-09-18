@@ -12,17 +12,6 @@
 #include <thread>
 #include <vector>
 
-#ifdef _WIN32
-#include <plat/win/mman.h>
-#else
-#include <sys/mman.h>
-#endif
-
-#ifndef MAP_NOCACHE
-/* No MAP_NOCACHE on Linux */
-#define MAP_NOCACHE (0)
-#endif
-
 /*
  SipHash reference C implementation
  
@@ -311,13 +300,13 @@ nano_pow::cpp_driver::cpp_driver () :
 difficulty_m (nano_pow::bit_difficulty (8)),
 difficulty_inv (::reverse (difficulty_m))
 {
-	threads_set (std::thread::hardware_concurrency ());
+	nano_pow::memory_init ();
+	threads_set (std::thread::hardware_concurrency ());	
 }
 
 nano_pow::cpp_driver::~cpp_driver ()
 {
 	threads_set (0);
-	memory_set (0);
 }
 
 uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
@@ -336,17 +325,14 @@ void nano_pow::cpp_driver::dump () const
 
 bool nano_pow::cpp_driver::memory_set (size_t memory)
 {
+	assert (memory > 0);
 	assert (memory % NP_VALUE_SIZE == 0);
-	if (slab)
-	{
-		munmap (slab, size * NP_VALUE_SIZE);
-	}
-	size = memory / NP_VALUE_SIZE;
-	slab = memory == 0 ? nullptr : reinterpret_cast <uint8_t *> (mmap (0, memory, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_NOCACHE, -1, 0));
-	bool error (slab == MAP_FAILED);
+	size = memory / sizeof (uint32_t);
+	bool error = false;
+	slab = std::unique_ptr <uint8_t, std::function <void(uint8_t*)>> (nano_pow::alloc (memory, error), [size = this->size](uint8_t * slab) { free_page_memory (slab, size); });
 	if (error)
 	{
-		std::cerr << "Error while creating memory buffer: MAP_FAILED" << std::endl;
+		std::cerr << "Error while creating memory buffer" << std::endl;
 	}
 	return error;
 }
@@ -400,10 +386,9 @@ void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin
 	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
-	auto slab_l = reinterpret_cast<uint8_t *>(slab);
 	for (uint32_t current (begin), end (current + count); current < end; ++current)
 	{
-		write_value(slab_l, slot(size_l, ::H0(nonce_l, current)), current);
+		write_value(slab.get (), slot(size_l, ::H0(nonce_l, current)), current);
 	}
 }
 
@@ -429,7 +414,6 @@ void nano_pow::cpp_driver::search_impl (xor_shift::hash & prng)
 	//std::cerr << "Search" << std::endl;
 	auto size_l (size);
 	auto nonce_l (nonce);
-	auto slab_l = reinterpret_cast<uint8_t const *>(slab);
 	while (result == 0)
 	{
 		uint64_t result_l (0);
@@ -437,7 +421,7 @@ void nano_pow::cpp_driver::search_impl (xor_shift::hash & prng)
 		{
 			uint64_t rhs = prng.next ();
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint64_t lhs = read_value (slab_l, slot (size_l, 0 - hash_l));
+			uint64_t lhs = read_value (slab.get (), slot (size_l, 0 - hash_l));
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
