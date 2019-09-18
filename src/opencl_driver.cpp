@@ -125,15 +125,11 @@ size_t nano_pow::opencl_driver::threads_get () const
 
 bool nano_pow::opencl_driver::memory_set (size_t memory)
 {
+	assert(memory % sizeof(uint32_t) == 0);
+
 	// The minimum max alloc size is defined in the OpenCL standard as 1/4 of the global memory size
 	static unsigned constexpr max_slabs{ 4 };
-
-	assert(memory % sizeof(uint32_t) == 0);
-	assert(memory % max_alloc_size == 0);
-
-	auto number_slabs = std::max (1u, static_cast<unsigned> (memory / max_alloc_size));
-	assert(number_slabs <= 4);
-	assert(memory % number_slabs == 0);
+	auto number_slabs = memory > max_alloc_size ? 4 : 1;
 
 	slab_size = memory / number_slabs;
 	slab_entries = memory / sizeof(uint32_t);
