@@ -248,7 +248,7 @@ __kernel void search (ulong const size_a, __global ulong * const nonce_a, uint c
 	nonce_t nonce_l;
 	nonce_l.values[0] = nonce_a[0];
 	nonce_l.values[1] = nonce_a[1];
-	// Local array of pointers to golbal memory, ~2% better performance than using a global array
+	// Local array of pointers to global memory, ~2% better performance than using a global array
 	__global uint* __local slabs[4];
 	slabs[0] = slab_0;
 	slabs[1] = slab_1;
@@ -279,7 +279,7 @@ __kernel void fill(ulong const size_a, __global ulong* const nonce_a, uint const
 	nonce_t nonce_l;
 	nonce_l.values[0] = nonce_a[0];
 	nonce_l.values[1] = nonce_a[1];
-	// Local array of pointers to golbal memory, ~2% better performance than using a global array
+	// Local array of pointers to global memory, ~2% better performance than using a global array
 	__global uint* __local slabs[4];
 	slabs[0] = slab_0;
 	slabs[1] = slab_1;
