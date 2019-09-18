@@ -43,7 +43,9 @@ if (${NANO_POW_TEST})
 endif ()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	SET (PLATFORM_SOURCE include/plat/win/mman.c include/plat/win/mman.h)
+	SET (PLATFORM_SOURCE include/plat/win/memory.cpp)
+else ()
+	SET (PLATFORM_SOURCE include/plat/unix/memory.cpp)
 endif ()
 
 include_directories (cxxopts/include)
@@ -54,6 +56,7 @@ add_library (nano_pow
 	include/nano_pow/pow.hpp
 	include/nano_pow/driver.hpp
 	include/nano_pow/cpp_driver.hpp
+	include/nano_pow/memory.hpp
 	include/nano_pow/opencl.hpp
 	include/nano_pow/opencl_driver.hpp
 	include/nano_pow/xoroshiro128starstar.hpp
