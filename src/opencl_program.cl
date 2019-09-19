@@ -39,7 +39,7 @@ bool greater(uint128_t const item_1, uint128_t const item_2)
 	{
 		result = true;
 	}
-	else if (item_1.high == item_2.high & item_1.low > item_2.low)
+	else if (item_1.high == item_2.high && item_1.low > item_2.low)
 	{
 		result = true;
 	}
