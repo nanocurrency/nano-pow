@@ -409,13 +409,16 @@ NP_INLINE static uint64_t read_value(uint8_t const * slab_a, size_t index)
 	return result;
 }
 
-void nano_pow::cpp_driver::search_impl (xor_shift::hash & prng)
+void nano_pow::cpp_driver::search_impl (size_t thread_id, size_t total_threads)
 {
 	//std::cerr << "Search" << std::endl;
 	auto size_l (size);
 	auto nonce_l (nonce);
+	auto iteration (0);
 	while (result == 0)
 	{
+		size_t jump_count (thread_id + 1 + iteration * total_threads);
+		xor_shift::hash prng (jump_count);
 		uint64_t result_l (0);
 		for (uint32_t j (0), m (stepping); result_l == 0 && j < m; ++j)
 		{
@@ -440,6 +443,10 @@ void nano_pow::cpp_driver::search_impl (xor_shift::hash & prng)
 		{
 			result = result_l;
 		}
+		else
+		{
+			++iteration;
+		}
 	}
 }
 
@@ -455,8 +462,7 @@ void nano_pow::cpp_driver::fill ()
 uint64_t nano_pow::cpp_driver::search ()
 {
 	threads.execute ([this] (size_t thread_id, size_t total_threads) {
-		xor_shift::hash prng_state (thread_id + 1);
-		search_impl (prng_state);
+		search_impl (thread_id, total_threads);
 	});
 	threads.barrier ();
 	return result;
