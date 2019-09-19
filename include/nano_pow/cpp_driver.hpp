@@ -67,7 +67,7 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		void search_impl (size_t thread_id, size_t total_threads);
+		void search_impl (xor_shift::hash & prng_state);
 		uint64_t search () override;
 		std::atomic<uint64_t> current { 0 };
 		static uint32_t constexpr stepping { 1024 };
