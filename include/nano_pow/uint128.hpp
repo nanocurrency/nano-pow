@@ -223,7 +223,13 @@ namespace integers128
       return t;
     }
     // uint128 operator&=(uint128 v) noexcept;
-    // uint128 operator|(uint128 v) const noexcept;
+    uint128 operator|(uint128 v) const noexcept
+    {
+      uint128 t(*this);
+      t.as_longlongs[0] |= v.as_longlongs[0];
+      t.as_longlongs[1] |= v.as_longlongs[1];
+      return t;
+    }
     // uint128 operator|=(uint128 v) noexcept;
     // uint128 operator^(uint128 v) const noexcept;
     // uint128 operator^=(uint128 v) noexcept;
@@ -245,9 +251,16 @@ namespace integers128
       as_uint32_4 <<= v;
       return *this;
 #endif
-      as_longlongs[1] <<= v;
-      as_longlongs[1] |= as_longlongs[0] >> (64 - v);
-      as_longlongs[0] <<= v;
+      if (v < 64) {
+        as_longlongs[1] <<= v;
+        as_longlongs[1] |= as_longlongs[0] >> (64 - v);
+        as_longlongs[0] <<= v;
+      }
+      else
+      {
+        as_longlongs[1] = as_longlongs[0] << (v % 64);
+        as_longlongs[0] = 0;
+      }
       return *this;
     }
     uint128 operator>>(uint8_t v) const noexcept
@@ -262,9 +275,16 @@ namespace integers128
       as_uint32_4 >>= v;
       return *this;
 #endif
-      as_longlongs[0] >>= v;
-      as_longlongs[0] |= as_longlongs[1] << (64 - v);
-      as_longlongs[1] >>= v;
+      if (v < 64) {
+        as_longlongs[0] >>= v;
+        as_longlongs[0] |= as_longlongs[1] << (64 - v);
+        as_longlongs[1] >>= v;
+      }
+      else
+      {
+        as_longlongs[0] = as_longlongs[1] >> (v % 64);
+        as_longlongs[1] = 0;
+      }
       return *this;
     }
 
