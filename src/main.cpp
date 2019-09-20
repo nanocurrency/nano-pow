@@ -93,7 +93,7 @@ int main (int argc, char **argv)
 	cxxopts::Options options ("nano_pow_driver", "Command line options");
 	options.add_options ()
 	("driver", "Specify which test driver to use", cxxopts::value<std::string> ()->default_value ("cpp"))
-	("difficulty", "Solution difficulty 1-64 default: 52", cxxopts::value<unsigned> ()->default_value ("52"))
+	("difficulty", "Solution difficulty 1-64 default: 20", cxxopts::value<unsigned> ()->default_value ("20"))
 	("threads", "Number of device threads to use to find solution", cxxopts::value<unsigned> ())
 	("lookup", "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned> ())
 	("count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned> ()->default_value ("16"))
@@ -141,8 +141,8 @@ int main (int argc, char **argv)
 				if (result)
 				{
 					std::cout << "Driver: " << driver_type << std::endl;
-					auto difficulty(parsed["difficulty"].as<unsigned>());
-					auto lookup(difficulty / 2 + 1);
+					auto difficulty_64(parsed["difficulty"].as<unsigned>());
+					auto lookup((difficulty_64 + 32) / 2 + 1);
 					if (parsed.count("lookup"))
 					{
 						lookup = parsed["lookup"].as <unsigned>();
@@ -171,8 +171,9 @@ int main (int argc, char **argv)
 						if (driver != nullptr)
 						{
 							std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
-							std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex128((static_cast<nano_pow::uint128_t> (1ULL) << difficulty) - 1) << std::endl;
-							profile(*driver, threads, nano_pow::reverse ((static_cast<nano_pow::uint128_t> (1ULL) << difficulty) - 1), lookup_entries * sizeof(uint32_t), count);
+							auto threshold (nano_pow::reverse (nano_pow::bit_difficulty_64 (difficulty_64)));
+							std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64(static_cast<uint64_t> (threshold >> 32)) << " (128 bit " << to_string_hex128(threshold)  << ")" << std::endl;
+							profile(*driver, threads, nano_pow::reverse (threshold), lookup_entries * sizeof(uint32_t), count);
 						}
 					}
 					else if (operation == "profile_validation")

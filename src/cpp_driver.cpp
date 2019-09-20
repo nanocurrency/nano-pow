@@ -248,6 +248,12 @@ nano_pow::uint128_t nano_pow::bit_difficulty (unsigned bits_a)
 	return ::reverse ((static_cast<nano_pow::uint128_t> (1ULL) << bits_a) - 1);
 }
 
+nano_pow::uint128_t nano_pow::bit_difficulty_64 (unsigned bits_a)
+{
+	assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
+	return bit_difficulty (bits_a + 32);
+}
+
 static nano_pow::uint128_t sum (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
 {
 	nano_pow::uint128_t result (::H0 (nonce_a, solution_a >> 32) + ::H1 (nonce_a, (solution_a << 32) >> 32));

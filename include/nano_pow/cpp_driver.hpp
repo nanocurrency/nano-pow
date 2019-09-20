@@ -37,7 +37,7 @@ namespace nano_pow
 	public:
 		cpp_driver ();
 		~cpp_driver ();
-		void difficulty_set (nano_pow::uint128_t difficulty) override;
+		void difficulty_set (nano_pow::uint128_t difficulty_a) override;
 		nano_pow::uint128_t difficulty_get () const override;
 		void threads_set (unsigned threads) override;
 		size_t threads_get () const override;
