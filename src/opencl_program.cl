@@ -45,7 +45,7 @@ bool greater(uint128_t const item_1, uint128_t const item_2)
 	}
 	return result;
 }
-uint128_t unary(uint128_t const item_a)
+uint128_t bitwise_not(uint128_t const item_a)
 {
 	uint128_t result;
 	result.high = ~item_a.high;
@@ -261,7 +261,7 @@ static uint128_t reverse (uint128_t const item_a)
 
 static bool passes_sum(uint128_t const sum_a, uint128_t const threshold_a)
 {
-	bool passed = greater (reverse(unary(sum_a)), threshold_a);
+	bool passed = greater (reverse(bitwise_not(sum_a)), threshold_a);
 	return passed;
 }
 

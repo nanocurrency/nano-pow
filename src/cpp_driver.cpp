@@ -271,7 +271,7 @@ bool nano_pow::passes (std::array<uint64_t, 2> nonce_a, uint64_t const solution_
 	return passed;
 }
 
-NP_INLINE static nano_pow::uint128_t difficulty_quick (uint64_t const sum_a, nano_pow::uint128_t const difficulty_inv_a)
+NP_INLINE static nano_pow::uint128_t difficulty_quick (nano_pow::uint128_t const sum_a, nano_pow::uint128_t const difficulty_inv_a)
 {
 	assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 	return sum_a & difficulty_inv_a;
@@ -289,7 +289,7 @@ NP_INLINE static uint64_t slot (uint64_t const size_a, uint64_t const item_a)
 	return item_a & mask;
 }
 
-NP_INLINE static bool passes_quick (uint64_t const sum_a, nano_pow::uint128_t const difficulty_inv_a)
+NP_INLINE static bool passes_quick (nano_pow::uint128_t const sum_a, nano_pow::uint128_t const difficulty_inv_a)
 {
 	assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 	auto passed (difficulty_quick (sum_a, difficulty_inv_a) == 0);
@@ -373,7 +373,7 @@ void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin
 	auto slab_l(slab.get ());
 	for (uint32_t current (begin), end (current + count); current < end; ++current)
 	{
-		slab_l [slot (size_l, ::H0 (nonce_l, current))] = current;
+		slab_l [slot (size_l, static_cast<uint64_t> (::H0 (nonce_l, current)))] = current;
 	}
 }
 
@@ -391,7 +391,7 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 		{
 			uint64_t rhs = prng.next ();
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint64_t lhs = slab_l [slot (size_l, 0 - hash_l)];
+			uint64_t lhs = slab_l [slot (size_l, 0 - static_cast<uint64_t> (hash_l))];
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
@@ -515,7 +515,7 @@ size_t nano_pow::thread_pool::size () const
 
 uint32_t nano_pow::cpp_driver::fill_count () const
 {
-	auto low_fill = std::min (std::numeric_limits<uint32_t>::max () / 3, static_cast<uint32_t>(size)) * 3;
-	auto critical_size (size * size >= (difficulty_inv + 1));
+	auto low_fill = std::min (std::numeric_limits<uint32_t>::max () / 3, static_cast<uint32_t> (size)) * 3;
+	auto critical_size (static_cast<nano_pow::uint128_t> (size * size) >= difficulty_inv + 1);
 	return critical_size ? size : low_fill;
 }

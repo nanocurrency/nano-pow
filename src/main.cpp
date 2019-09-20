@@ -23,7 +23,7 @@ std::string to_string_hex64 (uint64_t value_a)
 }
 std::string to_string_hex128 (nano_pow::uint128_t value_a)
 {
-	return to_string_hex64 (static_cast<nano_pow::uint128_t> (value_a >> 64)) + to_string_hex64 (static_cast<nano_pow::uint128_t> (value_a));
+	return to_string_hex64 (static_cast<uint64_t> (value_a >> 64)) + to_string_hex64 (static_cast<uint64_t> (value_a));
 }
 std::string to_string_solution (std::array<uint64_t, 2> nonce_a, nano_pow::uint128_t threshold_a, uint64_t solution_a)
 {

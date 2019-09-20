@@ -9,8 +9,8 @@ TEST (context, difficulty)
 	nano_pow::cpp_driver driver;
 	driver.solve (nonce);
 	auto difficulty (nano_pow::difficulty (nonce, driver.result));
-	ASSERT_NE (0, difficulty);
-	ASSERT_EQ (0xff, difficulty >> 56);
+	ASSERT_NE (static_cast<nano_pow::uint128_t> (0), difficulty);
+	ASSERT_EQ (static_cast<nano_pow::uint128_t> (0xff), difficulty >> 56);
 	ASSERT_TRUE (nano_pow::passes (nonce, driver.result, 0xff00'0000'0000'0000ULL));
 	ASSERT_FALSE (nano_pow::passes (nonce, driver.result, 0xffff'ffff'0000'0000ULL));
 }
