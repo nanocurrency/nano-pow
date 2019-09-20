@@ -1,9 +1,9 @@
-/*#if (defined (__amd64__) || defined (__x86_64) || __aarch64__) && (defined (__GNUC__) || defined (__clang__) || defined (__INTEL_COMPILER))
+#if (defined (__amd64__) || defined (__x86_64) || __aarch64__) && (defined (__GNUC__) || defined (__clang__) || defined (__INTEL_COMPILER))
 namespace nano_pow
 {
 	typedef unsigned uint128_t __attribute__ ((mode (TI)));
 }
-#else*/
+#else
 
 /* Source: Quick C++ Libraries (C) 2014-2018 Niall Douglas http://www.nedproductions.biz/
 https://github.com/ned14/quickcpplib
@@ -292,4 +292,4 @@ namespace nano_pow
 
 #endif
 
-//#endif
+#endif
