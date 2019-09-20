@@ -1,8 +1,7 @@
 file(READ ${CL_FILE} opencl_program)
-file(WRITE ${CPP_FILE} "#include <string>\n"
-"#ifndef NP_VALUE_SIZE\n"
-"#define NP_VALUE_SIZE 4\n"
-"#endif\n"
+file(WRITE ${CPP_FILE}
+"/* Automatically generated from opencl_program.cl */\n"
+"#include <string>\n"
 "namespace nano_pow\n"
 "{\n"
 "std::string opencl_program = R\"OCL(\n"

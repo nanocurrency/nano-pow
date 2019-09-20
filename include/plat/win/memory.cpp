@@ -53,7 +53,7 @@ void memory_init ()
 	}
 }
 
-uint8_t * alloc (size_t memory, bool & error)
+uint32_t * alloc (size_t memory, bool & error)
 {
 	auto extra_flags = 0u;
 	auto rounded_up_memory = memory;
@@ -71,10 +71,10 @@ uint8_t * alloc (size_t memory, bool & error)
 		alloc = VirtualAlloc (nullptr, memory, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 		error |= (alloc == nullptr) || (GetLastError () != ERROR_SUCCESS);
 	}
-	return reinterpret_cast<uint8_t *> (alloc);
+	return reinterpret_cast<uint32_t *> (alloc);
 }
 
-void free_page_memory (uint8_t * slab, size_t)
+void free_page_memory (uint32_t * slab, size_t)
 {
 	if (slab)
 	{

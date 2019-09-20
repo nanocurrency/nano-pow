@@ -326,10 +326,10 @@ void nano_pow::cpp_driver::dump () const
 bool nano_pow::cpp_driver::memory_set (size_t memory)
 {
 	assert (memory > 0);
-	assert (memory % NP_VALUE_SIZE == 0);
+	assert ((memory & (memory - 1)) == 0);
 	size = memory / sizeof (uint32_t);
 	bool error = false;
-	slab = std::unique_ptr <uint8_t, std::function <void(uint8_t*)>> (nano_pow::alloc (memory, error), [size = this->size](uint8_t * slab) { free_page_memory (slab, size); });
+	slab = std::unique_ptr <uint32_t, std::function <void(uint32_t*)>> (nano_pow::alloc (memory, error), [size = this->size](uint32_t * slab) { free_page_memory (slab, size); });
 	if (error)
 	{
 		std::cerr << "Error while creating memory buffer" << std::endl;
@@ -365,55 +365,25 @@ std::string to_string_hex (uint32_t value_a)
 	stream << value_a;
 	return stream.str ();
 }
-
-NP_INLINE static void write_value(uint8_t* slab_a, size_t index, uint64_t value)
-{
-	auto offset = index * 4;
-	slab_a[offset + 0] = static_cast<uint8_t> (value >> 0x00);
-	slab_a[offset + 1] = static_cast<uint8_t> (value >> 0x08);
-	slab_a[offset + 2] = static_cast<uint8_t> (value >> 0x10);
-	slab_a[offset + 3] = static_cast<uint8_t> (value >> 0x18);
-#if NP_VALUE_SIZE > 4
-	slab_a[offset + 4] = static_cast<uint8_t> (value >> 0x20);
-#endif
-#if NP_VALUE_SIZE > 5
-	slab_a[offset + 5] = static_cast<uint8_t> (value >> 0x28);
-#endif
-}
-
 void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin)
 {
 	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
+	auto slab_l(slab.get ());
 	for (uint32_t current (begin), end (current + count); current < end; ++current)
 	{
-		write_value(slab.get (), slot(size_l, ::H0(nonce_l, current)), current);
+		slab_l [slot (size_l, ::H0 (nonce_l, current))] = current;
 	}
 }
 
-NP_INLINE static uint64_t read_value(uint8_t const * slab_a, size_t index)
+void nano_pow::cpp_driver::search_impl (size_t thread_id)
 {
-	auto offset = index * 4;
-	uint64_t result(0);
-	result |= static_cast<uint64_t> (slab_a[offset + 0]) << 0x00;
-	result |= static_cast<uint64_t> (slab_a[offset + 1]) << 0x08;
-	result |= static_cast<uint64_t> (slab_a[offset + 2]) << 0x10;
-	result |= static_cast<uint64_t> (slab_a[offset + 3]) << 0x18;
-#if NP_VALUE_SIZE > 4
-	result |= static_cast<uint64_t> (slab_a[offset + 4]) << 0x20;
-#endif
-#if NP_VALUE_SIZE > 5
-	result |= static_cast<uint64_t> (slab_a[offset + 5]) << 0x28;
-#endif
-	return result;
-}
-
-void nano_pow::cpp_driver::search_impl (xor_shift::hash & prng)
-{
-	//std::cerr << "Search" << std::endl;
+	xor_shift::hash prng (thread_id + 1);
+	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
+	auto slab_l(slab.get ());
 	while (result == 0)
 	{
 		uint64_t result_l (0);
@@ -421,7 +391,7 @@ void nano_pow::cpp_driver::search_impl (xor_shift::hash & prng)
 		{
 			uint64_t rhs = prng.next ();
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint64_t lhs = read_value (slab.get (), slot (size_l, 0 - hash_l));
+			uint64_t lhs = slab_l [slot (size_l, 0 - hash_l)];
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
@@ -455,8 +425,7 @@ void nano_pow::cpp_driver::fill ()
 uint64_t nano_pow::cpp_driver::search ()
 {
 	threads.execute ([this] (size_t thread_id, size_t total_threads) {
-		xor_shift::hash prng_state (thread_id + 1);
-		search_impl (prng_state);
+		search_impl (thread_id);
 	});
 	threads.barrier ();
 	return result;

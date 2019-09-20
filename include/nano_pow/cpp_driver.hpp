@@ -67,7 +67,7 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		void search_impl (xor_shift::hash & prng_state);
+		void search_impl (size_t thread_id);
 		uint64_t search () override;
 		std::atomic<uint64_t> current { 0 };
 		static uint32_t constexpr stepping { 1024 };
@@ -78,7 +78,7 @@ namespace nano_pow
 		nano_pow::uint128_t difficulty_inv;
 		uint32_t fill_count () const;
 		size_t size { 0 };
-		std::unique_ptr<uint8_t, std::function <void(uint8_t*)>> slab{nullptr, [](uint8_t*){}};
+		std::unique_ptr<uint32_t, std::function <void(uint32_t*)>> slab{nullptr, [](uint32_t*){}};
 	public:
 		std::array<uint64_t, 2> nonce { { 0, 0 } };
 	};
