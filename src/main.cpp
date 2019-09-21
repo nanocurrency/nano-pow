@@ -98,10 +98,10 @@ int main (int argc, char **argv)
 	("device", "Defines <device> for OpenCL driver", cxxopts::value<unsigned short> ())
 	("v,verbose", "Display more messages")
 	("h,help", "Print this message");
-	auto parsed = options.parse(argc, argv);
 	int result (1);
 	try
 	{
+		auto parsed = options.parse(argc, argv);
 		if (parsed.count("help"))
 		{
 			std::cout << options.help() << std::endl;
@@ -186,7 +186,7 @@ int main (int argc, char **argv)
 	}
 	catch (cxxopts::OptionException const & err)
 	{
-		std::cerr << err.what () << std::endl;
+		std::cerr << err.what () << "\n\n" << options.help () << std::endl;
 	}
 	catch (nano_pow::OCLDriverException const& err) {
 		std::cerr << "OpenCL error" << std::endl;
