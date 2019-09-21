@@ -328,6 +328,10 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 	{
 		std::cerr << "Error while creating memory buffer" << std::endl;
 	}
+	else if (verbose)
+	{
+		std::cout << "Memory set to " << memory / (1024 * 1024) << "MB" << std::endl;
+	}
 	return error;
 }
 
@@ -361,7 +365,7 @@ std::string to_string_hex (uint32_t value_a)
 }
 void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin)
 {
-	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
+	//std::cout << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab.get ());
@@ -374,7 +378,7 @@ void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin
 void nano_pow::cpp_driver::search_impl (size_t thread_id)
 {
 	xor_shift::hash prng (thread_id + 1);
-	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
+	//std::cout << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab.get ());
@@ -409,19 +413,29 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 
 void nano_pow::cpp_driver::fill ()
 {
+	auto start = std::chrono::steady_clock::now();
 	threads.execute ([this] (size_t thread_id, size_t total_threads) {
 		auto count (fill_count ());
 		fill_impl (count / total_threads, current.fetch_add(count / total_threads));
 	});
 	threads.barrier ();
+	if (verbose)
+	{
+		std::cout << "Filled in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+	}
 }
 
 uint64_t nano_pow::cpp_driver::search ()
 {
+	auto start = std::chrono::steady_clock::now();
 	threads.execute ([this] (size_t thread_id, size_t total_threads) {
 		search_impl (thread_id);
 	});
 	threads.barrier ();
+	if (verbose)
+	{
+		std::cout << "Searched in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+	}
 	return result;
 }
 

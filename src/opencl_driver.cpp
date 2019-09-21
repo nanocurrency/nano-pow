@@ -133,8 +133,11 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 
 	slab_size = memory / number_slabs;
 	slab_entries = memory / sizeof(uint32_t);
-
-	// std::cerr << number_slabs << "x " << slab_size / (1024 * 1024) << "MB " << std::endl;
+	
+	if (verbose)
+	{
+		std::cout << "Memory set to " << number_slabs << " slab(s) of " << slab_size / (1024 * 1024) << "MB each" << std::endl;
+	}
 	try	{
 		fill_impl.setArg(0, slab_entries);
 		search_impl.setArg(0, slab_entries);
@@ -177,7 +180,10 @@ void nano_pow::opencl_driver::fill ()
 	catch (cl::Error const& err) {
 		throw OCLDriverException(err, OCLDriverError::fill);
 	}
-	// std::cerr << "Fill took " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+	if (verbose)
+	{
+		std::cout << "Filled " << slab_entries << " entries in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+	}
 }
 
 uint64_t nano_pow::opencl_driver::search ()
@@ -201,7 +207,10 @@ uint64_t nano_pow::opencl_driver::search ()
 	catch (cl::Error const& err) {
 		throw OCLDriverException(err, OCLDriverError::search);
 	}
-	// std::cerr << "Search took " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+	if (verbose)
+	{
+		std::cout << "Searched " << current << " nonces in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+	}
 	return result;
 }
 
