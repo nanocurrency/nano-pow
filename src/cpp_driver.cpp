@@ -452,7 +452,7 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 	{
 		std::cout << "Searched in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
 	}
-	return result_get;
+	return result_get ();
 }
 
 std::array<uint64_t, 2> nano_pow::driver::solve (std::array<uint64_t, 2> nonce)
