@@ -365,7 +365,7 @@ std::string to_string_hex (uint32_t value_a)
 }
 void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin)
 {
-	//std::cerr << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
+	//std::cout << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab.get ());
@@ -378,7 +378,7 @@ void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin
 void nano_pow::cpp_driver::search_impl (size_t thread_id)
 {
 	xor_shift::hash prng (thread_id + 1);
-	//std::cerr << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
+	//std::cout << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab.get ());

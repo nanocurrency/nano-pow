@@ -54,7 +54,7 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, uint64_t diffic
 			auto result = driver_a.solve(nonce);
 			auto search_time(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
 			total_time += search_time;
-			std::cerr << to_string_solution (nonce, driver_a.difficulty_get (), result) << " solution ms: " << std::to_string (search_time) << std::endl;
+			std::cout << to_string_solution (nonce, driver_a.difficulty_get (), result) << " solution ms: " << std::to_string (search_time) << std::endl;
 		}
 	}
 	catch (nano_pow::OCLDriverException const& err) {
