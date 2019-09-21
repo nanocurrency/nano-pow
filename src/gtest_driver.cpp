@@ -11,8 +11,8 @@ TEST (context, difficulty)
 	auto difficulty (nano_pow::difficulty (nonce, driver.result_get ()));
 	ASSERT_NE (static_cast<nano_pow::uint128_t> (0), difficulty);
 	ASSERT_EQ (static_cast<nano_pow::uint128_t> (0xff), difficulty >> 56);
-	ASSERT_TRUE (nano_pow::passes (nonce, driver.result_get (), 0xff00'0000'0000'0000ULL));
-	ASSERT_FALSE (nano_pow::passes (nonce, driver.result_get (), 0xffff'ffff'0000'0000ULL));
+	ASSERT_TRUE (nano_pow::passes (nonce, driver.result_get (), static_cast<nano_pow::uint128_t> (0xff00'0000'0000'0000ULL) << 64));
+	ASSERT_FALSE (nano_pow::passes (nonce, driver.result_get (), static_cast<nano_pow::uint128_t> (0xffff'ffff'0000'0000ULL) << 64));
 }
 
 TEST (cpp_driver, threads)
