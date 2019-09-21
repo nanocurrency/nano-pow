@@ -58,7 +58,7 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, nano_pow::uint1
 			auto result = driver_a.solve(nonce);
 			auto search_time(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
 			total_time += search_time;
-			std::cerr << to_string_solution (nonce, driver_a.difficulty_get (), result) << " solution ms: " << std::to_string (search_time) << std::endl;
+			std::cout << to_string_solution (nonce, driver_a.difficulty_get (), result) << " solution ms: " << std::to_string (search_time) << std::endl;
 		}
 	}
 	catch (nano_pow::OCLDriverException const& err) {
@@ -93,18 +93,19 @@ int main (int argc, char **argv)
 	cxxopts::Options options ("nano_pow_driver", "Command line options");
 	options.add_options ()
 	("driver", "Specify which test driver to use", cxxopts::value<std::string> ()->default_value ("cpp"))
-	("difficulty", "Solution difficulty 1-127 default: 52", cxxopts::value<unsigned> ()->default_value ("52"))
-	("threads", "Number of device threads to use to find solution", cxxopts::value<unsigned> ())
-	("lookup", "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned> ())
-	("count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned> ()->default_value ("16"))
+	("d,difficulty", "Solution difficulty 1-127 default: 52", cxxopts::value<unsigned> ()->default_value ("52"))
+	("t,threads", "Number of device threads to use to find solution", cxxopts::value<unsigned> ())
+	("l,lookup", "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned> ())
+	("c,count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned> ()->default_value ("16"))
 	("operation", "Specify which driver operation to perform", cxxopts::value<std::string> ()->default_value ("gtest"))
 	("platform", "Defines the <platform> for OpenCL driver", cxxopts::value<unsigned short> ())
 	("device", "Defines <device> for OpenCL driver", cxxopts::value<unsigned short> ())
-	("help", "Print this message");
-	auto parsed = options.parse(argc, argv);
+	("v,verbose", "Display more messages")
+	("h,help", "Print this message");
 	int result (1);
 	try
 	{
+		auto parsed = options.parse(argc, argv);
 		if (parsed.count("help"))
 		{
 			std::cout << options.help() << std::endl;
@@ -136,52 +137,50 @@ int main (int argc, char **argv)
 			{
 				std::cerr << "Invalid driver. Available: {cpp, opencl}" << std::endl;
 			}
-			if (driver != nullptr)
+			if (driver != nullptr && result)
 			{
-				if (result)
+				std::cout << "Driver: " << driver_type << std::endl;
+				driver->verbose_set(parsed.count("verbose") == 1);
+				auto difficulty(parsed["difficulty"].as<unsigned>());
+				auto lookup(difficulty / 2 + 1);
+				if (parsed.count("lookup"))
 				{
-					std::cout << "Driver: " << driver_type << std::endl;
-					auto difficulty(parsed["difficulty"].as<unsigned>());
-					auto lookup(difficulty / 2 + 1);
-					if (parsed.count("lookup"))
-					{
-						lookup = parsed["lookup"].as <unsigned>();
-					}
-					auto lookup_entries(1ULL << lookup);
-					auto count(parsed["count"].as<unsigned>());
-					unsigned threads(0);
-					if (parsed.count("threads"))
-					{
-						threads = parsed["threads"].as <unsigned>();
-					}
-					auto operation(parsed["operation"].as<std::string>());
+					lookup = parsed["lookup"].as <unsigned>();
+				}
+				auto lookup_entries(1ULL << lookup);
+				auto count(parsed["count"].as<unsigned>());
+				unsigned threads(0);
+				if (parsed.count("threads"))
+				{
+					threads = parsed["threads"].as <unsigned>();
+				}
+				auto operation(parsed["operation"].as<std::string>());
 
-					if (operation == "gtest")
+				if (operation == "gtest")
+				{
+					testing::InitGoogleTest(&argc, argv);
+					result = RUN_ALL_TESTS();
+				}
+				else if (operation == "dump")
+				{
+					if (driver != nullptr)
+						driver->dump();
+				}
+				else if (operation == "profile")
+				{
+					if (driver != nullptr)
 					{
-						testing::InitGoogleTest(&argc, argv);
-						result = RUN_ALL_TESTS();
+						std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
+						auto threshold (nano_pow::reverse (nano_pow::bit_difficulty (difficulty)));
+						std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex128(threshold) << std::endl;
+						profile(*driver, threads, nano_pow::reverse (threshold), lookup_entries * sizeof(uint32_t), count);
 					}
-					else if (operation == "dump")
-					{
-						if (driver != nullptr)
-							driver->dump();
-					}
-					else if (operation == "profile")
-					{
-						if (driver != nullptr)
-						{
-							std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
-							auto threshold (nano_pow::reverse (nano_pow::bit_difficulty (difficulty)));
-							std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex128(threshold)  << std::endl;
-							profile(*driver, threads, nano_pow::reverse (threshold), lookup_entries * sizeof(uint32_t), count);
-						}
-					}
-					else if (operation == "profile_validation")
-						profile_validate (count);
-					else {
-						std::cerr << "Invalid operation. Available: {gtest, dump, profile, profile_validation}" << std::endl;
-						result = -1;
-					}
+				}
+				else if (operation == "profile_validation")
+					profile_validate (count);
+				else {
+					std::cerr << "Invalid operation. Available: {gtest, dump, profile, profile_validation}" << std::endl;
+					result = -1;
 				}
 			}
 			else
@@ -192,7 +191,7 @@ int main (int argc, char **argv)
 	}
 	catch (cxxopts::OptionException const & err)
 	{
-		std::cerr << err.what () << std::endl;
+		std::cerr << err.what () << "\n\n" << options.help () << std::endl;
 	}
 	catch (nano_pow::OCLDriverException const& err) {
 		std::cerr << "OpenCL error" << std::endl;
