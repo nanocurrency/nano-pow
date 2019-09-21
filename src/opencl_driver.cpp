@@ -187,11 +187,11 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 	std::array<uint64_t, 2> result = { 0, 0 };
 	uint32_t thread_count (this->threads);
 	auto start = std::chrono::steady_clock::now();
-	auto max ((std::numeric_limits<uint64_t>::max() >> 16) - thread_count * stepping);
+	auto max_current (0x0000FFFFFFFFFFFF - thread_count * stepping);
 	try {
-		while (result[1] == 0 && current < max)
+		while (result[1] == 0 && current <= max_current)
 		{
-			search_impl.setArg(3, ((current << 16) >> 16)); // 48 bit solution part
+			search_impl.setArg(3, (current & 0x0000FFFFFFFFFFFF)); // 48 bit solution part
 			current += thread_count * stepping;
 			queue.enqueueNDRangeKernel(search_impl, 0, thread_count);
 			queue.enqueueReadBuffer(result_buffer, false, 0, sizeof (uint64_t) * 2, &result, nullptr, &events[0]);

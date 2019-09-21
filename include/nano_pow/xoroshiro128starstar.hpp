@@ -33,7 +33,7 @@ public:
 		s[0] = rotl(s0, 24) ^ s1 ^ (s1 << 16); // a, b
 		s[1] = rotl(s1, 37); // c
 
-		return (result << 16) >> 16; // 48 bit solution part
+		return result;
 	}
 
 	/** This is the jump function for the generator. It is equivalent
