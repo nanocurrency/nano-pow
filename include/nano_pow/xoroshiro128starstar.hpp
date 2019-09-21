@@ -23,7 +23,7 @@ public:
 		}
 	}
 
-	uint32_t next()
+	uint64_t next()
 	{
 		const uint64_t s0 = s[0];
 		uint64_t s1 = s[1];
@@ -33,7 +33,7 @@ public:
 		s[0] = rotl(s0, 24) ^ s1 ^ (s1 << 16); // a, b
 		s[1] = rotl(s1, 37); // c
 
-		return result;
+		return (result << 16) >> 16; // 48 bit solution part
 	}
 
 	/** This is the jump function for the generator. It is equivalent

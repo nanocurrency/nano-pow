@@ -31,7 +31,7 @@ public:
 	virtual bool memory_set (size_t memory) = 0;
 	virtual void dump () const = 0;
 	virtual void fill () = 0;
-	virtual uint64_t search () = 0;
-	virtual uint64_t solve (std::array<uint64_t, 2> nonce);
+	virtual std::array<uint64_t, 2> search () = 0;
+	virtual std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce);
 };
 }

@@ -42,9 +42,8 @@ namespace nano_pow
 		void threads_set (unsigned threads) override;
 		size_t threads_get () const override;
 		bool memory_set (size_t memory) override;
-		uint64_t solve (std::array<uint64_t, 2> nonce) override;
+		std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
-		std::atomic<uint64_t> result { 0 };
 	private:
 		/**
 		 * Populates memory with `count` pre-images
@@ -68,7 +67,7 @@ namespace nano_pow
 		 * @param begin starting value to hash
 		 */
 		void search_impl (size_t thread_id);
-		uint64_t search () override;
+		std::array<uint64_t, 2> search () override;
 		std::atomic<uint64_t> current { 0 };
 		static uint32_t constexpr stepping { 1024 };
 		thread_pool threads;
@@ -79,7 +78,10 @@ namespace nano_pow
 		uint32_t fill_count () const;
 		size_t size { 0 };
 		std::unique_ptr<uint32_t, std::function <void(uint32_t*)>> slab{nullptr, [](uint32_t*){}};
+		std::atomic<uint64_t> result_0 { 0 };
+		std::atomic<uint64_t> result_1 { 0 };
 	public:
 		std::array<uint64_t, 2> nonce { { 0, 0 } };
+		std::array<uint64_t, 2> result_get ();
 	};
 }

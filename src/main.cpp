@@ -25,15 +25,15 @@ std::string to_string_hex128 (nano_pow::uint128_t value_a)
 {
 	return to_string_hex64 (static_cast<uint64_t> (value_a >> 64)) + to_string_hex64 (static_cast<uint64_t> (value_a));
 }
-std::string to_string_solution (std::array<uint64_t, 2> nonce_a, nano_pow::uint128_t threshold_a, uint64_t solution_a)
+std::string to_string_solution (std::array<uint64_t, 2> nonce_a, nano_pow::uint128_t threshold_a, std::array<uint64_t, 2> solution_a)
 {
-	auto lhs (solution_a >> 32);
+	auto lhs (solution_a[0]);
 	auto lhs_hash (nano_pow::H0 (nonce_a, lhs));
-	auto rhs (solution_a & 0xffffffffULL);
+	auto rhs (solution_a[1]);
 	auto rhs_hash (nano_pow::H1 (nonce_a, rhs));
 	auto sum (lhs_hash + rhs_hash);
 	std::ostringstream oss;
-	oss << "H0(" << to_string_hex (static_cast<uint32_t> (lhs)) << ")+H1(" << to_string_hex (static_cast<uint32_t> (rhs)) << ")=" << to_string_hex128 (sum) << " " << to_string_hex128 (nano_pow::difficulty (nonce_a, solution_a));
+	oss << "H0(" << to_string_hex64 (lhs) << ")+H1(" << to_string_hex64 (rhs) << ")=" << to_string_hex128 (sum) << " " << to_string_hex128 (nano_pow::difficulty (nonce_a, solution_a));
 	return oss.str ();
 }
 uint64_t profile (nano_pow::driver & driver_a, unsigned threads, nano_pow::uint128_t difficulty, uint64_t memory, unsigned count)
@@ -78,7 +78,7 @@ uint64_t profile_validate (uint64_t count)
 	bool valid{ false };
 	for (uint64_t i (0); i < count; ++i)
 	{
-		valid = nano_pow::passes (nonce, i, random_difficulty);
+		valid = nano_pow::passes (nonce, { i, i }, random_difficulty);
 	}
 	auto total_time (std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::steady_clock::now () - start).count ());
 	std::ostringstream oss (valid ? "true" : "false"); // IO forces compiler to not dismiss the variable

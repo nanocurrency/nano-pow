@@ -277,13 +277,14 @@ static ulong slot(uint const slabs_a, ulong const size_a, ulong const item_a)
 	return (item_a & mask) / slabs_a;
 }
 
-__kernel void search (ulong const size_a, __global ulong * const nonce_a, uint const count_a, uint const begin_a, uint const slabs_a,
+__kernel void search (ulong const size_a, __global ulong * const nonce_a, uint const count_a, ulong const begin_a, uint const slabs_a,
 					  __global uint * const slab_0, __global uint * const slab_1, __global uint * const slab_2, __global uint * const slab_3,
-					  uint128_t const threshold_a, __global ulong* result_a)
+					  uint128_t const threshold_a, __global ulong * result_a)
 {
 	//printf ("[%llu] Search (%llx%llx) size %llu begin %lu count %lu\n", get_global_id (0), threshold_a.high, threshold_a.low, size_a, begin_a, count_a);
 	bool incomplete = true;
-	uint lhs, rhs;
+	uint lhs;
+	ulong rhs;
 	nonce_t nonce_l;
 	nonce_l.values[0] = nonce_a[0];
 	nonce_l.values[1] = nonce_a[1];
@@ -293,7 +294,7 @@ __kernel void search (ulong const size_a, __global ulong * const nonce_a, uint c
 	slabs[1] = slab_1;
 	slabs[2] = slab_2;
 	slabs[3] = slab_3;
-	for (uint current = begin_a + get_global_id(0) * count_a, end = current + count_a; incomplete && current < end; ++current)
+	for (ulong current = begin_a + get_global_id(0) * count_a, end = current + count_a; incomplete && current < end; ++current)
 	{
 		rhs = current;
 		uint128_t const hash_l = H1(nonce_l, rhs);
@@ -307,7 +308,8 @@ __kernel void search (ulong const size_a, __global ulong * const nonce_a, uint c
 	}
 	if (!incomplete)
 	{
-		*result_a = (((ulong)(lhs)) << 32) | rhs;
+		result_a[0] = (ulong)lhs;
+		result_a[1] = rhs;
 	}
 }
 

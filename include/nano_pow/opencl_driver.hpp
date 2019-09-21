@@ -88,11 +88,11 @@ namespace nano_pow
 		void threads_set (unsigned threads) override;
 		size_t threads_get () const override;
 		bool memory_set (size_t memory) override;
-		uint64_t solve (std::array<uint64_t, 2> nonce) override;
+		std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
 	private:
 		void fill () override;
-		uint64_t search () override;
+		std::array<uint64_t, 2> search () override;
 		opencl_environment environment;
 		cl::Context context;
 		cl::Program program;
