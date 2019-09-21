@@ -8,6 +8,8 @@ namespace nano_pow
 {
 class driver
 {
+protected:
+	bool verbose{ false };
 public:
 	virtual ~driver() = default;
 	virtual void difficulty_set (uint64_t difficulty) = 0;
@@ -22,5 +24,6 @@ public:
 	virtual void fill () = 0;
 	virtual uint64_t search () = 0;
 	virtual uint64_t solve (std::array<uint64_t, 2> nonce);
+	void verbose_set(bool const v) { verbose = v; }
 };
 }
