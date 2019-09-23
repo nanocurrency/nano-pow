@@ -40,8 +40,6 @@ void memory_init ()
 			tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 			if (AdjustTokenPrivileges (hToken, FALSE, &tp, 0, nullptr, nullptr))
 			{
-				assert (GetLastError() == ERROR_SUCCESS);
-
 				use_large_mem_pages = (GetLargePageMinimum () != 0);
 			}
 		}
@@ -69,7 +67,7 @@ uint32_t * alloc (size_t memory, bool & error)
 	{
 		// There was an issue using the large memory pages locked in physical memory, so try and allocate without.
 		alloc = VirtualAlloc (nullptr, memory, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-		error |= (alloc == nullptr) || (GetLastError () != ERROR_SUCCESS);
+		error |= (alloc == nullptr);
 	}
 	return reinterpret_cast<uint32_t *> (alloc);
 }
@@ -79,7 +77,7 @@ void free_page_memory (uint32_t * slab, size_t)
 	if (slab)
 	{
 		auto success = VirtualFree (slab, 0, MEM_RELEASE);
-		assert (success && GetLastError () == ERROR_SUCCESS);
+		assert (success);
 	}
 }
 }
