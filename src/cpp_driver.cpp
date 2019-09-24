@@ -187,39 +187,39 @@ NP_INLINE static std::array<uint64_t, 2> rhs_nonce (std::array<uint64_t, 2> item
 	return result;
 }
 
-NP_INLINE static uint64_t hash (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+NP_INLINE static nano_pow::uint128_t hash (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
-	uint64_t result;
+	nano_pow::uint128_t result;
 	auto error (siphash (reinterpret_cast<uint8_t const *> (&item_a), sizeof (item_a), reinterpret_cast<uint8_t const *> (nonce_a.data ()), reinterpret_cast<uint8_t *> (&result), sizeof (result)));
 	assert (!error);
 	return result;
 }
 
 // Hash function H0 sets the high order bit
-NP_INLINE static uint64_t H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+NP_INLINE static nano_pow::uint128_t H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
 	return hash (lhs_nonce (nonce_a), item_a);
 }
 
 // Hash function H0 sets the high order bit
-uint64_t nano_pow::H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+nano_pow::uint128_t nano_pow::H0 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
 	return ::H0 (nonce_a, item_a);
 }
 
 // Hash function H1 clears the high order bit
-NP_INLINE static uint64_t H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+NP_INLINE static nano_pow::uint128_t H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
 	return hash (rhs_nonce (nonce_a), item_a);
 }
 
 // Hash function H1 clears the high order bit
-uint64_t nano_pow::H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
+nano_pow::uint128_t nano_pow::H1 (std::array<uint64_t, 2> nonce_a, uint64_t const item_a)
 {
 	return ::H1 (nonce_a, item_a);
 }
 
-NP_INLINE static uint64_t reverse (uint64_t const item_a)
+NP_INLINE static uint64_t reverse_64 (uint64_t const item_a)
 {
 	auto result (item_a);
 	result = ((result >>  1) & 0x5555555555555555) | ((result & 0x5555555555555555) <<  1);
@@ -231,41 +231,49 @@ NP_INLINE static uint64_t reverse (uint64_t const item_a)
 	return result;
 }
 
-uint64_t nano_pow::reverse (uint64_t const item_a)
+NP_INLINE static nano_pow::uint128_t reverse (nano_pow::uint128_t const item_a)
+{
+	nano_pow::uint128_t result = (static_cast<nano_pow::uint128_t> (::reverse_64 (static_cast<uint64_t> (item_a))) << 64) | ::reverse_64 (static_cast<uint64_t> (item_a >> 64));
+	return result;
+}
+
+nano_pow::uint128_t nano_pow::reverse (nano_pow::uint128_t const item_a)
 {
 	return ::reverse (item_a);
 }
 
-uint64_t nano_pow::bit_difficulty (unsigned bits_a)
+nano_pow::uint128_t nano_pow::bit_difficulty (unsigned bits_a)
 {
-	assert (bits_a > 0 && bits_a < 64 && "Difficulty must be greater than 0 and less than 64");
-	return ::reverse ((1ULL << bits_a) - 1);
+	assert (bits_a > 0 && bits_a < 128 && "Difficulty must be greater than 0 and less than 128");
+	return ::reverse ((static_cast<nano_pow::uint128_t> (1ULL) << bits_a) - 1);
 }
 
-static uint64_t sum (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
+static nano_pow::uint128_t sum (std::array<uint64_t, 2> nonce_a, std::array<uint64_t, 2> const solution_a)
 {
-	auto result (::H0 (nonce_a, solution_a >> 32) + ::H1 (nonce_a, (solution_a << 32) >> 32));
+	nano_pow::uint128_t result (::H0 (nonce_a, solution_a[0]) + ::H1 (nonce_a, solution_a[1]));
 	return result;
 }
 
-uint64_t nano_pow::difficulty (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a)
+nano_pow::uint128_t nano_pow::difficulty (std::array<uint64_t, 2> nonce_a, std::array<uint64_t, 2> const solution_a)
 {
 	return ::reverse (~sum (nonce_a,  solution_a));
 }
 
-static bool passes_sum (uint64_t const sum_a, uint64_t difficulty_a)
+static bool passes_sum (nano_pow::uint128_t const sum_a, nano_pow::uint128_t difficulty_a)
 {
 	auto passed (::reverse (~sum_a) > difficulty_a);
 	return passed;
 }
 
-bool nano_pow::passes (std::array<uint64_t, 2> nonce_a, uint64_t const solution_a, uint64_t difficulty_a)
+bool nano_pow::passes (std::array<uint64_t, 2> nonce_a, std::array<uint64_t, 2> const solution_a, nano_pow::uint128_t difficulty_a)
 {
+	// Solution is limited to 32 + 48 bits
+	assert (solution_a[0] <= std::numeric_limits<uint32_t>::max () && solution_a[1] <= 0x0000FFFFFFFFFFFF);
 	auto passed (passes_sum (sum (nonce_a, solution_a), difficulty_a));
 	return passed;
 }
 
-NP_INLINE static uint64_t difficulty_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
+NP_INLINE static nano_pow::uint128_t difficulty_quick (nano_pow::uint128_t const sum_a, nano_pow::uint128_t const difficulty_inv_a)
 {
 	assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 	return sum_a & difficulty_inv_a;
@@ -283,7 +291,7 @@ NP_INLINE static uint64_t slot (uint64_t const size_a, uint64_t const item_a)
 	return item_a & mask;
 }
 
-NP_INLINE static bool passes_quick (uint64_t const sum_a, uint64_t const difficulty_inv_a)
+NP_INLINE static bool passes_quick (nano_pow::uint128_t const sum_a, nano_pow::uint128_t const difficulty_inv_a)
 {
 	assert ((difficulty_inv_a & (difficulty_inv_a + 1)) == 0);
 	auto passed (difficulty_quick (sum_a, difficulty_inv_a) == 0);
@@ -303,9 +311,10 @@ nano_pow::cpp_driver::~cpp_driver ()
 	threads_set (0);
 }
 
-uint64_t nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
+std::array<uint64_t, 2> nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
 {
-	result = 0;
+	result_0 = 0;
+	result_1 = 0;
 	current = 0;
 	this->nonce [0] = nonce [0];
 	this->nonce [1] = nonce [1];
@@ -345,13 +354,13 @@ size_t nano_pow::cpp_driver::threads_get () const
 	return threads.size ();
 }
 
-void nano_pow::cpp_driver::difficulty_set (uint64_t difficulty_a)
+void nano_pow::cpp_driver::difficulty_set (nano_pow::uint128_t difficulty_a)
 {
 	difficulty_inv = ::reverse (difficulty_a);
 	difficulty_m = difficulty_a;
 }
 
-uint64_t nano_pow::cpp_driver::difficulty_get () const
+nano_pow::uint128_t nano_pow::cpp_driver::difficulty_get () const
 {
 	return difficulty_m;
 }
@@ -371,7 +380,7 @@ void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin
 	auto slab_l(slab.get ());
 	for (uint32_t current (begin), end (current + count); current < end; ++current)
 	{
-		slab_l [slot (size_l, ::H0 (nonce_l, current))] = current;
+		slab_l [slot (size_l, static_cast<uint64_t> (::H0 (nonce_l, current)))] = current;
 	}
 }
 
@@ -382,14 +391,14 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab.get ());
-	while (result == 0)
+	while (result_0 == 0)
 	{
-		uint64_t result_l (0);
-		for (uint32_t j (0), m (stepping); result_l == 0 && j < m; ++j)
+		std::array<uint64_t, 2> result_l = { 0, 0 };
+		for (uint32_t j (0), m (stepping); result_l[1] == 0 && j < m; ++j)
 		{
-			uint64_t rhs = prng.next ();
+			uint64_t rhs = prng.next () & 0x0000FFFFFFFFFFFF;  // 48 bit solution part
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint64_t lhs = slab_l [slot (size_l, 0 - hash_l)];
+			uint64_t lhs = slab_l [slot (size_l, 0 - static_cast<uint64_t> (hash_l))];
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
@@ -400,13 +409,14 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 			{
 				if (passes_sum (sum, difficulty_m))
 				{
-					result_l = (static_cast <uint64_t> (lhs) << 32) | rhs;
+					result_l = { lhs, rhs };
 				}
 			}
 		}
-		if (result_l != 0)
+		if (result_l[1] != 0)
 		{
-			result = result_l;
+			result_0 = result_l[0];
+			result_1 = result_l[1];
 		}
 	}
 }
@@ -425,7 +435,7 @@ void nano_pow::cpp_driver::fill ()
 	}
 }
 
-uint64_t nano_pow::cpp_driver::search ()
+std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 {
 	auto start = std::chrono::steady_clock::now();
 	threads.execute ([this] (size_t thread_id, size_t total_threads) {
@@ -436,18 +446,18 @@ uint64_t nano_pow::cpp_driver::search ()
 	{
 		std::cout << "Searched in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
 	}
-	return result;
+	return result_get ();
 }
 
-uint64_t nano_pow::driver::solve (std::array<uint64_t, 2> nonce)
+std::array<uint64_t, 2> nano_pow::driver::solve (std::array<uint64_t, 2> nonce)
 {
-	uint64_t result (0);
-	while (result == 0)
+	std::array<uint64_t, 2> result_l = { 0, 0 };
+	while (result_l[1] == 0)
 	{
 		fill ();
-		result = search ();
+		result_l = search ();
 	}
-	return result;
+	return result_l;
 }
 
 void nano_pow::thread_pool::barrier ()
@@ -523,7 +533,13 @@ size_t nano_pow::thread_pool::size () const
 
 uint32_t nano_pow::cpp_driver::fill_count () const
 {
-	auto low_fill = std::min (std::numeric_limits<uint32_t>::max () / 3, static_cast<uint32_t>(size)) * 3;
-	auto critical_size (size * size >= (difficulty_inv + 1));
+	auto low_fill = std::min (std::numeric_limits<uint32_t>::max () / 3, static_cast<uint32_t> (size)) * 3;
+	auto critical_size (static_cast<nano_pow::uint128_t> (size * size) >= difficulty_inv + 1);
 	return critical_size ? size : low_fill;
+}
+
+std::array<uint64_t, 2> nano_pow::cpp_driver::result_get ()
+{
+	std::array<uint64_t, 2> result_l = { result_0.load (), result_1.load () };
+	return result_l;
 }

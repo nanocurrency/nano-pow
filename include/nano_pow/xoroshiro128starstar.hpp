@@ -23,7 +23,7 @@ public:
 		}
 	}
 
-	uint32_t next()
+	uint64_t next()
 	{
 		const uint64_t s0 = s[0];
 		uint64_t s1 = s[1];

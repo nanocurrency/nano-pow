@@ -21,18 +21,22 @@ std::string to_string_hex64 (uint64_t value_a)
 	stream << value_a;
 	return stream.str ();
 }
-std::string to_string_solution (std::array<uint64_t, 2> nonce_a, uint64_t threshold_a, uint64_t solution_a)
+std::string to_string_hex128 (nano_pow::uint128_t value_a)
 {
-	auto lhs (solution_a >> 32);
+	return to_string_hex64 (static_cast<uint64_t> (value_a >> 64)) + to_string_hex64 (static_cast<uint64_t> (value_a));
+}
+std::string to_string_solution (std::array<uint64_t, 2> nonce_a, nano_pow::uint128_t threshold_a, std::array<uint64_t, 2> solution_a)
+{
+	auto lhs (solution_a[0]);
 	auto lhs_hash (nano_pow::H0 (nonce_a, lhs));
-	auto rhs (solution_a & 0xffffffffULL);
+	auto rhs (solution_a[1]);
 	auto rhs_hash (nano_pow::H1 (nonce_a, rhs));
 	auto sum (lhs_hash + rhs_hash);
 	std::ostringstream oss;
-	oss << "H0(" << to_string_hex (static_cast<uint32_t> (lhs)) << ")+H1(" << to_string_hex (static_cast<uint32_t> (rhs)) << ")=" << to_string_hex64 (sum) << " " << to_string_hex64 (nano_pow::difficulty (nonce_a, solution_a));
+	oss << "H0(" << to_string_hex64 (lhs) << ")+H1(" << to_string_hex64 (rhs) << ")=" << to_string_hex128 (sum) << " " << to_string_hex128 (nano_pow::difficulty (nonce_a, solution_a));
 	return oss.str ();
 }
-uint64_t profile (nano_pow::driver & driver_a, unsigned threads, uint64_t difficulty, uint64_t memory, unsigned count)
+uint64_t profile (nano_pow::driver & driver_a, unsigned threads, nano_pow::uint128_t difficulty, uint64_t memory, unsigned count)
 {
 	std::cout << "Initializing driver" << std::endl;
 	if (threads != 0)
@@ -74,7 +78,7 @@ uint64_t profile_validate (uint64_t count)
 	bool valid{ false };
 	for (uint64_t i (0); i < count; ++i)
 	{
-		valid = nano_pow::passes (nonce, i, random_difficulty);
+		valid = nano_pow::passes (nonce, { i, i }, random_difficulty);
 	}
 	std::ostringstream oss (valid ? "true" : "false"); // IO forces compiler to not dismiss the variable
 	auto total_time (std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::steady_clock::now () - start).count ());
@@ -89,7 +93,7 @@ int main (int argc, char **argv)
 	cxxopts::Options options ("nano_pow_driver", "Command line options");
 	options.add_options ()
 	("driver", "Specify which test driver to use", cxxopts::value<std::string> ()->default_value ("cpp"), "cpp|opencl")
-	("d,difficulty", "Solution difficulty 1-64 default: 52", cxxopts::value<unsigned> ()->default_value ("52"))
+	("d,difficulty", "Solution difficulty 1-127 default: 52", cxxopts::value<unsigned> ()->default_value ("52"))
 	("t,threads", "Number of device threads to use to find solution", cxxopts::value<unsigned> ())
 	("l,lookup", "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned> ())
 	("c,count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned> ()->default_value ("16"))
@@ -164,9 +168,10 @@ int main (int argc, char **argv)
 				}
 				else if (operation == "profile")
 				{
-					std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
-					std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64((1ULL << difficulty) - 1) << std::endl;
-					profile(*driver, threads, nano_pow::reverse ((1ULL << difficulty) - 1), lookup_entries * sizeof(uint32_t), count);
+					std::string threads_l (std::to_string(threads != 0 ? threads : driver->threads_get()));
+					auto threshold (nano_pow::reverse (nano_pow::bit_difficulty (difficulty)));
+					std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex128(threshold) << std::endl;
+					profile (*driver, threads, nano_pow::reverse (threshold), lookup_entries * sizeof(uint32_t), count);
 				}
 				else if (operation == "profile_validation")
 					profile_validate (std::max (1000000U, count));

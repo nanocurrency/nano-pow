@@ -86,7 +86,7 @@ threads (8192)
 		program.build (program_devices, nullptr, nullptr);
 		fill_impl = cl::Kernel(program, "fill");
 		search_impl = cl::Kernel(program, "search");
-		result_buffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, sizeof(uint64_t));
+		result_buffer = cl::Buffer(context, CL_MEM_WRITE_ONLY, sizeof(uint64_t) * 2);
 		search_impl.setArg(10, result_buffer);
 		nonce_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(uint64_t) * 2);
 		search_impl.setArg(1, nonce_buffer);
@@ -102,13 +102,13 @@ threads (8192)
 	}
 }
 
-void nano_pow::opencl_driver::difficulty_set (uint64_t difficulty_a)
+void nano_pow::opencl_driver::difficulty_set (nano_pow::uint128_t difficulty_a)
 {
 	this->difficulty_inv = nano_pow::reverse (difficulty_a);
 	this->difficulty = difficulty_a;
 }
 
-uint64_t nano_pow::opencl_driver::difficulty_get () const
+nano_pow::uint128_t nano_pow::opencl_driver::difficulty_get () const
 {
 	return difficulty;
 }
@@ -186,20 +186,21 @@ void nano_pow::opencl_driver::fill ()
 	}
 }
 
-uint64_t nano_pow::opencl_driver::search ()
+std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 {
 	std::array <cl::Event , 2 > events;
 	uint64_t current (0);
-	uint64_t result (0);
+	std::array<uint64_t, 2> result = { 0, 0 };
 	uint32_t thread_count (this->threads);
 	auto start = std::chrono::steady_clock::now();
+	auto max_current (0x0000FFFFFFFFFFFF - thread_count * stepping);
 	try {
-		while (result == 0 && current < std::numeric_limits<uint32_t>::max())
+		while (result[1] == 0 && current <= max_current)
 		{
-			search_impl.setArg(3, static_cast<uint32_t> (current));
+			search_impl.setArg(3, (current & 0x0000FFFFFFFFFFFF)); // 48 bit solution part
 			current += thread_count * stepping;
 			queue.enqueueNDRangeKernel(search_impl, 0, thread_count);
-			queue.enqueueReadBuffer(result_buffer, false, 0, sizeof(uint64_t), &result, nullptr, &events[0]);
+			queue.enqueueReadBuffer(result_buffer, false, 0, sizeof (uint64_t) * 2, &result, nullptr, &events[0]);
 			events[0].wait();
 			events[0] = events[1];
 		}
@@ -214,12 +215,12 @@ uint64_t nano_pow::opencl_driver::search ()
 	return result;
 }
 
-uint64_t nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
+std::array<uint64_t, 2> nano_pow::opencl_driver::solve (std::array<uint64_t, 2> nonce)
 {
-	uint64_t result{ 0 };
+	std::array<uint64_t, 2> result = { 0, 0 };
 	try {
 		search_impl.setArg(9, difficulty_inv);
-		queue.enqueueWriteBuffer (result_buffer, false, 0, sizeof (result), &result);
+		queue.enqueueWriteBuffer (result_buffer, false, 0, sizeof (uint64_t) * 2, &result);
 		queue.enqueueWriteBuffer (nonce_buffer, false, 0, sizeof (uint64_t) * 2, nonce.data ());
 	}
 	catch (cl::Error const & err) {

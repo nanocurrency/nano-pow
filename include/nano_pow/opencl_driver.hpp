@@ -83,22 +83,22 @@ namespace nano_pow
 	{
 	public:
 		opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0);
-		void difficulty_set (uint64_t difficulty) override;
-		uint64_t difficulty_get () const override;
+		void difficulty_set (nano_pow::uint128_t difficulty_a) override;
+		nano_pow::uint128_t difficulty_get () const override;
 		void threads_set (unsigned threads) override;
 		size_t threads_get () const override;
 		bool memory_set (size_t memory) override;
-		uint64_t solve (std::array<uint64_t, 2> nonce) override;
+		std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
 	private:
 		void fill () override;
-		uint64_t search () override;
+		std::array<uint64_t, 2> search () override;
 		opencl_environment environment;
 		cl::Context context;
 		cl::Program program;
 		uint32_t threads;
-		uint64_t difficulty;
-		uint64_t difficulty_inv;
+		nano_pow::uint128_t difficulty;
+		nano_pow::uint128_t difficulty_inv;
 		std::vector<cl::Buffer> slabs { 0 };
 		uint64_t global_mem_size;
 		uint64_t max_alloc_size;
