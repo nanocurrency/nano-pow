@@ -86,22 +86,31 @@ uint64_t profile_validate (uint64_t count)
 	std::cout << "Average validation time: " << std::to_string (average) << " ns (" << std::to_string (static_cast<unsigned> (count * 1e9 / total_time)) << " validations/s)" << std::endl;
 	return average;
 }
+void tune(nano_pow::driver& driver_a, nano_pow::uint128_t difficulty, unsigned const count, size_t const initial_threads, size_t const initial_memory)
+{
+	driver_a.difficulty_set(difficulty);
+
+	size_t max_memory{ 0 }, best_memory{ 0 }, best_threads;
+	driver_a.tune(count, initial_memory, initial_threads, max_memory, best_memory, best_threads);
+}
 }
 
 int main (int argc, char **argv)
 {
 	cxxopts::Options options ("nano_pow_driver", "Command line options");
-	options.add_options ()
-	("driver", "Specify which test driver to use", cxxopts::value<std::string> ()->default_value ("cpp"), "cpp|opencl")
-	("d,difficulty", "Solution difficulty 1-127 default: 52", cxxopts::value<unsigned> ()->default_value ("52"))
-	("t,threads", "Number of device threads to use to find solution", cxxopts::value<unsigned> ())
-	("l,lookup", "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned> ())
-	("c,count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned> ()->default_value ("16"))
-	("operation", "Specify which driver operation to perform", cxxopts::value<std::string> ()->default_value ("gtest"), "gtest|dump|profile|profile_validation")
-	("platform", "Defines the <platform> for OpenCL driver", cxxopts::value<unsigned short> ())
-	("device", "Defines <device> for OpenCL driver", cxxopts::value<unsigned short> ())
-	("v,verbose", "Display more messages")
-	("h,help", "Print this message");
+	options.add_options()
+	// clang-format off
+		("driver", "Specify which test driver to use", cxxopts::value<std::string>()->default_value("cpp"), "cpp|opencl")
+		("d,difficulty", "Solution difficulty 1-127 default: 52", cxxopts::value<unsigned>()->default_value("52"))
+		("t,threads", "Number of device threads to use to find solution", cxxopts::value<unsigned>())
+		("l,lookup", "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned>())
+		("c,count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned>()->default_value("16"))
+		("operation", "Specify which driver operation to perform", cxxopts::value<std::string>()->default_value("gtest"), "gtest|dump|profile|profile_validation|tune")
+		("platform", "Defines the <platform> for OpenCL driver", cxxopts::value<unsigned short>())
+		("device", "Defines <device> for OpenCL driver", cxxopts::value<unsigned short>())
+		("v,verbose", "Display more messages")
+		("h,help", "Print this message");
+	// clang-format on
 	int result (1);
 	try
 	{
@@ -166,11 +175,21 @@ int main (int argc, char **argv)
 					if (driver != nullptr)
 						driver->dump();
 				}
+				else if (operation == "tune")
+				{
+					auto threads_l (threads != 0 ? threads : driver->threads_get());
+					auto threshold (nano_pow::reverse(nano_pow::bit_difficulty(difficulty)));
+					lookup = (parsed.count("lookup") == 1 ? lookup : 32);
+					lookup_entries = 1ULL << lookup;
+					std::cout << "Tuning for threshold " << to_string_hex128(threshold) << " starting with " << threads_l << " threads and " << std::to_string(lookup_entries / (1024 * 1024) * 4) << "MB memory " << std::endl
+							  << "This may take a while..." << std::endl;
+					tune(*driver, nano_pow::reverse (threshold), count, threads, lookup_entries * sizeof(uint32_t));
+				}
 				else if (operation == "profile")
 				{
 					std::string threads_l (std::to_string(threads != 0 ? threads : driver->threads_get()));
 					auto threshold (nano_pow::reverse (nano_pow::bit_difficulty (difficulty)));
-					std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex128(threshold) << std::endl;
+					std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string(lookup_entries / (1024 * 1024) * 4) << "MB threshold: " << to_string_hex128(threshold) << std::endl;
 					profile (*driver, threads, nano_pow::reverse (threshold), lookup_entries * sizeof(uint32_t), count);
 				}
 				else if (operation == "profile_validation")

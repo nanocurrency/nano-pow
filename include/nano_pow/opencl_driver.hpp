@@ -45,6 +45,9 @@ namespace nano_pow
 		OCLDriverException(const cl::Error& cl_err, const OCLDriverError origin)
 			: OCLDriverException(cl_err, origin, "") {}
 
+		OCLDriverException (const OCLDriverError origin, const std::string details)
+			: OCLDriverException (cl::Error(1), origin, details) {}
+
 		~OCLDriverException () throw() {}
 
 		virtual const char* what () const throw ()
@@ -90,6 +93,7 @@ namespace nano_pow
 		bool memory_set (size_t memory) override;
 		std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
 		void dump () const override;
+	    bool tune (unsigned const count, size_t const initial_memory, size_t const initial_threads, size_t & max_memory, size_t & best_memory, size_t & best_threads) override;
 	private:
 		void fill () override;
 		std::array<uint64_t, 2> search () override;
