@@ -76,10 +76,10 @@ uint64_t profile_validate (uint64_t count)
 	{
 		valid = nano_pow::passes (nonce, i, random_difficulty);
 	}
-	auto total_time (std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::steady_clock::now () - start).count ());
 	std::ostringstream oss (valid ? "true" : "false"); // IO forces compiler to not dismiss the variable
+	auto total_time (std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::steady_clock::now () - start).count ());
 	uint64_t average (total_time / count);
-	std::cout << "Average validation time: " << std::to_string (average) << " ns" << std::endl;
+	std::cout << "Average validation time: " << std::to_string (average) << " ns (" << std::to_string (static_cast<unsigned> (count * 1e9 / total_time)) << " validations/s)" << std::endl;
 	return average;
 }
 }
@@ -88,12 +88,12 @@ int main (int argc, char **argv)
 {
 	cxxopts::Options options ("nano_pow_driver", "Command line options");
 	options.add_options ()
-	("driver", "Specify which test driver to use", cxxopts::value<std::string> ()->default_value ("cpp"))
+	("driver", "Specify which test driver to use", cxxopts::value<std::string> ()->default_value ("cpp"), "cpp|opencl")
 	("d,difficulty", "Solution difficulty 1-64 default: 52", cxxopts::value<unsigned> ()->default_value ("52"))
 	("t,threads", "Number of device threads to use to find solution", cxxopts::value<unsigned> ())
 	("l,lookup", "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned> ())
 	("c,count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned> ()->default_value ("16"))
-	("operation", "Specify which driver operation to perform", cxxopts::value<std::string> ()->default_value ("gtest"))
+	("operation", "Specify which driver operation to perform", cxxopts::value<std::string> ()->default_value ("gtest"), "gtest|dump|profile|profile_validation")
 	("platform", "Defines the <platform> for OpenCL driver", cxxopts::value<unsigned short> ())
 	("device", "Defines <device> for OpenCL driver", cxxopts::value<unsigned short> ())
 	("v,verbose", "Display more messages")
@@ -164,15 +164,12 @@ int main (int argc, char **argv)
 				}
 				else if (operation == "profile")
 				{
-					if (driver != nullptr)
-					{
-						std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
-						std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64((1ULL << difficulty) - 1) << std::endl;
-						profile(*driver, threads, nano_pow::reverse ((1ULL << difficulty) - 1), lookup_entries * sizeof(uint32_t), count);
-					}
+					std::string threads_l(std::to_string(threads != 0 ? threads : driver->threads_get()));
+					std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex64((1ULL << difficulty) - 1) << std::endl;
+					profile(*driver, threads, nano_pow::reverse ((1ULL << difficulty) - 1), lookup_entries * sizeof(uint32_t), count);
 				}
 				else if (operation == "profile_validation")
-					profile_validate (count);
+					profile_validate (std::max (1000000U, count));
 				else {
 					std::cerr << "Invalid operation. Available: {gtest, dump, profile, profile_validation}" << std::endl;
 					result = -1;
