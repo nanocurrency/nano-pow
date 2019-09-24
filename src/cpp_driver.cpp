@@ -265,6 +265,16 @@ nano_pow::uint128_t nano_pow::difficulty (std::array<uint64_t, 2> nonce_a, std::
 	return ::reverse (~sum (nonce_a,  solution_a));
 }
 
+nano_pow::uint128_t nano_pow::difficulty_64_to_128 (uint64_t difficulty_a)
+{
+	return (static_cast<nano_pow::uint128_t> (0xffffffffU) << 96 | static_cast<nano_pow::uint128_t> (difficulty_a) << 32);
+}
+
+uint64_t nano_pow::difficulty_128_to_64 (nano_pow::uint128_t difficulty_a)
+{
+	return static_cast<uint64_t> (difficulty_a >> 32);
+}
+
 static bool passes_sum (nano_pow::uint128_t const sum_a, nano_pow::uint128_t difficulty_a)
 {
 	auto passed (::reverse (~sum_a) > difficulty_a);
@@ -281,8 +291,7 @@ bool nano_pow::passes (std::array<uint64_t, 2> nonce_a, std::array<uint64_t, 2> 
 
 bool nano_pow::passes_64 (std::array<uint64_t, 2> nonce_a, std::array<uint64_t, 2> const solution_a, uint64_t difficulty_a)
 {
-	auto difficulty (static_cast<nano_pow::uint128_t> (0xffffffffU) << 96 | static_cast<nano_pow::uint128_t> (difficulty_a) << 32);
-	return passes (nonce_a, solution_a, difficulty);
+	return passes (nonce_a, solution_a, nano_pow::difficulty_64_to_128 (difficulty_a));
 }
 
 NP_INLINE static nano_pow::uint128_t difficulty_quick (nano_pow::uint128_t const sum_a, nano_pow::uint128_t const difficulty_inv_a)

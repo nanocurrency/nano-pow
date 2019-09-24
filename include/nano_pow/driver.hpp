@@ -18,12 +18,11 @@ public:
 	virtual nano_pow::uint128_t difficulty_get () const = 0;
 	void difficulty_set_64 (uint64_t difficulty_a)
 	{
-		auto difficulty (static_cast<nano_pow::uint128_t> (0xffffffffU) << 96 | static_cast<nano_pow::uint128_t> (difficulty_a) << 32);
-		difficulty_set (difficulty);
+		difficulty_set (nano_pow::difficulty_64_to_128 (difficulty_a));
 	}
 	uint64_t difficulty_get_64 () const
 	{
-		return static_cast<uint64_t> (difficulty_get () >> 32);
+		return nano_pow::difficulty_128_to_64 (difficulty_get ());
 	}
 	virtual void threads_set (unsigned threads) = 0;
 	virtual size_t threads_get () const = 0;

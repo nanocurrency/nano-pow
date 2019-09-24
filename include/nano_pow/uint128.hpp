@@ -1,3 +1,8 @@
+#ifndef UINT128_HPP
+#define UINT128_HPP
+
+#include <cstdint>
+
 #if (defined (__amd64__) || defined (__x86_64) || __aarch64__) && (defined (__GNUC__) || defined (__clang__) || defined (__INTEL_COMPILER))
 namespace nano_pow
 {
@@ -34,10 +39,7 @@ Distributed under the Boost Software License, Version 1.0.
     (See accompanying file Licence.txt or copy at
           http://www.boost.org/LICENSE_1_0.txt)
 */
-#ifndef QUICKCPPLIB_UINT128_HPP
-#define QUICKCPPLIB_UINT128_HPP
 
-#include <cstdint>
 #include <stdexcept>
 
 #if defined(__SSE2__) || defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
@@ -311,5 +313,11 @@ namespace nano_pow
 }
 
 #endif
+
+namespace nano_pow
+{
+	nano_pow::uint128_t difficulty_64_to_128 (uint64_t difficulty_a);
+	uint64_t difficulty_128_to_64 (nano_pow::uint128_t difficulty_a);
+}
 
 #endif
