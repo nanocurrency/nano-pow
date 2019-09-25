@@ -378,8 +378,9 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 	}
 	if (ok)
 	{
-		stream << "Found best memory " << megabytes (memory) << "MB" << std::endl;
 		best_memory_a = memory;
+		stream << "Found best memory " << megabytes (best_memory_a) << "MB" << std::endl;
+		memory_set (best_memory_a);
 	}
 
 	/*
@@ -390,8 +391,8 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 	{
 		try
 		{
-			auto start (steady_clock::now ());
 			threads_set (threads);
+			auto start (steady_clock::now ());
 			for (unsigned i{ 0 }; i < count_a; ++i)
 			{
 				solve ({ i + 1, 0 });
@@ -417,8 +418,9 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 	}
 	if (ok)
 	{
-		stream << "Found best threads " << threads << std::endl;
 		best_threads_a = threads;
+		stream << "Found best threads " << threads << std::endl;
+		threads_set (best_threads_a);
 	}
 
 	return !ok;
