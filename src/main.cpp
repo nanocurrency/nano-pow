@@ -72,13 +72,13 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, nano_pow::uint1
 uint64_t profile_validate (uint64_t count)
 {
 	std::array<uint64_t, 2> nonce = { 0, 0 };
-	uint64_t random_difficulty{ 0xffffffc000000000 };
+	uint64_t difficulty{ 0xffffffc000000000 };
 	std::cout << "Starting validation profile" << std::endl;
 	auto start (std::chrono::steady_clock::now ());
 	bool valid{ false };
 	for (uint64_t i (0); i < count; ++i)
 	{
-		valid = nano_pow::passes (nonce, { i, i }, random_difficulty);
+		valid = nano_pow::passes (nonce, { i, i }, difficulty);
 	}
 	std::ostringstream oss (valid ? "true" : "false"); // IO forces compiler to not dismiss the variable
 	auto total_time (std::chrono::duration_cast<std::chrono::nanoseconds> (std::chrono::steady_clock::now () - start).count ());
@@ -175,25 +175,26 @@ int main (int argc, char **argv)
 					if (driver != nullptr)
 						driver->dump();
 				}
-				else if (operation == "tune")
-				{
-					auto threads_l (threads != 0 ? threads : driver->threads_get());
-					auto threshold (nano_pow::reverse(nano_pow::bit_difficulty(difficulty)));
-					lookup = (parsed.count("lookup") == 1 ? lookup : 32);
-					lookup_entries = 1ULL << lookup;
-					std::cout << "Tuning for threshold " << to_string_hex128(threshold) << " starting with " << threads_l << " threads and " << std::to_string(lookup_entries / (1024 * 1024) * 4) << "MB memory " << std::endl
-							  << "This may take a while..." << std::endl;
-					tune(*driver, nano_pow::reverse (threshold), count, threads, lookup_entries * sizeof(uint32_t));
-				}
 				else if (operation == "profile")
 				{
-					std::string threads_l (std::to_string(threads != 0 ? threads : driver->threads_get()));
+					auto threads_l (threads != 0 ? threads : driver->threads_get());
 					auto threshold (nano_pow::reverse (nano_pow::bit_difficulty (difficulty)));
-					std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string(lookup_entries / (1024 * 1024) * 4) << "MB threshold: " << to_string_hex128(threshold) << std::endl;
+					std::cout << "Profiling threads: " << std::to_string(threads_l) << " lookup: " << std::to_string(lookup_entries / (1024 * 1024) * 4) << "MB threshold: " << to_string_hex128(threshold) << std::endl;
 					profile (*driver, threads, nano_pow::reverse (threshold), lookup_entries * sizeof(uint32_t), count);
 				}
 				else if (operation == "profile_validation")
 					profile_validate (std::max (1000000U, count));
+				else if (operation == "tune")
+				{
+					auto threshold (nano_pow::reverse(nano_pow::bit_difficulty(difficulty)));
+					// Force threads and lookup if not given
+					auto threads_l (threads != 0 ? threads : std::min (2048UL, driver->threads_get()));
+					lookup = (parsed.count("lookup") == 1 ? lookup : 32);
+					lookup_entries = 1ULL << lookup;
+					std::cout << "Tuning for difficulty " << difficulty << " starting with " << threads_l << " threads and " << std::to_string(lookup_entries / (1024 * 1024) * 4) << "MB memory " << std::endl
+							  << "This may take a while..." << std::endl;
+					tune(*driver, nano_pow::reverse (threshold), count, threads_l, lookup_entries * sizeof(uint32_t));
+				}
 				else {
 					std::cerr << "Invalid operation. Available: {gtest, dump, profile, profile_validation}" << std::endl;
 					result = -1;

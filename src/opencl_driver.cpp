@@ -217,7 +217,7 @@ void nano_pow::opencl_driver::fill ()
 		while (current < current_fill + slab_entries)
 		{
 			fill_impl.setArg (3, static_cast<uint32_t> (current));
-			queue.enqueueNDRangeKernel (fill_impl, 0, thread_count);
+			queue.enqueueNDRangeKernel (fill_impl, cl::NullRange, cl::NDRange (thread_count));
 			current += thread_count * stepping;
 		}
 		current_fill += slab_entries;
@@ -247,7 +247,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 		{
 			search_impl.setArg (3, (current & 0x0000FFFFFFFFFFFF)); // 48 bit solution part
 			current += thread_count * stepping;
-			queue.enqueueNDRangeKernel (search_impl, 0, thread_count);
+			queue.enqueueNDRangeKernel (search_impl, cl::NullRange, cl::NDRange (thread_count));
 			queue.enqueueReadBuffer (result_buffer, false, 0, sizeof (uint64_t) * 2, &result, nullptr, &events[0]);
 			events[0].wait ();
 			events[0] = events[1];
