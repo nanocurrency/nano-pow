@@ -189,6 +189,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 	try
 	{
 		slabs.clear ();
+		current_fill = 0;
 		fill_impl.setArg (0, slab_entries);
 		search_impl.setArg (0, slab_entries);
 		fill_impl.setArg (4, number_slabs);
