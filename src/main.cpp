@@ -202,8 +202,8 @@ int main (int argc, char ** argv)
 				{
 					auto threshold (nano_pow::reverse (nano_pow::bit_difficulty (difficulty)));
 					// Force threads and lookup if not given
-					//TODO any device performing better with less than 2048 threads for a reasonable difficulty?
-					auto threads_l (threads != 0 ? threads : std::min (static_cast<size_t> (2048), driver->threads_get ()));
+					//TODO any device performing better with less than 4096 threads for a reasonable difficulty?
+					auto threads_l (threads != 0 ? threads : std::min (static_cast<size_t> (4096), driver->threads_get ()));
 					lookup = (parsed.count ("lookup") == 1 ? lookup : 32);
 					lookup_entries = 1ULL << lookup;
 					std::cout << "Tuning for difficulty " << difficulty << " starting with " << threads_l << " threads and " << std::to_string (lookup_entries / (1024 * 1024) * 4) << "MB memory " << std::endl
