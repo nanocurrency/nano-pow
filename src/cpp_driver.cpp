@@ -282,10 +282,10 @@ NP_INLINE static nano_pow::uint128_t difficulty_quick (nano_pow::uint128_t const
 /**
  * Maps item_a to an index within the memory region.
  *
- * @param item_a value that needs to be pigeonholed into an index/slot.
+ * @param item_a value that needs to be pigeonholed into an index/bucket.
  *        Naively is (item_a % size_a), but using bitmasking for efficiency.
  */
-NP_INLINE static uint64_t slot (uint64_t const size_a, uint64_t const item_a)
+NP_INLINE static uint64_t bucket (uint64_t const size_a, uint64_t const item_a)
 {
 	auto mask (size_a - 1);
 	assert (((size_a & mask) == 0) && "Slab size is not a power of 2");
@@ -383,7 +383,7 @@ void nano_pow::cpp_driver::fill_impl (uint64_t const count, uint64_t const begin
 	for (uint64_t current (begin), end (current + count); current < end; ++current)
 	{
 		uint32_t current_32 (static_cast<uint32_t> (current));
-		slab_l[slot (size_l, static_cast<uint64_t> (::H0 (nonce_l, current_32)))] = current_32;
+		slab_l[bucket (size_l, static_cast<uint64_t> (::H0 (nonce_l, current_32)))] = current_32;
 	}
 }
 
@@ -401,7 +401,7 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 		{
 			uint64_t rhs = prng.next () & 0x0000FFFFFFFFFFFF; // 48 bit solution part
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint64_t lhs = slab_l[slot (size_l, 0 - static_cast<uint64_t> (hash_l))];
+			uint64_t lhs = slab_l[bucket (size_l, 0 - static_cast<uint64_t> (hash_l))];
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
