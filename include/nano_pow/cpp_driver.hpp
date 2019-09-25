@@ -47,27 +47,27 @@ public:
 	bool tune (unsigned const count, size_t const initial_memory, size_t const initial_threads, size_t & max_memory, size_t & best_memory, size_t & best_threads) override;
 
 private:
-	/**
-		 * Populates memory with `count` pre-images
-		 *
-		 * These preimages are used as the RHS to the summing problem
-		 * basically does:
-		 *     slab_a[hash(x) % size_a] = x
-		 *
-		 * @param count How many slots in slab_a to fill
-		 * @param begin starting value to hash
-		 */
-	void fill_impl (uint32_t const count, uint32_t const begin = 0);
+	/*
+	 * Populates memory with `count` pre-images
+	 *
+	 * These preimages are used as the RHS to the summing problem
+	 * basically does:
+	 *     slab_a[hash(x) % size_a] = x
+	 *
+	 * @param count How many slots in slab_a to fill
+	 * @param begin starting value to hash
+	 */
+	void fill_impl (uint64_t const count, uint64_t const begin = 0);
 	void fill () override;
 
-	/**
-		 * Searches for a solution to difficulty problem
-		 *
-		 * Generates `count` LHS hashes and searches for associated RHS hashes already in the slab
-		 *
-		 * @param count How many slots in slab_a to fill
-		 * @param begin starting value to hash
-		 */
+	/*
+	 * Searches for a solution to difficulty problem
+	 *
+	 * Generates `count` LHS hashes and searches for associated RHS hashes already in the slab
+	 *
+	 * @param count How many slots in slab_a to fill
+	 * @param begin starting value to hash
+	 */
 	void search_impl (size_t thread_id);
 	std::array<uint64_t, 2> search () override;
 	std::atomic<uint64_t> current{ 0 };
@@ -77,7 +77,7 @@ private:
 	mutable std::mutex mutex;
 	nano_pow::uint128_t difficulty_m;
 	nano_pow::uint128_t difficulty_inv;
-	uint32_t fill_count () const;
+	uint64_t fill_count () const;
 	size_t size{ 0 };
 	std::unique_ptr<uint32_t, std::function<void(uint32_t *)>> slab{ nullptr, [](uint32_t *) {} };
 	std::atomic<uint64_t> result_0{ 0 };

@@ -157,10 +157,20 @@ int main (int argc, char ** argv)
 				std::cout << "Driver: " << driver_type << std::endl;
 				driver->verbose_set (parsed.count ("verbose") == 1);
 				auto difficulty (parsed["difficulty"].as<unsigned> ());
-				auto lookup (difficulty / 2 + 1);
+				if (difficulty < 1 || difficulty > 127)
+				{
+					std::cerr << "Incorrect difficulty" << std::endl;
+					return -1;
+				}
+				auto lookup (std::min (static_cast<unsigned> (32), difficulty / 2 + 1));
 				if (parsed.count ("lookup"))
 				{
 					lookup = parsed["lookup"].as<unsigned> ();
+				}
+				if (lookup < 1 || lookup > 32)
+				{
+					std::cerr << "Incorrect lookup" << std::endl;
+					return -1;
 				}
 				auto lookup_entries (1ULL << lookup);
 				auto count (parsed["count"].as<unsigned> ());

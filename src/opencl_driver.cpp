@@ -85,62 +85,67 @@ nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned sho
 {
 	if (initialize)
 	{
-		std::vector<cl::Device> devices;
-		// Platform
-		if (platform_id >= environment.platforms.size ())
-		{
-			throw OCLDriverException (OCLDriverError::init, cl::Error (CL_INVALID_PLATFORM));
-		}
-		try
-		{
-			auto & platform (environment.platforms[platform_id]);
-			(void)platform.getDevices (CL_DEVICE_TYPE_ALL, &devices);
-		}
-		catch (cl::Error const & err)
-		{
-			throw OCLDriverException (OCLDriverError::init, err);
-		}
-		// Device
-		if (device_id >= devices.size ())
-		{
-			throw OCLDriverException (OCLDriverError::init, cl::Error (CL_DEVICE_NOT_FOUND));
-		}
-		try
-		{
-			selected_device = devices[device_id];
-			auto platform_properties = selected_device.getInfo<CL_DEVICE_PLATFORM> ();
-			global_mem_size = selected_device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> ();
-			max_alloc_size = selected_device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> ();
-			cl_context_properties contextProperties[3]{ CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platform_properties), 0 };
-			context = cl::Context (selected_device, contextProperties);
-		}
-		catch (cl::Error const & err)
-		{
-			throw OCLDriverException (OCLDriverError::init, err);
-		}
-		// Program
-		try
-		{
-			std::vector<cl::Device> program_devices{ selected_device };
-			program = cl::Program (context, nano_pow::opencl_program, false);
-			program.build (program_devices, nullptr, nullptr);
-			fill_impl = cl::Kernel (program, "fill");
-			search_impl = cl::Kernel (program, "search");
-			result_buffer = cl::Buffer (context, CL_MEM_WRITE_ONLY, sizeof (uint64_t) * 2);
-			search_impl.setArg (10, result_buffer);
-			nonce_buffer = cl::Buffer (context, CL_MEM_READ_WRITE, sizeof (uint64_t) * 2);
-			search_impl.setArg (1, nonce_buffer);
-			fill_impl.setArg (1, nonce_buffer);
-			search_impl.setArg (2, stepping);
-			fill_impl.setArg (2, stepping);
-			queue = cl::CommandQueue (context, selected_device);
-			queue.finish ();
-		}
-		catch (cl::Error const & err)
-		{
-			auto details (program.getBuildInfo<CL_PROGRAM_BUILD_LOG> (selected_device));
-			throw OCLDriverException (OCLDriverError::build, err, details);
-		}
+		this->initialize (platform_id, device_id);
+	}
+}
+
+void nano_pow::opencl_driver::initialize (unsigned short platform_id, unsigned short device_id)
+{
+	std::vector<cl::Device> devices;
+	// Platform
+	if (platform_id >= environment.platforms.size ())
+	{
+		throw OCLDriverException (OCLDriverError::init, cl::Error (CL_INVALID_PLATFORM));
+	}
+	try
+	{
+		auto & platform (environment.platforms[platform_id]);
+		(void)platform.getDevices (CL_DEVICE_TYPE_ALL, &devices);
+	}
+	catch (cl::Error const & err)
+	{
+		throw OCLDriverException (OCLDriverError::init, err);
+	}
+	// Device
+	if (device_id >= devices.size ())
+	{
+		throw OCLDriverException (OCLDriverError::init, cl::Error (CL_DEVICE_NOT_FOUND));
+	}
+	try
+	{
+		selected_device = devices[device_id];
+		auto platform_properties = selected_device.getInfo<CL_DEVICE_PLATFORM> ();
+		global_mem_size = selected_device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> ();
+		max_alloc_size = selected_device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> ();
+		cl_context_properties contextProperties[3]{ CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platform_properties), 0 };
+		context = cl::Context (selected_device, contextProperties);
+	}
+	catch (cl::Error const & err)
+	{
+		throw OCLDriverException (OCLDriverError::init, err);
+	}
+	// Program
+	try
+	{
+		std::vector<cl::Device> program_devices{ selected_device };
+		program = cl::Program (context, nano_pow::opencl_program, false);
+		program.build (program_devices, nullptr, nullptr);
+		fill_impl = cl::Kernel (program, "fill");
+		search_impl = cl::Kernel (program, "search");
+		result_buffer = cl::Buffer (context, CL_MEM_WRITE_ONLY, sizeof (uint64_t) * 2);
+		search_impl.setArg (10, result_buffer);
+		nonce_buffer = cl::Buffer (context, CL_MEM_READ_WRITE, sizeof (uint64_t) * 2);
+		search_impl.setArg (1, nonce_buffer);
+		fill_impl.setArg (1, nonce_buffer);
+		search_impl.setArg (2, stepping);
+		fill_impl.setArg (2, stepping);
+		queue = cl::CommandQueue (context, selected_device);
+		queue.finish ();
+	}
+	catch (cl::Error const & err)
+	{
+		auto details (program.getBuildInfo<CL_PROGRAM_BUILD_LOG> (selected_device));
+		throw OCLDriverException (OCLDriverError::build, err, details);
 	}
 }
 
@@ -176,6 +181,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 
 	slab_size = memory / number_slabs;
 	slab_entries = memory / sizeof (uint32_t);
+	assert (slab_entries <= 0x0000000100000000); // 16GB limit
 
 	if (verbose)
 	{
@@ -417,5 +423,5 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 		best_threads_a = threads;
 	}
 
-	return ok;
+	return !ok;
 }
