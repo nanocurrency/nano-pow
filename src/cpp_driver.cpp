@@ -331,6 +331,7 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 	assert (memory > 0);
 	assert ((memory & (memory - 1)) == 0);
 	size = memory / sizeof (uint32_t);
+	assert (size <= 0x0000000100000000); // 16GB limit
 	bool error = false;
 	slab = std::unique_ptr <uint32_t, std::function <void(uint32_t*)>> (nano_pow::alloc (memory, error), [size = this->size](uint32_t * slab) { free_page_memory (slab, size); });
 	if (error)
@@ -372,15 +373,16 @@ std::string to_string_hex (uint32_t value_a)
 	stream << value_a;
 	return stream.str ();
 }
-void nano_pow::cpp_driver::fill_impl (uint32_t const count, uint32_t const begin)
+void nano_pow::cpp_driver::fill_impl (uint64_t const count, uint64_t const begin)
 {
 	//std::cout << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l(slab.get ());
-	for (uint32_t current (begin), end (current + count); current < end; ++current)
+	for (uint64_t current (begin), end (current + count); current < end; ++current)
 	{
-		slab_l [slot (size_l, static_cast<uint64_t> (::H0 (nonce_l, current)))] = current;
+		uint32_t current_32 (static_cast<uint32_t> (current));
+		slab_l [slot (size_l, static_cast<uint64_t> (::H0 (nonce_l, current_32)))] = current_32;
 	}
 }
 
@@ -531,9 +533,9 @@ size_t nano_pow::thread_pool::size () const
 	return threads.size ();
 }
 
-uint32_t nano_pow::cpp_driver::fill_count () const
+uint64_t nano_pow::cpp_driver::fill_count () const
 {
-	auto low_fill = std::min (std::numeric_limits<uint32_t>::max () / 3, static_cast<uint32_t> (size)) * 3;
+	auto low_fill = std::min (static_cast<size_t> (std::numeric_limits<uint32_t>::max () / 3), size) * 3;
 	auto critical_size (static_cast<nano_pow::uint128_t> (size * size) >= difficulty_inv + 1);
 	return critical_size ? size : low_fill;
 }

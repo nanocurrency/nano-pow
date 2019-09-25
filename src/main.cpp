@@ -95,7 +95,7 @@ int main (int argc, char **argv)
 	("driver", "Specify which test driver to use", cxxopts::value<std::string> ()->default_value ("cpp"), "cpp|opencl")
 	("d,difficulty", "Solution difficulty 1-127 default: 52", cxxopts::value<unsigned> ()->default_value ("52"))
 	("t,threads", "Number of device threads to use to find solution", cxxopts::value<unsigned> ())
-	("l,lookup", "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned> ())
+	("l,lookup", "Scale of lookup table (N) 1-32. Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned> ())
 	("c,count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned> ()->default_value ("16"))
 	("operation", "Specify which driver operation to perform", cxxopts::value<std::string> ()->default_value ("gtest"), "gtest|dump|profile|profile_validation")
 	("platform", "Defines the <platform> for OpenCL driver", cxxopts::value<unsigned short> ())
@@ -142,10 +142,20 @@ int main (int argc, char **argv)
 				std::cout << "Driver: " << driver_type << std::endl;
 				driver->verbose_set(parsed.count("verbose") == 1);
 				auto difficulty(parsed["difficulty"].as<unsigned>());
-				auto lookup(difficulty / 2 + 1);
+				if (difficulty < 1 || difficulty > 127)
+				{
+					std::cerr << "Incorrect difficulty" << std::endl;
+					return -1;
+				}
+				auto lookup(std::min (static_cast<unsigned> (32), difficulty / 2 + 1));
 				if (parsed.count("lookup"))
 				{
 					lookup = parsed["lookup"].as <unsigned>();
+				}
+				if (lookup < 1 || lookup > 32)
+				{
+					std::cerr << "Incorrect lookup" << std::endl;
+					return -1;
 				}
 				auto lookup_entries(1ULL << lookup);
 				auto count(parsed["count"].as<unsigned>());
@@ -170,7 +180,7 @@ int main (int argc, char **argv)
 				{
 					std::string threads_l (std::to_string(threads != 0 ? threads : driver->threads_get()));
 					auto threshold (nano_pow::reverse (nano_pow::bit_difficulty (difficulty)));
-					std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string((1ULL << lookup) / 1024 * 4) << "kb threshold: " << to_string_hex128(threshold) << std::endl;
+					std::cout << "Profiling threads: " << threads_l << " lookup: " << std::to_string(lookup_entries / 1024 * sizeof(uint32_t)) << "kb threshold: " << to_string_hex128(threshold) << std::endl;
 					profile (*driver, threads, nano_pow::reverse (threshold), lookup_entries * sizeof(uint32_t), count);
 				}
 				else if (operation == "profile_validation")
