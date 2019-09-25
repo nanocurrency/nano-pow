@@ -2,6 +2,7 @@
 #include <array>
 #include <chrono>
 #include <string>
+#include <sstream>
 
 #include <nano_pow/opencl_driver.hpp>
 #include <nano_pow/pow.hpp>
@@ -19,7 +20,6 @@ nano_pow::opencl_environment::opencl_environment ()
 void nano_pow::opencl_environment::dump (std::ostream & stream)
 {
 	stream << "OpenCL found " << platforms.size () << " platforms" << std::endl;
-	;
 	for (auto & platform : platforms)
 	{
 		stream << '\t' << platform.getInfo<CL_PLATFORM_PROFILE> ()
@@ -30,7 +30,14 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 		       << std::endl;
 
 		std::vector<cl::Device> devices;
-		(void)platform.getDevices (CL_DEVICE_TYPE_ALL, &devices);
+		try
+		{
+			(void)platform.getDevices (CL_DEVICE_TYPE_ALL, &devices);
+		}
+		catch (cl::Error const & err)
+		{
+			stream << "\nERROR\n" << to_string (err.err ()) << std::endl;
+		}
 		stream << "Number of devices: " << devices.size () << "\n";
 		for (auto & device : devices)
 		{
@@ -74,22 +81,43 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned short device_id) :
 threads (8192)
 {
-	auto & platform (environment.platforms[platform_id]);
 	std::vector<cl::Device> devices;
-	(void)platform.getDevices (CL_DEVICE_TYPE_ALL, &devices);
-	if (devices.empty ())
+	// Platform
+	if (platform_id >= environment.platforms.size ())
 	{
-		throw OCLDriverException (OCLDriverError::build, "No OpenCL devices found");
+		throw OCLDriverException (OCLDriverError::init, cl::Error(CL_INVALID_PLATFORM));
 	}
-	selected_device = devices[device_id];
-	auto platform_properties = selected_device.getInfo<CL_DEVICE_PLATFORM> ();
-	global_mem_size = selected_device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> ();
-	max_alloc_size = selected_device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> ();
-	cl_context_properties contextProperties[3]{ CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platform_properties), 0 };
-	context = cl::Context (selected_device, contextProperties);
-	std::vector<cl::Device> program_devices{ selected_device };
 	try
 	{
+		auto & platform (environment.platforms[platform_id]);
+		(void)platform.getDevices (CL_DEVICE_TYPE_ALL, &devices);
+	}
+	catch (cl::Error const & err)
+	{
+		throw OCLDriverException (OCLDriverError::init, err);
+	}
+	// Device
+	if (device_id >= devices.size ())
+	{
+		throw OCLDriverException (OCLDriverError::init, cl::Error(CL_DEVICE_NOT_FOUND));
+	}
+	try
+	{
+		selected_device = devices[device_id];
+		auto platform_properties = selected_device.getInfo<CL_DEVICE_PLATFORM> ();
+		global_mem_size = selected_device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> ();
+		max_alloc_size = selected_device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> ();
+		cl_context_properties contextProperties[3]{ CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platform_properties), 0 };
+		context = cl::Context (selected_device, contextProperties);				
+	}
+	catch (cl::Error const & err)
+	{
+		throw OCLDriverException (OCLDriverError::init, err);
+	}
+	// Program
+	try
+	{
+		std::vector<cl::Device> program_devices{ selected_device };		
 		program = cl::Program (context, nano_pow::opencl_program, false);
 		program.build (program_devices, nullptr, nullptr);
 		fill_impl = cl::Kernel (program, "fill");
@@ -107,7 +135,7 @@ threads (8192)
 	catch (cl::Error const & err)
 	{
 		auto details (program.getBuildInfo<CL_PROGRAM_BUILD_LOG> (selected_device));
-		throw OCLDriverException (err, OCLDriverError::build, details);
+		throw OCLDriverException (OCLDriverError::build, err, details);
 	}
 }
 
@@ -170,7 +198,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (err, OCLDriverError::memory_set);
+		throw OCLDriverException (OCLDriverError::memory_set, err);
 	}
 	return false;
 }
@@ -193,7 +221,7 @@ void nano_pow::opencl_driver::fill ()
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (err, OCLDriverError::fill);
+		throw OCLDriverException (OCLDriverError::fill, err);
 	}
 	if (verbose)
 	{
@@ -223,7 +251,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (err, OCLDriverError::search);
+		throw OCLDriverException (OCLDriverError::search, err);
 	}
 	if (verbose)
 	{
@@ -242,7 +270,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::solve (std::array<uint64_t, 2> 
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (err, OCLDriverError::setup);
+		throw OCLDriverException (OCLDriverError::setup, err);
 	}
 	return nano_pow::driver::solve (nonce);
 }

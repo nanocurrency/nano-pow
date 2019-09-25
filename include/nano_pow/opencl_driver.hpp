@@ -11,6 +11,7 @@ namespace nano_pow
 	enum class OCLDriverError
 	{
 		unknown = 0,
+		init,
 		build,
 		setup,
 		memory_set,
@@ -22,6 +23,7 @@ namespace nano_pow
 		switch (err)
 		{
 		case OCLDriverError::unknown: return "Unknown";
+		case OCLDriverError::init: return "Init";
 		case OCLDriverError::build: return "Build";
 		case OCLDriverError::setup: return "Setup";
 		case OCLDriverError::memory_set: return "Memory Set";
@@ -39,14 +41,8 @@ namespace nano_pow
 		const char* err_string_{""};
 		const std::string err_details_;
 	public:
-		OCLDriverException (const cl::Error& cl_err, const OCLDriverError origin, const std::string details)
+		OCLDriverException (const OCLDriverError origin, const cl::Error& cl_err = cl::Error(1), const std::string details = "")
 			: cl_err_ (cl_err), err_origin_ (origin), err_string_ (to_string (cl_err.err())), err_details_ (details) {}
-
-		OCLDriverException(const cl::Error& cl_err, const OCLDriverError origin)
-			: OCLDriverException(cl_err, origin, "") {}
-
-		OCLDriverException (const OCLDriverError origin, const std::string details)
-			: OCLDriverException (cl::Error(1), origin, details) {}
 
 		~OCLDriverException () throw() {}
 
