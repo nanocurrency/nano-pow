@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace nano_pow
 {
@@ -359,14 +359,14 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 	{
 		try
 		{
-			auto start (steady_clock::now ());
 			memory_set (memory);
+			auto start (steady_clock::now ());
 			for (unsigned i{ 0 }; i < count_a; ++i)
 			{
 				solve ({ i + 1, 0 });
 			}
 			auto duration = (steady_clock::now () - start).count ();
-			stream << threads << " threads " << megabytes (memory) << "MB TIME " << duration * 1e-6 / count_a << "ms" << std::endl;
+			stream << threads << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
 			if (duration < best_duration)
 			{
 				best_duration = duration;
@@ -406,7 +406,7 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 				solve ({ i + 1, 0 });
 			}
 			auto duration = (steady_clock::now () - start).count ();
-			stream << threads << " threads " << megabytes (memory) << "MB TIME " << duration * 1e-6 / count_a << "ms" << std::endl;
+			stream << threads << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
 			if (duration < best_duration)
 			{
 				best_duration = duration;

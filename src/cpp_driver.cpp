@@ -555,5 +555,74 @@ bool nano_pow::cpp_driver::tune (unsigned const count_a, size_t const initial_me
 
 bool nano_pow::cpp_driver::tune (unsigned const count_a, size_t const initial_memory_a, size_t const initial_threads_a, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a, std::ostream & stream)
 {
-	return true;
+	//TODO max_memory_a and best_threads_a are unused
+	auto megabytes = [](auto const memory) { return memory / (1024 * 1024); };
+	auto solve_many = [this](auto count) {
+		using namespace std::chrono;
+		auto start (steady_clock::now ());
+		for (unsigned i{ 0 }; i < count; ++i)
+		{
+			result_0 = 0;
+			result_1 = 0;
+			current = 0;
+			this->nonce = { i, i };
+			this->solve (this->nonce);
+		}
+		auto duration = (steady_clock::now () - start).count ();
+		return duration;
+	};
+
+	size_t constexpr min_memory = (1ULL << 22) * 4;
+	size_t constexpr max_memory = (1ULL << 32) * 4;
+	size_t memory (initial_memory_a);
+	threads_set (initial_threads_a);
+
+	/*
+	 * Find the best memory configuration for this difficulty
+	 * Start at the recommended difficulty/2 + 1 lookup size
+	 * Go down and then up in memory until a worse configuration is found in both directions
+	 */
+	auto best_duration = std::chrono::system_clock::duration::max ().count ();
+	memory_set (memory);
+	best_duration = solve_many (count_a);
+	auto duration = best_duration;
+	stream << threads_get () << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
+	// Go down in memory
+	while (memory > min_memory)
+	{
+		memory /= 2;
+		memory_set (memory);
+		duration = solve_many (count_a);
+		stream << threads_get () << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
+		if (duration < best_duration)
+		{
+			best_duration = duration;
+			best_memory_a = memory;
+		}
+		else
+		{
+			break;
+		}
+	}
+	// Go up in memory
+	memory = initial_memory_a;
+	while (memory < max_memory)
+	{
+		memory *= 2;
+		memory_set (memory);
+		duration = solve_many (count_a);
+		stream << threads_get () << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
+		if (duration < best_duration)
+		{
+			best_duration = duration;
+			best_memory_a = memory;
+		}
+		else
+		{
+			break;
+		}
+	}
+	stream << "Found best memory " << megabytes (best_memory_a) << "MB" << std::endl;
+	memory_set (best_memory_a);
+	return false;
 }

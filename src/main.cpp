@@ -93,10 +93,10 @@ uint64_t profile_validate (uint64_t count)
 void tune (nano_pow::driver & driver_a, nano_pow::uint128_t difficulty, unsigned const count, size_t const initial_threads, size_t const initial_memory)
 {
 	driver_a.difficulty_set (difficulty);
-	size_t max_memory{ 0 }, best_memory{ 0 }, best_threads;
+	size_t max_memory{ 0 }, best_memory{ 0 }, best_threads{ 0 };
 	if (!driver_a.tune (count, initial_memory, initial_threads, max_memory, best_memory, best_threads, std::cerr))
 	{
-		std::cerr << "Tuning results:\nMaximum memory\t\t" << max_memory / (1024 * 1024) << "MB\nRecommended memory\t" << max_memory / (1024 * 1024) << "MB\nRecommended threads\t" << best_threads << std::endl;
+		std::cerr << "Tuning results:\nMaximum memory\t\t" << max_memory / (1024 * 1024) << "MB\nRecommended memory\t" << best_memory / (1024 * 1024) << "MB\nRecommended threads\t" << best_threads << std::endl;
 	}
 }
 }
@@ -206,8 +206,11 @@ int main (int argc, char ** argv)
 					// Force threads and lookup if not given
 					//TODO any device performing better with less than 4096 threads for a reasonable difficulty?
 					auto threads_l (threads != 0 ? threads : std::min (static_cast<size_t> (4096), driver->threads_get ()));
-					lookup = (parsed.count ("lookup") == 1 ? lookup : 32);
-					lookup_entries = 1ULL << lookup;
+					if (parsed.count ("lookup") == 0 && driver_type == "opencl")
+					{
+						lookup = 32;
+						lookup_entries = 1ULL << lookup;
+					}
 					std::cout << "Tuning for difficulty " << difficulty << " starting with " << threads_l << " threads and " << std::to_string (lookup_entries / (1024 * 1024) * 4) << "MB memory " << std::endl;
 					std::cout << "This may take a while..." << std::endl;
 					tune (*driver, nano_pow::reverse (threshold), count, threads_l, lookup_entries * sizeof (uint32_t));
