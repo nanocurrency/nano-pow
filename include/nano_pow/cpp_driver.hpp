@@ -83,7 +83,6 @@ private:
 	std::unique_ptr<uint32_t, std::function<void(uint32_t *)>> slab{ nullptr, [](uint32_t *) {} };
 	std::atomic<uint64_t> result_0{ 0 };
 	std::atomic<uint64_t> result_1{ 0 };
-
 public:
 	std::array<uint64_t, 2> nonce{ { 0, 0 } };
 	std::array<uint64_t, 2> result_get ();
