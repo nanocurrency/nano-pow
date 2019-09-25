@@ -41,3 +41,6 @@ build/
 # IDEs
 .vs/
 CMakeSettings.json
+
+# Clang-format
+.clang-format
