@@ -44,7 +44,7 @@ public:
 	bool memory_set (size_t memory) override;
 	std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
 	void dump () const override;
-	bool tune (unsigned const count, size_t const initial_memory, size_t const initial_threads, size_t & max_memory, size_t & best_memory, size_t & best_threads) override;
+	bool tune (unsigned const count, size_t const initial_memory, size_t const initial_threads, size_t & max_memory, size_t & best_memory, size_t & best_threads, std::ostream & stream) override;
 
 private:
 	/*

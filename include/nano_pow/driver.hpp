@@ -27,7 +27,7 @@ public:
 	virtual void fill () = 0;
 	virtual std::array<uint64_t, 2> search () = 0;
 	virtual std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) = 0;
-	virtual bool tune (unsigned const count, size_t const initial_memory, size_t const initial_threads, size_t & max_memory, size_t & best_memory, size_t & best_threads) = 0;
+	virtual bool tune (unsigned const count, size_t const initial_memory, size_t const initial_threads, size_t & max_memory, size_t & best_memory, size_t & best_threads, std::ostream & stream) = 0;
 	void verbose_set (bool const v)
 	{
 		verbose = v;

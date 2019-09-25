@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <sstream>
 #include <string>
 
 namespace nano_pow
@@ -292,7 +291,7 @@ void nano_pow::opencl_driver::dump () const
 	environment.dump (std::cout);
 }
 
-bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial_memory_a, size_t const initial_threads_a, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a)
+bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial_memory_a, size_t const initial_threads_a, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a, std::ostream & stream)
 {
 	using namespace std::chrono;
 	auto megabytes = [](auto const memory) { return memory / (1024 * 1024); };
@@ -304,12 +303,11 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 	{
 		max_threads *= work_size;
 	}
-	std::cerr << "Maximum device threads " << max_threads << std::endl;
+	stream << "Maximum device threads " << max_threads << std::endl;
 
 	bool ok{ false };
 
 	size_t memory (initial_memory_a);
-	//TODO any device performing better with less than 2048 threads for a reasonable difficulty?
 	size_t threads{ initial_threads_a };
 	threads_set (threads);
 
@@ -330,18 +328,18 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 		}
 		catch (OCLDriverException const & err)
 		{
-			std::cerr << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
+			stream << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
 			memory /= 2;
 			if (memory < min_memory)
 			{
-				std::cerr << "Reached minimum memory " << megabytes (memory) << "MB" << std::endl;
+				stream << "Reached minimum memory " << megabytes (memory) << "MB" << std::endl;
 				break;
 			}
 		}
 	}
 	if (ok)
 	{
-		std::cerr << "Found max memory " << megabytes (memory) << "MB" << std::endl;
+		stream << "Found max memory " << megabytes (memory) << "MB" << std::endl;
 		max_memory_a = memory;
 	}
 
@@ -357,10 +355,10 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 			memory_set (memory);
 			for (unsigned i{ 0 }; i < count_a; ++i)
 			{
-				solve ({ i, i });
+				solve ({ i + 1, 0 });
 			}
 			auto duration = (steady_clock::now () - start).count ();
-			std::cerr << threads << " threads " << megabytes (memory) << "MB TIME " << duration * 1e-6 / count_a << "ms" << std::endl;
+			stream << threads << " threads " << megabytes (memory) << "MB TIME " << duration * 1e-6 / count_a << "ms" << std::endl;
 			if (duration < best_duration)
 			{
 				best_duration = duration;
@@ -374,13 +372,13 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 		}
 		catch (OCLDriverException const & err)
 		{
-			std::cerr << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
+			stream << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
 			ok = false;
 		}
 	}
 	if (ok)
 	{
-		std::cerr << "Found best memory " << megabytes (memory) << "MB" << std::endl;
+		stream << "Found best memory " << megabytes (memory) << "MB" << std::endl;
 		best_memory_a = memory;
 	}
 
@@ -396,10 +394,10 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 			threads_set (threads);
 			for (unsigned i{ 0 }; i < count_a; ++i)
 			{
-				solve ({ i, i });
+				solve ({ i + 1, 0 });
 			}
 			auto duration = (steady_clock::now () - start).count ();
-			std::cerr << threads << " threads " << megabytes (memory) << "MB TIME " << duration * 1e-6 / count_a << "ms" << std::endl;
+			stream << threads << " threads " << megabytes (memory) << "MB TIME " << duration * 1e-6 / count_a << "ms" << std::endl;
 			if (duration < best_duration)
 			{
 				best_duration = duration;
@@ -413,13 +411,13 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 		}
 		catch (OCLDriverException const & err)
 		{
-			std::cerr << threads << " threads, " << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
+			stream << threads << " threads, " << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
 			ok = false;
 		}
 	}
 	if (ok)
 	{
-		std::cerr << "Found best threads " << threads << std::endl;
+		stream << "Found best threads " << threads << std::endl;
 		best_threads_a = threads;
 	}
 

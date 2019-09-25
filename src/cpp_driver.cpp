@@ -547,7 +547,7 @@ void nano_pow::cpp_driver::dump () const
 	std::cerr << "Hardware threads: " << std::to_string (std::thread::hardware_concurrency ()) << std::endl;
 }
 
-bool nano_pow::cpp_driver::tune (unsigned const count_a, size_t const initial_memory, size_t const initial_threads, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a)
+bool nano_pow::cpp_driver::tune (unsigned const count_a, size_t const initial_memory, size_t const initial_threads, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a, std::ostream & stream)
 {
 	return true;
 }
