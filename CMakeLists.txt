@@ -61,9 +61,11 @@ add_library (nano_pow
 	include/nano_pow/opencl_driver.hpp
 	include/nano_pow/uint128.hpp
 	include/nano_pow/xoroshiro128starstar.hpp
+	include/nano_pow/tuning.hpp
 	src/cpp_driver.cpp
 	src/opencl_driver.cpp
 	src/opencl_program.cpp
+	src/tuning.cpp
 )
 
 target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

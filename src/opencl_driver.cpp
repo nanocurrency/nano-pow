@@ -171,6 +171,17 @@ size_t nano_pow::opencl_driver::threads_get () const
 	return threads;
 }
 
+size_t nano_pow::opencl_driver::max_threads ()
+{
+	auto max_work_sizes = selected_device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES> ();
+	size_t max_threads = 1;
+	for (auto work_size : max_work_sizes)
+	{
+		max_threads *= work_size;
+	}
+	return max_threads;
+}
+
 bool nano_pow::opencl_driver::memory_set (size_t memory)
 {
 	assert (memory % sizeof (uint32_t) == 0);
@@ -291,145 +302,4 @@ void nano_pow::opencl_driver::dump () const
 {
 	nano_pow::opencl_environment environment;
 	environment.dump (std::cout);
-}
-
-bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial_memory, size_t const initial_threads, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a)
-{
-	std::ostringstream oss;
-	return tune (count_a, initial_memory, initial_threads, max_memory_a, best_memory_a, best_threads_a, oss);
-}
-
-bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial_memory_a, size_t const initial_threads_a, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a, std::ostream & stream)
-{
-	using namespace std::chrono;
-	auto megabytes = [](auto const memory) { return memory / (1024 * 1024); };
-
-	size_t constexpr min_memory = (1ULL << 22) * 4;
-	auto max_work_sizes = selected_device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES> ();
-	size_t max_threads = 1;
-	for (auto work_size : max_work_sizes)
-	{
-		max_threads *= work_size;
-	}
-	stream << "Maximum device threads " << max_threads << std::endl;
-
-	bool ok{ false };
-
-	size_t memory (initial_memory_a);
-	size_t threads{ initial_threads_a };
-	threads_set (threads);
-
-	/*
-	 * Find the maximum memory available
-	 * Memory is allocated in up to 4 slabs due to contiguous memory allocation limits in some devices
-	 * This result can vary depending on current usage of the device
-	 */
-	while (!ok)
-	{
-		try
-		{
-			memory_set (memory);
-			fill ();
-			//TODO do all implementations fail in fill? If not, uncomment next line
-			// search ();
-			ok = true;
-		}
-		catch (OCLDriverException const & err)
-		{
-			stream << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
-			memory /= 2;
-			if (memory < min_memory)
-			{
-				stream << "Reached minimum memory " << megabytes (memory) << "MB" << std::endl;
-				break;
-			}
-		}
-	}
-	if (ok)
-	{
-		stream << "Found max memory " << megabytes (memory) << "MB" << std::endl;
-		max_memory_a = memory;
-	}
-
-	/*
-	 * Find the best memory configuration for this difficulty
-	 */
-	auto best_duration = std::chrono::system_clock::duration::max ().count ();
-	while (ok)
-	{
-		try
-		{
-			memory_set (memory);
-			auto start (steady_clock::now ());
-			for (unsigned i{ 0 }; i < count_a; ++i)
-			{
-				solve ({ i + 1, 0 });
-			}
-			auto duration = (steady_clock::now () - start).count ();
-			stream << threads << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
-			if (duration < best_duration)
-			{
-				best_duration = duration;
-				memory /= 2;
-			}
-			else
-			{
-				memory *= 2;
-				break;
-			}
-		}
-		catch (OCLDriverException const & err)
-		{
-			stream << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
-			ok = false;
-		}
-	}
-	if (ok)
-	{
-		best_memory_a = memory;
-		stream << "Found best memory " << megabytes (best_memory_a) << "MB" << std::endl;
-		memory_set (best_memory_a);
-	}
-
-	/*
-	 * Find the best number of threads from a simple grid search
-	 */
-	threads *= 2;
-	while (ok && threads <= max_threads)
-	{
-		try
-		{
-			threads_set (threads);
-			auto start (steady_clock::now ());
-			for (unsigned i{ 0 }; i < count_a; ++i)
-			{
-				solve ({ i + 1, 0 });
-			}
-			auto duration = (steady_clock::now () - start).count ();
-			stream << threads << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
-			if (duration < best_duration)
-			{
-				best_duration = duration;
-				threads *= 2;
-			}
-			else
-			{
-				threads /= 2;
-				break;
-			}
-		}
-		catch (OCLDriverException const & err)
-		{
-			stream << threads << " threads, " << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
-			ok = false;
-		}
-	}
-	if (ok)
-	{
-		best_threads_a = threads;
-		stream << "Found best threads " << threads << std::endl;
-		threads_set (best_threads_a);
-	}
-
-	return !ok;
 }

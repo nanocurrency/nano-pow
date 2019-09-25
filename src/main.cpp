@@ -1,6 +1,7 @@
 #include <nano_pow/cpp_driver.hpp>
 #include <nano_pow/opencl_driver.hpp>
 #include <nano_pow/pow.hpp>
+#include <nano_pow/tuning.hpp>
 
 #include <cxxopts.hpp>
 #include <gtest/gtest.h>
@@ -90,13 +91,28 @@ uint64_t profile_validate (uint64_t count)
 	std::cout << "Average validation time: " << std::to_string (average) << " ns (" << std::to_string (static_cast<unsigned> (count * 1e9 / total_time)) << " validations/s)" << std::endl;
 	return average;
 }
-void tune (nano_pow::driver & driver_a, nano_pow::uint128_t difficulty, unsigned const count, size_t const initial_threads, size_t const initial_memory)
+void tune (nano_pow::driver * driver_a, nano_pow::uint128_t difficulty, unsigned const count, size_t const initial_threads, size_t const initial_memory)
 {
-	driver_a.difficulty_set (difficulty);
-	size_t max_memory{ 0 }, best_memory{ 0 }, best_threads{ 0 };
-	if (!driver_a.tune (count, initial_memory, initial_threads, max_memory, best_memory, best_threads, std::cerr))
+	driver_a->difficulty_set (difficulty);
+	if (driver_a->type () == nano_pow::driver_type::CPP)
 	{
-		std::cerr << "Tuning results:\nMaximum memory\t\t" << max_memory / (1024 * 1024) << "MB\nRecommended memory\t" << best_memory / (1024 * 1024) << "MB\nRecommended threads\t" << best_threads << std::endl;
+		size_t best_memory{ 0 };
+		if (!nano_pow::tune (*reinterpret_cast<nano_pow::cpp_driver *> (driver_a), count, initial_memory, initial_threads, best_memory, std::cerr))
+		{
+			std::cerr << "Tuning results:\nRecommended memory\t" << best_memory / (1024 * 1024) << "MB" << std::endl;
+		}
+	}
+	else if (driver_a->type () == nano_pow::driver_type::OPENCL)
+	{
+		size_t max_memory{ 0 }, best_memory{ 0 }, best_threads{ 0 };
+		if (!nano_pow::tune (*reinterpret_cast<nano_pow::opencl_driver *> (driver_a), count, initial_memory, initial_threads, max_memory, best_memory, best_threads, std::cerr))
+		{
+			std::cerr << "Tuning results:\nMaximum memory\t\t" << max_memory / (1024 * 1024) << "MB\nRecommended memory\t" << best_memory / (1024 * 1024) << "MB\nRecommended threads\t" << best_threads << std::endl;
+		}
+	}
+	else
+	{
+		std::cerr << "Unrecognized driver" << std::endl;
 	}
 }
 }
@@ -206,14 +222,14 @@ int main (int argc, char ** argv)
 					// Force threads and lookup if not given
 					//TODO any device performing better with less than 4096 threads for a reasonable difficulty?
 					auto threads_l (threads != 0 ? threads : std::min (static_cast<size_t> (4096), driver->threads_get ()));
-					if (parsed.count ("lookup") == 0 && driver_type == "opencl")
+					if (parsed.count ("lookup") == 0 && driver->type () == nano_pow::driver_type::OPENCL)
 					{
 						lookup = 32;
 						lookup_entries = 1ULL << lookup;
 					}
 					std::cout << "Tuning for difficulty " << difficulty << " starting with " << threads_l << " threads and " << std::to_string (lookup_entries / (1024 * 1024) * 4) << "MB memory " << std::endl;
 					std::cout << "This may take a while..." << std::endl;
-					tune (*driver, nano_pow::reverse (threshold), count, threads_l, lookup_entries * sizeof (uint32_t));
+					tune (driver.get (), nano_pow::reverse (threshold), count, threads_l, lookup_entries * sizeof (uint32_t));
 				}
 				else
 				{

@@ -44,8 +44,10 @@ public:
 	bool memory_set (size_t memory) override;
 	std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
 	void dump () const override;
-	bool tune (unsigned const count, size_t const initial_memory, size_t const initial_threads, size_t & max_memory, size_t & best_memory, size_t & best_threads, std::ostream & stream) override;
-	bool tune (unsigned const count, size_t const initial_memory, size_t const initial_threads, size_t & max_memory, size_t & best_memory, size_t & best_threads) override;
+	driver_type type () const override
+	{
+		return driver_type::CPP;
+	}
 
 private:
 	/*
@@ -83,6 +85,7 @@ private:
 	std::unique_ptr<uint32_t, std::function<void(uint32_t *)>> slab{ nullptr, [](uint32_t *) {} };
 	std::atomic<uint64_t> result_0{ 0 };
 	std::atomic<uint64_t> result_1{ 0 };
+
 public:
 	std::array<uint64_t, 2> nonce{ { 0, 0 } };
 	std::array<uint64_t, 2> result_get ();
