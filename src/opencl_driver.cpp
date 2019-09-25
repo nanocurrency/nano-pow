@@ -5,6 +5,7 @@
 #include <array>
 #include <chrono>
 #include <string>
+#include <sstream>
 
 namespace nano_pow
 {
@@ -290,6 +291,12 @@ void nano_pow::opencl_driver::dump () const
 {
 	nano_pow::opencl_environment environment;
 	environment.dump (std::cout);
+}
+
+bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial_memory, size_t const initial_threads, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a)
+{
+	std::ostringstream oss;
+	return tune (count_a, initial_memory, initial_threads, max_memory_a, best_memory_a, best_threads_a, oss);
 }
 
 bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial_memory_a, size_t const initial_threads_a, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a, std::ostream & stream)
