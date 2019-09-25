@@ -1,3 +1,7 @@
+#include <nano_pow/cpp_driver.hpp>
+#include <nano_pow/plat.hpp>
+#include <nano_pow/pow.hpp>
+
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -6,10 +10,6 @@
 #include <sstream>
 #include <thread>
 #include <vector>
-
-#include <nano_pow/cpp_driver.hpp>
-#include <nano_pow/plat.hpp>
-#include <nano_pow/pow.hpp>
 
 /*
  SipHash reference C implementation

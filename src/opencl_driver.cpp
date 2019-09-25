@@ -1,11 +1,11 @@
+#include <nano_pow/opencl_driver.hpp>
+#include <nano_pow/pow.hpp>
+
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <string>
 #include <sstream>
-
-#include <nano_pow/opencl_driver.hpp>
-#include <nano_pow/pow.hpp>
+#include <string>
 
 namespace nano_pow
 {
@@ -20,7 +20,7 @@ nano_pow::opencl_environment::opencl_environment ()
 void nano_pow::opencl_environment::dump (std::ostream & stream)
 {
 	stream << "OpenCL found " << platforms.size () << " platforms" << std::endl;
-	unsigned plat {0};
+	unsigned plat{ 0 };
 	for (auto & platform : platforms)
 	{
 		std::vector<cl::Device> devices;
@@ -30,7 +30,8 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 		}
 		catch (cl::Error const & err)
 		{
-			stream << "\nERROR\n" << to_string (err.err ()) << std::endl;
+			stream << "\nERROR\n"
+			       << to_string (err.err ()) << std::endl;
 		}
 		stream << "Platform " << plat++ << " : " << devices.size () << " devices\n";
 		stream << '\t' << platform.getInfo<CL_PLATFORM_PROFILE> ()
@@ -39,7 +40,7 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 		       << "\n\t" << platform.getInfo<CL_PLATFORM_VENDOR> ()
 		       << "\n\t" << platform.getInfo<CL_PLATFORM_EXTENSIONS> ()
 		       << std::endl;
-		unsigned dev {0};
+		unsigned dev{ 0 };
 		for (auto & device : devices)
 		{
 			stream << "\tDevice " << dev++ << std::endl;
@@ -88,7 +89,7 @@ nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned sho
 		// Platform
 		if (platform_id >= environment.platforms.size ())
 		{
-			throw OCLDriverException (OCLDriverError::init, cl::Error(CL_INVALID_PLATFORM));
+			throw OCLDriverException (OCLDriverError::init, cl::Error (CL_INVALID_PLATFORM));
 		}
 		try
 		{
@@ -102,7 +103,7 @@ nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned sho
 		// Device
 		if (device_id >= devices.size ())
 		{
-			throw OCLDriverException (OCLDriverError::init, cl::Error(CL_DEVICE_NOT_FOUND));
+			throw OCLDriverException (OCLDriverError::init, cl::Error (CL_DEVICE_NOT_FOUND));
 		}
 		try
 		{
@@ -111,7 +112,7 @@ nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned sho
 			global_mem_size = selected_device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> ();
 			max_alloc_size = selected_device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> ();
 			cl_context_properties contextProperties[3]{ CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platform_properties), 0 };
-			context = cl::Context (selected_device, contextProperties);				
+			context = cl::Context (selected_device, contextProperties);
 		}
 		catch (cl::Error const & err)
 		{
@@ -120,7 +121,7 @@ nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned sho
 		// Program
 		try
 		{
-			std::vector<cl::Device> program_devices{ selected_device };		
+			std::vector<cl::Device> program_devices{ selected_device };
 			program = cl::Program (context, nano_pow::opencl_program, false);
 			program.build (program_devices, nullptr, nullptr);
 			fill_impl = cl::Kernel (program, "fill");
@@ -353,7 +354,7 @@ bool nano_pow::opencl_driver::tune (unsigned const count_a, size_t const initial
 				solve ({ i, i });
 			}
 			auto duration = (steady_clock::now () - start).count ();
-			std::cerr << threads << " threads " << megabytes(memory) << "MB TIME " << duration * 1e-6 / count_a << "ms" << std::endl;
+			std::cerr << threads << " threads " << megabytes (memory) << "MB TIME " << duration * 1e-6 / count_a << "ms" << std::endl;
 			if (duration < best_duration)
 			{
 				best_duration = duration;

@@ -1,7 +1,7 @@
-#include <gtest/gtest.h>
-
-#include <nano_pow/pow.hpp>
 #include <nano_pow/cpp_driver.hpp>
+#include <nano_pow/pow.hpp>
+
+#include <gtest/gtest.h>
 
 TEST (context, difficulty)
 {
