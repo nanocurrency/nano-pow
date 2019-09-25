@@ -95,6 +95,7 @@ uint64_t profile_validate (uint64_t count)
 int main (int argc, char ** argv)
 {
 	cxxopts::Options options ("nano_pow_driver", "Command line options");
+	options.add_options ()
 	// clang-format off
 		("driver", "Specify which test driver to use", cxxopts::value<std::string>()->default_value("cpp"), "cpp|opencl")
 		("d,difficulty", "Solution difficulty 1-127 default: 52", cxxopts::value<unsigned>()->default_value("52"))
