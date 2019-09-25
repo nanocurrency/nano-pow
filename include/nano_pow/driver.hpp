@@ -12,8 +12,9 @@ class driver
 {
 protected:
 	bool verbose{ false };
+
 public:
-	virtual ~driver() = default;
+	virtual ~driver () = default;
 	virtual void difficulty_set (nano_pow::uint128_t difficulty) = 0;
 	virtual nano_pow::uint128_t difficulty_get () const = 0;
 	void difficulty_set_64 (uint64_t difficulty_a)
@@ -34,6 +35,9 @@ public:
 	virtual void fill () = 0;
 	virtual std::array<uint64_t, 2> search () = 0;
 	virtual std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce);
-	void verbose_set(bool const v) { verbose = v; }
+	void verbose_set (bool const v)
+	{
+		verbose = v;
+	}
 };
 }

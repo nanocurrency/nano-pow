@@ -9,18 +9,18 @@ namespace
 {
 size_t round_up (size_t num_to_round, size_t multiple)
 {
-    if (multiple == 0)
+	if (multiple == 0)
 	{
-        return num_to_round;
+		return num_to_round;
 	}
 
-    auto remainder = num_to_round % multiple;
-    if (remainder == 0)
+	auto remainder = num_to_round % multiple;
+	if (remainder == 0)
 	{
-        return num_to_round;
+		return num_to_round;
 	}
 
-    return num_to_round + multiple - remainder;
+	return num_to_round + multiple - remainder;
 }
 
 size_t use_large_mem_pages{ false };
@@ -31,10 +31,10 @@ namespace nano_pow
 void memory_init ()
 {
 	HANDLE hToken = nullptr;
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+	if (OpenProcessToken (GetCurrentProcess (), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
 	{
 		TOKEN_PRIVILEGES tp;
-		if (LookupPrivilegeValue(NULL, "SeLockMemoryPrivilege", &tp.Privileges[0].Luid))
+		if (LookupPrivilegeValue (NULL, "SeLockMemoryPrivilege", &tp.Privileges[0].Luid))
 		{
 			tp.PrivilegeCount = 1;
 			tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
