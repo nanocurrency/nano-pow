@@ -224,6 +224,9 @@ static uint128_t hash (nonce_t const nonce_a, ulong const item_a)
 {
 	uint128_t result;
 	int code = siphash ((uchar *)&item_a, sizeof (item_a), (uchar *)nonce_a.values, (uchar *)&result, sizeof (result));
+	ulong temp = result.low;
+	result.low = result.high;
+	result.high = temp;
 	return result;
 }
 
