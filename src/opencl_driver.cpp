@@ -20,15 +20,9 @@ nano_pow::opencl_environment::opencl_environment ()
 void nano_pow::opencl_environment::dump (std::ostream & stream)
 {
 	stream << "OpenCL found " << platforms.size () << " platforms" << std::endl;
+	unsigned plat {0};
 	for (auto & platform : platforms)
 	{
-		stream << '\t' << platform.getInfo<CL_PLATFORM_PROFILE> ()
-		       << "\n\t" << platform.getInfo<CL_PLATFORM_VERSION> ()
-		       << "\n\t" << platform.getInfo<CL_PLATFORM_NAME> ()
-		       << "\n\t" << platform.getInfo<CL_PLATFORM_VENDOR> ()
-		       << "\n\t" << platform.getInfo<CL_PLATFORM_EXTENSIONS> ()
-		       << std::endl;
-
 		std::vector<cl::Device> devices;
 		try
 		{
@@ -38,9 +32,17 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 		{
 			stream << "\nERROR\n" << to_string (err.err ()) << std::endl;
 		}
-		stream << "Number of devices: " << devices.size () << "\n";
+		stream << "Platform " << plat++ << " : " << devices.size () << " devices\n";
+		stream << '\t' << platform.getInfo<CL_PLATFORM_PROFILE> ()
+		       << "\n\t" << platform.getInfo<CL_PLATFORM_VERSION> ()
+		       << "\n\t" << platform.getInfo<CL_PLATFORM_NAME> ()
+		       << "\n\t" << platform.getInfo<CL_PLATFORM_VENDOR> ()
+		       << "\n\t" << platform.getInfo<CL_PLATFORM_EXTENSIONS> ()
+		       << std::endl;
+		unsigned dev {0};
 		for (auto & device : devices)
 		{
+			stream << "\tDevice " << dev++ << std::endl;
 			auto device_type = device.getInfo<CL_DEVICE_TYPE> ();
 			std::string device_type_string;
 			switch (device_type)
@@ -61,17 +63,17 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 					device_type_string = "Unknown";
 					break;
 			}
-			stream << '\t' << device_type_string
-			       << "\n\t" << device.getInfo<CL_DEVICE_NAME> ()
-			       << "\n\t" << device.getInfo<CL_DEVICE_VENDOR> ()
-			       << "\n\t" << device.getInfo<CL_DEVICE_PROFILE> ()
-			       << "\n\t"
+			stream << "\t\t" << device_type_string
+			       << "\n\t\t" << device.getInfo<CL_DEVICE_NAME> ()
+			       << "\n\t\t" << device.getInfo<CL_DEVICE_VENDOR> ()
+			       << "\n\t\t" << device.getInfo<CL_DEVICE_PROFILE> ()
+			       << "\n\t\t"
 			       << "Compiler available: " << (device.getInfo<CL_DEVICE_COMPILER_AVAILABLE> () ? "true" : "false")
-			       << "\n\t"
+			       << "\n\t\t"
 			       << "Global mem size: " << device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> () / (1024 * 1024) << " MB"
-			       << "\n\t"
+			       << "\n\t\t"
 			       << "Max mem alloc size: " << device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> () / (1024 * 1024) << " MB"
-			       << "\n\t"
+			       << "\n\t\t"
 			       << "Compute units available: " << device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS> ()
 			       << std::endl;
 		}
