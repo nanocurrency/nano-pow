@@ -133,6 +133,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 
 	slab_size = memory / number_slabs;
 	slab_entries = memory / sizeof(uint32_t);
+	assert (slab_entries <= 0x0000000100000000); // 16GB limit
 	
 	if (verbose)
 	{

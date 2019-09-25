@@ -55,7 +55,7 @@ namespace nano_pow
 		 * @param count How many slots in slab_a to fill
 		 * @param begin starting value to hash
 		 */
-		void fill_impl (uint32_t const count, uint32_t const begin = 0);
+		void fill_impl (uint64_t const count, uint64_t const begin = 0);
 		void fill () override;
 		
 		/**
@@ -75,7 +75,7 @@ namespace nano_pow
 		mutable std::mutex mutex;
 		nano_pow::uint128_t difficulty_m;
 		nano_pow::uint128_t difficulty_inv;
-		uint32_t fill_count () const;
+		uint64_t fill_count () const;
 		size_t size { 0 };
 		std::unique_ptr<uint32_t, std::function <void(uint32_t*)>> slab{nullptr, [](uint32_t*){}};
 		std::atomic<uint64_t> result_0 { 0 };
