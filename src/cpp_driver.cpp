@@ -1,5 +1,4 @@
 #include <nano_pow/cpp_driver.hpp>
-
 #include <nano_pow/plat.hpp>
 #include <nano_pow/pow.hpp>
 
@@ -32,92 +31,94 @@
 #define cROUNDS 2
 #define dROUNDS 4
 
-#define ROTL(x, b) (uint64_t)(((x) << (b)) | ((x) >> (64 - (b))))
+#define ROTL(x, b) (uint64_t) (((x) << (b)) | ((x) >> (64 - (b))))
 
-#define U32TO8_LE(p, v)                                                        \
-(p)[0] = (uint8_t)((v));                                                   \
-(p)[1] = (uint8_t)((v) >> 8);                                              \
-(p)[2] = (uint8_t)((v) >> 16);                                             \
-(p)[3] = (uint8_t)((v) >> 24);
+#define U32TO8_LE(p, v)             \
+	(p)[0] = (uint8_t) ((v));       \
+	(p)[1] = (uint8_t) ((v) >> 8);  \
+	(p)[2] = (uint8_t) ((v) >> 16); \
+	(p)[3] = (uint8_t) ((v) >> 24);
 
-#define U64TO8_LE(p, v)                                                        \
-U32TO8_LE((p), (uint32_t)((v)));                                           \
-U32TO8_LE((p) + 4, (uint32_t)((v) >> 32));
+#define U64TO8_LE(p, v)                \
+	U32TO8_LE ((p), (uint32_t) ((v))); \
+	U32TO8_LE ((p) + 4, (uint32_t) ((v) >> 32));
 
-#define U8TO64_LE(p)                                                           \
-(((uint64_t)((p)[0])) | ((uint64_t)((p)[1]) << 8) |                        \
-((uint64_t)((p)[2]) << 16) | ((uint64_t)((p)[3]) << 24) |                 \
-((uint64_t)((p)[4]) << 32) | ((uint64_t)((p)[5]) << 40) |                 \
-((uint64_t)((p)[6]) << 48) | ((uint64_t)((p)[7]) << 56))
+#define U8TO64_LE(p) \
+	(((uint64_t) ((p)[0])) | ((uint64_t) ((p)[1]) << 8) | ((uint64_t) ((p)[2]) << 16) | ((uint64_t) ((p)[3]) << 24) | ((uint64_t) ((p)[4]) << 32) | ((uint64_t) ((p)[5]) << 40) | ((uint64_t) ((p)[6]) << 48) | ((uint64_t) ((p)[7]) << 56))
 
-#define SIPROUND                                                               \
-do {                                                                       \
-v0 += v1;                                                              \
-v1 = ROTL(v1, 13);                                                     \
-v1 ^= v0;                                                              \
-v0 = ROTL(v0, 32);                                                     \
-v2 += v3;                                                              \
-v3 = ROTL(v3, 16);                                                     \
-v3 ^= v2;                                                              \
-v0 += v3;                                                              \
-v3 = ROTL(v3, 21);                                                     \
-v3 ^= v0;                                                              \
-v2 += v1;                                                              \
-v1 = ROTL(v1, 17);                                                     \
-v1 ^= v2;                                                              \
-v2 = ROTL(v2, 32);                                                     \
-} while (0)
+#define SIPROUND            \
+	do                      \
+	{                       \
+		v0 += v1;           \
+		v1 = ROTL (v1, 13); \
+		v1 ^= v0;           \
+		v0 = ROTL (v0, 32); \
+		v2 += v3;           \
+		v3 = ROTL (v3, 16); \
+		v3 ^= v2;           \
+		v0 += v3;           \
+		v3 = ROTL (v3, 21); \
+		v3 ^= v0;           \
+		v2 += v1;           \
+		v1 = ROTL (v1, 17); \
+		v1 ^= v2;           \
+		v2 = ROTL (v2, 32); \
+	} while (0)
 
 #ifdef DEBUG
-#define TRACE                                                                  \
-do {                                                                       \
-printf("(%3d) v0 %08x %08x\n", (int)inlen, (uint32_t)(v0 >> 32),       \
-(uint32_t)v0);                                                  \
-printf("(%3d) v1 %08x %08x\n", (int)inlen, (uint32_t)(v1 >> 32),       \
-(uint32_t)v1);                                                  \
-printf("(%3d) v2 %08x %08x\n", (int)inlen, (uint32_t)(v2 >> 32),       \
-(uint32_t)v2);                                                  \
-printf("(%3d) v3 %08x %08x\n", (int)inlen, (uint32_t)(v3 >> 32),       \
-(uint32_t)v3);                                                  \
-} while (0)
+#define TRACE                                                              \
+	do                                                                     \
+	{                                                                      \
+		printf ("(%3d) v0 %08x %08x\n", (int)inlen, (uint32_t) (v0 >> 32), \
+		(uint32_t)v0);                                                     \
+		printf ("(%3d) v1 %08x %08x\n", (int)inlen, (uint32_t) (v1 >> 32), \
+		(uint32_t)v1);                                                     \
+		printf ("(%3d) v2 %08x %08x\n", (int)inlen, (uint32_t) (v2 >> 32), \
+		(uint32_t)v2);                                                     \
+		printf ("(%3d) v3 %08x %08x\n", (int)inlen, (uint32_t) (v3 >> 32), \
+		(uint32_t)v3);                                                     \
+	} while (0)
 #else
 #define TRACE
 #endif
 
-NP_INLINE int siphash(const uint8_t *in, const size_t inlen, const uint8_t *k,
-						  uint8_t *out, const size_t outlen) {
-	assert((outlen == 8) || (outlen == 16));
+NP_INLINE int siphash (const uint8_t * in, const size_t inlen, const uint8_t * k,
+uint8_t * out, const size_t outlen)
+{
+	assert ((outlen == 8) || (outlen == 16));
 	uint64_t v0 = 0x736f6d6570736575ULL;
 	uint64_t v1 = 0x646f72616e646f6dULL;
 	uint64_t v2 = 0x6c7967656e657261ULL;
 	uint64_t v3 = 0x7465646279746573ULL;
-	uint64_t k0 = U8TO64_LE(k);
-	uint64_t k1 = U8TO64_LE(k + 8);
+	uint64_t k0 = U8TO64_LE (k);
+	uint64_t k1 = U8TO64_LE (k + 8);
 	uint64_t m;
 	int i;
-	const uint8_t *end = in + inlen - (inlen % sizeof(uint64_t));
+	const uint8_t * end = in + inlen - (inlen % sizeof (uint64_t));
 	const int left = inlen & 7;
 	uint64_t b = ((uint64_t)inlen) << 56;
 	v3 ^= k1;
 	v2 ^= k0;
 	v1 ^= k1;
 	v0 ^= k0;
-	
+
 	if (outlen == 16)
 		v1 ^= 0xee;
-	
-	for (; in != end; in += 8) {
-		m = U8TO64_LE(in);
+
+	for (; in != end; in += 8)
+	{
+		m = U8TO64_LE (in);
 		v3 ^= m;
-		
+
 		TRACE;
 		for (i = 0; i < cROUNDS; ++i)
 			SIPROUND;
-		
+
 		v0 ^= m;
 	}
-	
-	switch (left) {
+
+	switch (left)
+	{
 		case 7:
 			b |= ((uint64_t)in[6]) << 48;
 		case 6:
@@ -136,45 +137,45 @@ NP_INLINE int siphash(const uint8_t *in, const size_t inlen, const uint8_t *k,
 		case 0:
 			break;
 	}
-	
+
 	v3 ^= b;
-	
+
 	TRACE;
 	for (i = 0; i < cROUNDS; ++i)
 		SIPROUND;
-	
+
 	v0 ^= b;
-	
+
 	if (outlen == 16)
 		v2 ^= 0xee;
 	else
 		v2 ^= 0xff;
-	
+
 	TRACE;
 	for (i = 0; i < dROUNDS; ++i)
 		SIPROUND;
-	
+
 	b = v0 ^ v1 ^ v2 ^ v3;
-	U64TO8_LE(out, b);
-	
+	U64TO8_LE (out, b);
+
 	if (outlen == 8)
 		return 0;
-	
+
 	v1 ^= 0xdd;
-	
+
 	TRACE;
 	for (i = 0; i < dROUNDS; ++i)
 		SIPROUND;
-	
+
 	b = v0 ^ v1 ^ v2 ^ v3;
-	U64TO8_LE(out + 8, b);
-	
+	U64TO8_LE (out + 8, b);
+
 	return 0;
 }
 
 NP_INLINE static std::array<uint64_t, 2> lhs_nonce (std::array<uint64_t, 2> item_a)
 {
-	uint64_t lhs_or_mask (~static_cast <uint64_t> (std::numeric_limits<int64_t>::max ()));
+	uint64_t lhs_or_mask (~static_cast<uint64_t> (std::numeric_limits<int64_t>::max ()));
 	std::array<uint64_t, 2> result = item_a;
 	result[0] |= lhs_or_mask;
 	return result;
@@ -222,12 +223,12 @@ nano_pow::uint128_t nano_pow::H1 (std::array<uint64_t, 2> nonce_a, uint64_t cons
 NP_INLINE static uint64_t reverse_64 (uint64_t const item_a)
 {
 	auto result (item_a);
-	result = ((result >>  1) & 0x5555555555555555) | ((result & 0x5555555555555555) <<  1);
-	result = ((result >>  2) & 0x3333333333333333) | ((result & 0x3333333333333333) <<  2);
-	result = ((result >>  4) & 0x0F0F0F0F0F0F0F0F) | ((result & 0x0F0F0F0F0F0F0F0F) <<  4);
-	result = ((result >>  8) & 0x00FF00FF00FF00FF) | ((result & 0x00FF00FF00FF00FF) <<  8);
+	result = ((result >> 1) & 0x5555555555555555) | ((result & 0x5555555555555555) << 1);
+	result = ((result >> 2) & 0x3333333333333333) | ((result & 0x3333333333333333) << 2);
+	result = ((result >> 4) & 0x0F0F0F0F0F0F0F0F) | ((result & 0x0F0F0F0F0F0F0F0F) << 4);
+	result = ((result >> 8) & 0x00FF00FF00FF00FF) | ((result & 0x00FF00FF00FF00FF) << 8);
 	result = ((result >> 16) & 0x0000FFFF0000FFFF) | ((result & 0x0000FFFF0000FFFF) << 16);
-	result = ( result >> 32                      ) | ( result                       << 32);
+	result = (result >> 32) | (result << 32);
 	return result;
 }
 
@@ -256,7 +257,7 @@ static nano_pow::uint128_t sum (std::array<uint64_t, 2> nonce_a, std::array<uint
 
 nano_pow::uint128_t nano_pow::difficulty (std::array<uint64_t, 2> nonce_a, std::array<uint64_t, 2> const solution_a)
 {
-	return ::reverse (~sum (nonce_a,  solution_a));
+	return ::reverse (~sum (nonce_a, solution_a));
 }
 
 static bool passes_sum (nano_pow::uint128_t const sum_a, nano_pow::uint128_t difficulty_a)
@@ -303,7 +304,7 @@ difficulty_m (nano_pow::bit_difficulty (8)),
 difficulty_inv (::reverse (difficulty_m))
 {
 	nano_pow::memory_init ();
-	threads_set (std::thread::hardware_concurrency ());	
+	threads_set (std::thread::hardware_concurrency ());
 }
 
 nano_pow::cpp_driver::~cpp_driver ()
@@ -311,13 +312,13 @@ nano_pow::cpp_driver::~cpp_driver ()
 	threads_set (0);
 }
 
-std::array<uint64_t, 2> nano_pow::cpp_driver::solve (std::array <uint64_t, 2> nonce)
+std::array<uint64_t, 2> nano_pow::cpp_driver::solve (std::array<uint64_t, 2> nonce)
 {
 	result_0 = 0;
 	result_1 = 0;
 	current = 0;
-	this->nonce [0] = nonce [0];
-	this->nonce [1] = nonce [1];
+	this->nonce[0] = nonce[0];
+	this->nonce[1] = nonce[1];
 	return nano_pow::driver::solve (nonce);
 }
 
@@ -333,7 +334,7 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 	size = memory / sizeof (uint32_t);
 	assert (size <= 0x0000000100000000); // 16GB limit
 	bool error = false;
-	slab = std::unique_ptr <uint32_t, std::function <void(uint32_t*)>> (nano_pow::alloc (memory, error), [size = this->size](uint32_t * slab) { free_page_memory (slab, size); });
+	slab = std::unique_ptr<uint32_t, std::function<void(uint32_t *)>> (nano_pow::alloc (memory, error), [size = this->size](uint32_t * slab) { free_page_memory (slab, size); });
 	if (error)
 	{
 		std::cerr << "Error while creating memory buffer" << std::endl;
@@ -378,11 +379,11 @@ void nano_pow::cpp_driver::fill_impl (uint64_t const count, uint64_t const begin
 	//std::cout << (std::string ("Fill ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
-	auto slab_l(slab.get ());
+	auto slab_l (slab.get ());
 	for (uint64_t current (begin), end (current + count); current < end; ++current)
 	{
 		uint32_t current_32 (static_cast<uint32_t> (current));
-		slab_l [slot (size_l, static_cast<uint64_t> (::H0 (nonce_l, current_32)))] = current_32;
+		slab_l[slot (size_l, static_cast<uint64_t> (::H0 (nonce_l, current_32)))] = current_32;
 	}
 }
 
@@ -392,15 +393,15 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 	//std::cout << (std::string ("Search ") + to_string_hex (begin) + ' ' + to_string_hex (count) + '\n');
 	auto size_l (size);
 	auto nonce_l (nonce);
-	auto slab_l(slab.get ());
+	auto slab_l (slab.get ());
 	while (result_0 == 0)
 	{
 		std::array<uint64_t, 2> result_l = { 0, 0 };
 		for (uint32_t j (0), m (stepping); result_l[1] == 0 && j < m; ++j)
 		{
-			uint64_t rhs = prng.next () & 0x0000FFFFFFFFFFFF;  // 48 bit solution part
+			uint64_t rhs = prng.next () & 0x0000FFFFFFFFFFFF; // 48 bit solution part
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint64_t lhs = slab_l [slot (size_l, 0 - static_cast<uint64_t> (hash_l))];
+			uint64_t lhs = slab_l[slot (size_l, 0 - static_cast<uint64_t> (hash_l))];
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
@@ -425,28 +426,28 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 
 void nano_pow::cpp_driver::fill ()
 {
-	auto start = std::chrono::steady_clock::now();
-	threads.execute ([this] (size_t thread_id, size_t total_threads) {
+	auto start = std::chrono::steady_clock::now ();
+	threads.execute ([this](size_t thread_id, size_t total_threads) {
 		auto count (fill_count ());
-		fill_impl (count / total_threads, current.fetch_add(count / total_threads));
+		fill_impl (count / total_threads, current.fetch_add (count / total_threads));
 	});
 	threads.barrier ();
 	if (verbose)
 	{
-		std::cout << "Filled in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+		std::cout << "Filled in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now () - start).count () << " ms" << std::endl;
 	}
 }
 
 std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 {
-	auto start = std::chrono::steady_clock::now();
-	threads.execute ([this] (size_t thread_id, size_t total_threads) {
+	auto start = std::chrono::steady_clock::now ();
+	threads.execute ([this](size_t thread_id, size_t total_threads) {
 		search_impl (thread_id);
 	});
 	threads.barrier ();
 	if (verbose)
 	{
-		std::cout << "Searched in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() << " ms" << std::endl;
+		std::cout << "Searched in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now () - start).count () << " ms" << std::endl;
 	}
 	return result_get ();
 }
@@ -465,7 +466,7 @@ std::array<uint64_t, 2> nano_pow::driver::solve (std::array<uint64_t, 2> nonce)
 void nano_pow::thread_pool::barrier ()
 {
 	std::unique_lock<std::mutex> lock (mutex);
-	finish.wait (lock, [this] () { return ready == threads.size (); });
+	finish.wait (lock, [this]() { return ready == threads.size (); });
 }
 
 void nano_pow::thread_pool::resize (size_t threads)
@@ -475,7 +476,7 @@ void nano_pow::thread_pool::resize (size_t threads)
 		std::unique_lock<std::mutex> lock (mutex);
 		while (this->threads.size () < threads)
 		{
-			this->threads.push_back (std::make_unique<std::thread> ([this, i=this->threads.size ()] () {
+			this->threads.push_back (std::make_unique<std::thread> ([this, i = this->threads.size ()]() {
 				loop (i);
 			}));
 		}
@@ -512,12 +513,12 @@ void nano_pow::thread_pool::stop ()
 void nano_pow::thread_pool::loop (size_t thread_id)
 {
 	std::unique_lock<std::mutex> lock (mutex);
-	while (threads [thread_id] != nullptr)
+	while (threads[thread_id] != nullptr)
 	{
 		++ready;
 		finish.notify_all ();
 		start.wait (lock);
-		if (operation && threads [thread_id] != nullptr)
+		if (operation && threads[thread_id] != nullptr)
 		{
 			auto threads_size (threads.size ());
 			lock.unlock ();
