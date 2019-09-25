@@ -95,7 +95,18 @@ uint64_t profile_validate (uint64_t count)
 int main (int argc, char ** argv)
 {
 	cxxopts::Options options ("nano_pow_driver", "Command line options");
-	options.add_options () ("driver", "Specify which test driver to use", cxxopts::value<std::string> ()->default_value ("cpp"), "cpp|opencl") ("d,difficulty", "Solution difficulty 1-127 default: 52", cxxopts::value<unsigned> ()->default_value ("52")) ("t,threads", "Number of device threads to use to find solution", cxxopts::value<unsigned> ()) ("l,lookup", "Scale of lookup table (N) 1-32. Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned> ()) ("c,count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned> ()->default_value ("16")) ("operation", "Specify which driver operation to perform", cxxopts::value<std::string> ()->default_value ("gtest"), "gtest|dump|profile|profile_validation") ("platform", "Defines the <platform> for OpenCL driver", cxxopts::value<unsigned short> ()) ("device", "Defines <device> for OpenCL driver", cxxopts::value<unsigned short> ()) ("v,verbose", "Display more messages") ("h,help", "Print this message");
+	// clang-format off
+		("driver", "Specify which test driver to use", cxxopts::value<std::string>()->default_value("cpp"), "cpp|opencl")
+		("d,difficulty", "Solution difficulty 1-127 default: 52", cxxopts::value<unsigned>()->default_value("52"))
+		("t,threads", "Number of device threads to use to find solution", cxxopts::value<unsigned>())
+		("l,lookup", "Scale of lookup table (N). Table contains 2^N entries, N defaults to (difficulty/2 + 1)", cxxopts::value<unsigned>())
+		("c,count", "Specify how many problems to solve, default 16", cxxopts::value<unsigned>()->default_value("16"))
+		("operation", "Specify which driver operation to perform", cxxopts::value<std::string>()->default_value("gtest"), "gtest|dump|profile|profile_validation|tune")
+		("platform", "Defines the <platform> for OpenCL driver", cxxopts::value<unsigned short>())
+		("device", "Defines <device> for OpenCL driver", cxxopts::value<unsigned short>())
+		("v,verbose", "Display more messages")
+		("h,help", "Print this message");
+	// clang-format on
 	int result (1);
 	try
 	{
