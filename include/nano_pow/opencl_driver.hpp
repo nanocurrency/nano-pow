@@ -81,7 +81,7 @@ namespace nano_pow
 	class opencl_driver : public driver
 	{
 	public:
-		opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0);
+		opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0, bool initialize=true);
 		void difficulty_set (nano_pow::uint128_t difficulty_a) override;
 		nano_pow::uint128_t difficulty_get () const override;
 		void threads_set (unsigned threads) override;
@@ -96,7 +96,7 @@ namespace nano_pow
 		opencl_environment environment;
 		cl::Context context;
 		cl::Program program;
-		uint32_t threads;
+		uint32_t threads {8192};
 		nano_pow::uint128_t difficulty;
 		nano_pow::uint128_t difficulty_inv;
 		std::vector<cl::Buffer> slabs { 0 };

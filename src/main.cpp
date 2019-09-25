@@ -121,6 +121,7 @@ int main (int argc, char **argv)
 		}
 		else
 		{
+			auto operation(parsed["operation"].as<std::string>());			
 			std::cout << "Initializing driver" << std::endl;
 			std::unique_ptr<nano_pow::driver> driver{ nullptr };
 			auto driver_type(parsed["driver"].as<std::string>());
@@ -140,7 +141,8 @@ int main (int argc, char **argv)
 				{
 					device = parsed["device"].as<unsigned short>();
 				}
-				driver = std::make_unique<nano_pow::opencl_driver>(platform, device);
+				bool initialize {operation != "dump"};
+				driver = std::make_unique<nano_pow::opencl_driver>(platform, device, initialize);
 			}
 			else
 			{
@@ -163,8 +165,6 @@ int main (int argc, char **argv)
 				{
 					threads = parsed["threads"].as <unsigned>();
 				}
-				auto operation(parsed["operation"].as<std::string>());
-
 				if (operation == "gtest")
 				{
 					testing::InitGoogleTest(&argc, argv);
