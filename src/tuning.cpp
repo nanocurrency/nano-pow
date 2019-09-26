@@ -87,7 +87,6 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 
 bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a, size_t const initial_memory_a, size_t const initial_threads_a, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a, std::ostream & stream)
 {
-	using namespace std::chrono;
 	auto megabytes = [](auto const memory) { return memory / (1024 * 1024); };
 
 	size_t constexpr min_memory = (1ULL << 18) * 4;
@@ -111,7 +110,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 		{
 			driver_a.memory_set (memory);
 			driver_a.fill ();
-			//TODO do all implementations fail in fill? If not, uncomment next line
+			//TODO do all cases fail in fill? If not, uncomment next line or replace with solve()
 			// search ();
 			ok = true;
 		}
@@ -168,7 +167,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 	}
 
 	/*
-	 * Find the best number of threads from a simple grid search
+	 * Find the best number of threads in powers of 2
 	 */
 	threads *= 2;
 	while (ok && threads <= max_threads)
