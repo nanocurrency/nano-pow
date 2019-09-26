@@ -57,7 +57,7 @@ private:
 	 * basically does:
 	 *     slab_a[hash(x) % size_a] = x
 	 *
-	 * @param count How many slots in slab_a to fill
+	 * @param count How many buckets to fill in slab_a
 	 * @param begin starting value to hash
 	 */
 	void fill_impl (uint64_t const count, uint64_t const begin = 0);
@@ -68,7 +68,7 @@ private:
 	 *
 	 * Generates `count` LHS hashes and searches for associated RHS hashes already in the slab
 	 *
-	 * @param count How many slots in slab_a to fill
+	 * @param count How many buckets to fill in slab_a
 	 * @param begin starting value to hash
 	 */
 	void search_impl (size_t thread_id);
