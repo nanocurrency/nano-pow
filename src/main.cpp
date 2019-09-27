@@ -9,13 +9,6 @@
 
 namespace
 {
-std::string to_string_hex (uint32_t value_a)
-{
-	std::stringstream stream;
-	stream << std::hex << std::noshowbase << std::setw (8) << std::setfill ('0');
-	stream << value_a;
-	return stream.str ();
-}
 std::string to_string_hex64 (uint64_t value_a)
 {
 	std::stringstream stream;
@@ -27,7 +20,7 @@ std::string to_string_hex128 (nano_pow::uint128_t value_a)
 {
 	return to_string_hex64 (static_cast<uint64_t> (value_a >> 64)) + to_string_hex64 (static_cast<uint64_t> (value_a));
 }
-std::string to_string_solution (std::array<uint64_t, 2> nonce_a, nano_pow::uint128_t threshold_a, std::array<uint64_t, 2> solution_a)
+std::string to_string_solution (std::array<uint64_t, 2> nonce_a, std::array<uint64_t, 2> solution_a)
 {
 	auto lhs (solution_a[0]);
 	auto lhs_hash (nano_pow::H0 (nonce_a, lhs));
@@ -61,7 +54,7 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, nano_pow::uint1
 			auto result = driver_a.solve (nonce);
 			auto search_time (std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now () - start).count ());
 			total_time += search_time;
-			std::cout << to_string_solution (nonce, driver_a.difficulty_get (), result) << " solution ms: " << std::to_string (search_time) << std::endl;
+			std::cout << to_string_solution (nonce, result) << " solution ms: " << std::to_string (search_time) << std::endl;
 		}
 	}
 	catch (nano_pow::OCLDriverException const & err)

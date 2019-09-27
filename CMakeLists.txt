@@ -12,7 +12,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set(CMAKE_CXX_EXTENSIONS OFF)
 
 # add_compile_options(-Wall -Wextra -pedantic)
-# add_definitions (-DNP_VALUE_SIZE=NP_SIZE_LARGE)
 
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")

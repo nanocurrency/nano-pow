@@ -26,6 +26,7 @@ public:
 	virtual void dump () const = 0;
 	virtual void fill () = 0;
 	virtual std::array<uint64_t, 2> search () = 0;
+	// Nonce must be set beforehand by the driver
 	virtual std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce);
 	void verbose_set (bool const v)
 	{

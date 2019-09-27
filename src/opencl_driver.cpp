@@ -133,8 +133,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 	assert (memory % sizeof (uint32_t) == 0);
 
 	// The minimum max alloc size is defined in the OpenCL standard as 1/4 of the global memory size
-	static unsigned constexpr max_slabs{ 4 };
-	auto number_slabs = memory > max_alloc_size ? 4 : 1;
+	unsigned const number_slabs = memory > max_alloc_size ? 4 : 1;
 
 	slab_size = memory / number_slabs;
 	slab_entries = memory / sizeof (uint32_t);
@@ -151,7 +150,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 		fill_impl.setArg (4, number_slabs);
 		search_impl.setArg (4, number_slabs);
 
-		for (auto i{ 0 }; i < number_slabs; ++i)
+		for (unsigned i{ 0 }; i < number_slabs; ++i)
 		{
 			slabs.emplace_back (cl::Buffer (context, CL_MEM_READ_WRITE, slab_size));
 			search_impl.setArg (5 + i, slabs[i]);
@@ -203,7 +202,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 	std::array<uint64_t, 2> result = { 0, 0 };
 	uint32_t thread_count (this->threads);
 	auto start = std::chrono::steady_clock::now ();
-	auto max_current (0x0000FFFFFFFFFFFF - thread_count * stepping);
+	auto const max_current (0x0000FFFFFFFFFFFFULL - thread_count * stepping);
 	try
 	{
 		while (result[1] == 0 && current <= max_current)

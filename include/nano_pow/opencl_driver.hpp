@@ -127,5 +127,6 @@ private:
 	cl::Buffer nonce_buffer{ 0 };
 	uint32_t stepping{ 256 };
 	uint32_t current_fill{ 0 };
+	static unsigned constexpr max_slabs{ 4 };
 };
 }
