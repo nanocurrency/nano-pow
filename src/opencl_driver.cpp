@@ -103,7 +103,7 @@ threads (8192)
 	catch (cl::Error const & err)
 	{
 		auto details (program.getBuildInfo<CL_PROGRAM_BUILD_LOG> (selected_device));
-		throw OCLDriverException (err, OCLDriverError::build, details);
+		throw OCLDriverException (err, OCLDriverExceptionOrigin::build, details);
 	}
 }
 
@@ -164,7 +164,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (err, OCLDriverError::memory_set);
+		throw OCLDriverException (err, OCLDriverExceptionOrigin::memory_set);
 	}
 	return false;
 }
@@ -187,7 +187,7 @@ void nano_pow::opencl_driver::fill ()
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (err, OCLDriverError::fill);
+		throw OCLDriverException (err, OCLDriverExceptionOrigin::fill);
 	}
 	if (verbose)
 	{
@@ -217,7 +217,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (err, OCLDriverError::search);
+		throw OCLDriverException (err, OCLDriverExceptionOrigin::search);
 	}
 	if (verbose)
 	{
@@ -237,7 +237,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::solve (std::array<uint64_t, 2> 
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (err, OCLDriverError::setup);
+		throw OCLDriverException (err, OCLDriverExceptionOrigin::setup);
 	}
 	return nano_pow::driver::solve (nonce);
 }
