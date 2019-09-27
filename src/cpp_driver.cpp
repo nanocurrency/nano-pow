@@ -341,16 +341,37 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 	size = memory / sizeof (uint32_t);
 	assert (size <= 0x0000000100000000); // 16GB limit
 	bool error = false;
-	slab = std::unique_ptr<uint32_t, std::function<void(uint32_t *)>> (nano_pow::alloc (memory, error), [size = this->size](uint32_t * slab) { free_page_memory (slab, size); });
-	if (error)
+	size_t available = std::numeric_limits<uint32_t>::max ();
+	// Memory availability checking
+	// Only Windows is supported
+	if (!nano_pow::memory_available (available) && available < memory)
 	{
-		std::cerr << "Error while creating memory buffer" << std::endl;
+		memory_reset ();
+		if (!nano_pow::memory_available (available) && available < memory)
+		{
+			error = true;
+			std::cerr << "Insufficient memory available" << std::endl;
+		}
 	}
-	else if (verbose)
+	if (!error)
 	{
-		std::cout << "Memory set to " << memory / (1024 * 1024) << "MB" << std::endl;
+		slab = std::unique_ptr<uint32_t, std::function<void(uint32_t *)>> (nano_pow::alloc (memory, error), [size = this->size](uint32_t * slab) { free_page_memory (slab, size); });
+		if (error)
+		{
+			std::cerr << "Error while creating memory buffer" << std::endl;
+		}
+		else if (verbose)
+		{
+			std::cout << "Memory set to " << memory / (1024 * 1024) << "MB" << std::endl;
+		}
 	}
+
 	return error;
+}
+
+void nano_pow::cpp_driver::memory_reset ()
+{
+	slab.reset ();
 }
 
 void nano_pow::cpp_driver::threads_set (unsigned threads)
@@ -434,8 +455,7 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 void nano_pow::cpp_driver::fill ()
 {
 	auto start = std::chrono::steady_clock::now ();
-	threads.execute ([this](size_t thread_id, size_t total_threads) {
-		(void)thread_id;
+	threads.execute ([this](size_t /* thread_id */, size_t total_threads) {
 		auto count (fill_count ());
 		fill_impl (count / total_threads, current.fetch_add (count / total_threads));
 	});
@@ -449,8 +469,7 @@ void nano_pow::cpp_driver::fill ()
 std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 {
 	auto start = std::chrono::steady_clock::now ();
-	threads.execute ([this](size_t thread_id, size_t total_threads) {
-		(void)total_threads;
+	threads.execute ([this](size_t thread_id, size_t /* total_threads */) {
 		search_impl (thread_id);
 	});
 	threads.barrier ();

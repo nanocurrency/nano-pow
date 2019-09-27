@@ -42,6 +42,7 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, nano_pow::uint1
 	driver_a.difficulty_set (difficulty);
 	if (driver_a.memory_set (memory))
 	{
+		std::cerr << "Failed to allocate " << memory / (1024 * 1024) << "MB" << std::endl;
 		exit (1);
 	}
 	std::cout << "Starting profile" << std::endl;

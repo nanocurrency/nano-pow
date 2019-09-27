@@ -28,6 +28,22 @@ size_t use_large_mem_pages{ false };
 
 namespace nano_pow
 {
+bool memory_available (size_t & memory)
+{
+	bool error{ false };
+	MEMORYSTATUSEX statex;
+	statex.dwLength = sizeof (statex);
+	if (GlobalMemoryStatusEx (&statex))
+	{
+		memory = static_cast<size_t> (statex.ullAvailPhys);
+	}
+	else
+	{
+		error = true;
+	}
+	return error;
+}
+
 void memory_init ()
 {
 	HANDLE hToken = nullptr;

@@ -27,7 +27,30 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 
 bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, size_t const initial_memory_a, size_t const initial_threads_a, size_t & best_memory_a, std::ostream & stream)
 {
+	bool error{ false };
+
 	auto megabytes = [](auto const memory) { return memory / (1024 * 1024); };
+
+	//clang-format off
+	auto try_memory_set = [&driver_a, &stream, &error, &megabytes](size_t const memory) {
+		if (driver_a.memory_set (memory))
+		{
+			size_t available{ 0 };
+			auto checked (!nano_pow::memory_available (available));
+			stream << "Failed to allocate " << megabytes (memory) << "MB." << std::endl;
+			if (checked)
+			{
+				stream << "Only " << megabytes (available) << "MB available" << std::endl;
+			}
+			error = true;
+		}
+		else
+		{
+			error = false;
+		}
+		return error;
+	};
+	//clang-format on
 
 	size_t constexpr min_memory = (1ULL << 18) * 4;
 	size_t constexpr max_memory = (1ULL << 32) * 4;
@@ -39,17 +62,20 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 	 * Start at the recommended difficulty/2 + 1 lookup size
 	 * Go down and then up in memory until a worse configuration is found in both directions
 	 */
-	size_t best_duration = std::chrono::system_clock::duration::max ().count ();
-	driver_a.memory_set (memory);
-	best_memory_a = memory;
-	best_duration = solve_many (driver_a, count_a);
-	auto duration = best_duration;
-	stream << driver_a.threads_get () << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
-	// Go down in memory
-	while (memory > min_memory)
+	while (try_memory_set (memory) && memory > min_memory)
 	{
 		memory /= 2;
-		driver_a.memory_set (memory);
+	}
+	if (error)
+	{
+		stream << "Could not allocate the minimum amount of memory" << std::endl;
+		return error;
+	}
+	size_t best_duration = std::chrono::system_clock::duration::max ().count ();
+	auto duration = best_duration;
+	// Go down in memory
+	while (!error && memory >= min_memory)
+	{
 		duration = solve_many (driver_a, count_a);
 		stream << driver_a.threads_get () << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
 		if (duration < best_duration)
@@ -61,13 +87,13 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 		{
 			break;
 		}
+		memory /= 2;
+		try_memory_set (memory);
 	}
 	// Go up in memory
-	memory = initial_memory_a;
-	while (memory < max_memory)
+	memory = initial_memory_a * 2;
+	while (!error && memory <= max_memory && !try_memory_set (memory))
 	{
-		memory *= 2;
-		driver_a.memory_set (memory);
 		duration = solve_many (driver_a, count_a);
 		stream << driver_a.threads_get () << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
 		if (duration < best_duration)
@@ -79,9 +105,9 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 		{
 			break;
 		}
+		memory *= 2;
 	}
 	stream << "Found best memory " << megabytes (best_memory_a) << "MB" << std::endl;
-	driver_a.memory_set (best_memory_a);
 	return false;
 }
 
@@ -93,7 +119,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 	auto max_threads (driver_a.max_threads ());
 	stream << "Maximum device threads " << max_threads << std::endl;
 
-	bool ok{ false };
+	bool error{ true };
 
 	size_t memory (initial_memory_a);
 	size_t threads{ initial_threads_a };
@@ -104,7 +130,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 	 * Memory is allocated in up to 4 slabs due to contiguous memory allocation limits in some devices
 	 * This result can vary depending on current usage of the device
 	 */
-	while (!ok)
+	while (error && memory > min_memory)
 	{
 		try
 		{
@@ -112,7 +138,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 			driver_a.fill ();
 			//TODO do all cases fail in fill? If not, uncomment next line or replace with solve()
 			// search ();
-			ok = true;
+			error = false;
 		}
 		catch (OCLDriverException const & err)
 		{
@@ -125,7 +151,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 			}
 		}
 	}
-	if (ok)
+	if (!error)
 	{
 		stream << "Found max memory " << megabytes (memory) << "MB" << std::endl;
 		max_memory_a = memory;
@@ -135,7 +161,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 	 * Find the best memory configuration for this difficulty
 	 */
 	size_t best_duration = std::chrono::system_clock::duration::max ().count ();
-	while (ok)
+	while (!error)
 	{
 		try
 		{
@@ -156,10 +182,10 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 		catch (OCLDriverException const & err)
 		{
 			stream << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
-			ok = false;
+			error = true;
 		}
 	}
-	if (ok)
+	if (!error)
 	{
 		best_memory_a = memory;
 		stream << "Found best memory " << megabytes (best_memory_a) << "MB" << std::endl;
@@ -170,7 +196,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 	 * Find the best number of threads in powers of 2
 	 */
 	threads *= 2;
-	while (ok && threads <= max_threads)
+	while (!error && threads <= max_threads)
 	{
 		try
 		{
@@ -191,15 +217,15 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 		catch (OCLDriverException const & err)
 		{
 			stream << threads << " threads, " << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
-			ok = false;
+			error = true;
 		}
 	}
-	if (ok)
+	if (!error)
 	{
 		best_threads_a = threads;
 		stream << "Found best threads " << threads << std::endl;
 		driver_a.threads_set (best_threads_a);
 	}
 
-	return !ok;
+	return error;
 }

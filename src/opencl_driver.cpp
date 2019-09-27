@@ -199,8 +199,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 	}
 	try
 	{
-		slabs.clear ();
-		current_fill = 0;
+		memory_reset ();
 		fill_impl.setArg (0, slab_entries);
 		search_impl.setArg (0, slab_entries);
 		fill_impl.setArg (4, number_slabs);
@@ -223,6 +222,12 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 		throw OCLDriverException (OCLDriverExceptionOrigin::memory_set, err);
 	}
 	return false;
+}
+
+void nano_pow::opencl_driver::memory_reset ()
+{
+	slabs.clear ();
+	current_fill = 0;
 }
 
 void nano_pow::opencl_driver::fill ()

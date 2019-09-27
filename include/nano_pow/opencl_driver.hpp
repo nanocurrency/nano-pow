@@ -102,6 +102,7 @@ public:
 	size_t threads_get () const override;
 	size_t max_threads ();
 	bool memory_set (size_t memory) override;
+	void memory_reset () override;
 	void fill () override;
 	std::array<uint64_t, 2> search () override;
 	std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;

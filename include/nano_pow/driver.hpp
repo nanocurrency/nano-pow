@@ -29,6 +29,8 @@ public:
 	// Value must be a power of 2
 	// Returns true on error
 	virtual bool memory_set (size_t memory) = 0;
+	// Free used memory
+	virtual void memory_reset () = 0;
 	virtual void dump () const = 0;
 	virtual void fill () = 0;
 	virtual std::array<uint64_t, 2> search () = 0;
