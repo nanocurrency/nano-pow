@@ -25,6 +25,7 @@ void free_page_memory (uint32_t * slab, size_t size)
 uint32_t * alloc (size_t memory, bool & error)
 {
 	auto alloc = mmap (0, memory, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_NOCACHE, -1, 0);
+	madvise (alloc, memory, MADV_RANDOM);
 	error |= (alloc == MAP_FAILED);
 	return reinterpret_cast<uint32_t *> (alloc);
 }

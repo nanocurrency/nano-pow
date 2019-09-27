@@ -62,11 +62,11 @@ uint32_t * alloc (size_t memory, bool & error)
 		extra_flags = MEM_LARGE_PAGES;
 	}
 
-	auto alloc = VirtualAlloc (nullptr, rounded_up_memory, MEM_COMMIT | MEM_RESERVE | extra_flags, PAGE_READWRITE);
+	auto alloc = VirtualAlloc (nullptr, rounded_up_memory, MEM_COMMIT | MEM_RESERVE | extra_flags, PAGE_READWRITE | PAGE_NOCACHE);
 	if (!alloc && use_large_mem_pages)
 	{
 		// There was an issue using the large memory pages locked in physical memory, so try and allocate without.
-		alloc = VirtualAlloc (nullptr, memory, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		alloc = VirtualAlloc (nullptr, memory, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE | PAGE_NOCACHE);
 		error |= (alloc == nullptr);
 	}
 	return reinterpret_cast<uint32_t *> (alloc);
