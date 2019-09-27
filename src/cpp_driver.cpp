@@ -121,16 +121,22 @@ uint8_t * out, const size_t outlen)
 	{
 		case 7:
 			b |= ((uint64_t)in[6]) << 48;
+			/* FALLTHRU */
 		case 6:
 			b |= ((uint64_t)in[5]) << 40;
+			/* FALLTHRU */
 		case 5:
 			b |= ((uint64_t)in[4]) << 32;
+			/* FALLTHRU */
 		case 4:
 			b |= ((uint64_t)in[3]) << 24;
+			/* FALLTHRU */
 		case 3:
 			b |= ((uint64_t)in[2]) << 16;
+			/* FALLTHRU */
 		case 2:
 			b |= ((uint64_t)in[1]) << 8;
+			/* FALLTHRU */
 		case 1:
 			b |= ((uint64_t)in[0]);
 			break;
@@ -192,7 +198,13 @@ NP_INLINE static nano_pow::uint128_t hash (std::array<uint64_t, 2> nonce_a, uint
 {
 	nano_pow::uint128_t result;
 	auto error (siphash (reinterpret_cast<uint8_t const *> (&item_a), sizeof (item_a), reinterpret_cast<uint8_t const *> (nonce_a.data ()), reinterpret_cast<uint8_t *> (&result), sizeof (result)));
+	(void)error;
 	assert (!error);
+	/* Siphash writes to result in memory order.
+	   This means the LSB in written before the MSB
+	   We swap the upper half with the lower half so
+	   the lower half contains the last-written random data. */
+	result = (result >> 64) | (result << 64);
 	return result;
 }
 
@@ -303,10 +315,10 @@ NP_INLINE static nano_pow::uint128_t difficulty_quick (nano_pow::uint128_t const
 /**
  * Maps item_a to an index within the memory region.
  *
- * @param item_a value that needs to be pigeonholed into an index/slot.
+ * @param item_a value that needs to be pigeonholed into an index/bucket.
  *        Naively is (item_a % size_a), but using bitmasking for efficiency.
  */
-NP_INLINE static uint64_t slot (uint64_t const size_a, uint64_t const item_a)
+NP_INLINE static uint64_t bucket (uint64_t const size_a, uint64_t const item_a)
 {
 	auto mask (size_a - 1);
 	assert (((size_a & mask) == 0) && "Slab size is not a power of 2");
@@ -341,11 +353,6 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::solve (std::array<uint64_t, 2> non
 	this->nonce[0] = nonce[0];
 	this->nonce[1] = nonce[1];
 	return nano_pow::driver::solve (nonce);
-}
-
-void nano_pow::cpp_driver::dump () const
-{
-	std::cerr << "Hardware threads: " << std::to_string (std::thread::hardware_concurrency ()) << std::endl;
 }
 
 bool nano_pow::cpp_driver::memory_set (size_t memory)
@@ -404,7 +411,7 @@ void nano_pow::cpp_driver::fill_impl (uint64_t const count, uint64_t const begin
 	for (uint64_t current (begin), end (current + count); current < end; ++current)
 	{
 		uint32_t current_32 (static_cast<uint32_t> (current));
-		slab_l[slot (size_l, static_cast<uint64_t> (::H0 (nonce_l, current_32)))] = current_32;
+		slab_l[bucket (size_l, static_cast<uint64_t> (::H0 (nonce_l, current_32)))] = current_32;
 	}
 }
 
@@ -422,7 +429,7 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 		{
 			uint64_t rhs = prng.next () & 0x0000FFFFFFFFFFFF; // 48 bit solution part
 			auto hash_l (::H1 (nonce_l, rhs));
-			uint64_t lhs = slab_l[slot (size_l, 0 - static_cast<uint64_t> (hash_l))];
+			uint64_t lhs = slab_l[bucket (size_l, 0 - static_cast<uint64_t> (hash_l))];
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
 			// Check if the solution passes through the quick path then check it through the long path
 			if (!passes_quick (sum, difficulty_inv))
@@ -449,6 +456,7 @@ void nano_pow::cpp_driver::fill ()
 {
 	auto start = std::chrono::steady_clock::now ();
 	threads.execute ([this](size_t thread_id, size_t total_threads) {
+		(void)thread_id;
 		auto count (fill_count ());
 		fill_impl (count / total_threads, current.fetch_add (count / total_threads));
 	});
@@ -463,6 +471,7 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 {
 	auto start = std::chrono::steady_clock::now ();
 	threads.execute ([this](size_t thread_id, size_t total_threads) {
+		(void)total_threads;
 		search_impl (thread_id);
 	});
 	threads.barrier ();
@@ -471,17 +480,6 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 		std::cout << "Searched in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now () - start).count () << " ms" << std::endl;
 	}
 	return result_get ();
-}
-
-std::array<uint64_t, 2> nano_pow::driver::solve (std::array<uint64_t, 2> nonce)
-{
-	std::array<uint64_t, 2> result_l = { 0, 0 };
-	while (result_l[1] == 0)
-	{
-		fill ();
-		result_l = search ();
-	}
-	return result_l;
 }
 
 void nano_pow::thread_pool::barrier ()
@@ -566,4 +564,9 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::result_get ()
 {
 	std::array<uint64_t, 2> result_l = { result_0.load (), result_1.load () };
 	return result_l;
+}
+
+void nano_pow::cpp_driver::dump () const
+{
+	std::cerr << "Hardware threads: " << std::to_string (std::thread::hardware_concurrency ()) << std::endl;
 }

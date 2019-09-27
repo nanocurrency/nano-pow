@@ -224,6 +224,9 @@ static uint128_t hash (nonce_t const nonce_a, ulong const item_a)
 {
 	uint128_t result;
 	int code = siphash ((uchar *)&item_a, sizeof (item_a), (uchar *)nonce_a.values, (uchar *)&result, sizeof (result));
+	ulong temp = result.low;
+	result.low = result.high;
+	result.high = temp;
 	return result;
 }
 
@@ -275,7 +278,7 @@ static uint slab (uint const slabs_a, ulong const size_a, ulong const item_a)
 	return (item_a & mask) % slabs_a;
 }
 
-static ulong slot (uint const slabs_a, ulong const size_a, ulong const item_a)
+static ulong bucket (uint const slabs_a, ulong const size_a, ulong const item_a)
 {
 	ulong mask = size_a - 1;
 	return (item_a & mask) / slabs_a;
@@ -303,9 +306,9 @@ uint128_t const threshold_a, __global ulong * result_a)
 		rhs = current;
 		uint128_t const hash_l = H1 (nonce_l, rhs);
 		uint const slab_l = slab (slabs_a, size_a, 0 - hash_l.low);
-		ulong const slot_l = slot (slabs_a, size_a, 0 - hash_l.low);
+		ulong const bucket_l = bucket (slabs_a, size_a, 0 - hash_l.low);
 		//printf("%llu %llu %lu --- %llu\n", size_a, 0 - hash_l, slab_l, (0 - hash_l) & (size_a - 1));
-		lhs = slabs[slab_l][slot_l];
+		lhs = slabs[slab_l][bucket_l];
 		uint128_t summ = sum (H0 (nonce_l, lhs), hash_l);
 		//printf ("%lu %lx %lu %lx\n", lhs, hash_l, rhs, summ);
 		incomplete = !passes_quick (summ, threshold_a) || !passes_sum (summ, reverse (threshold_a));
@@ -334,8 +337,8 @@ __global uint * slab_0, __global uint * slab_1, __global uint * slab_2, __global
 	{
 		uint128_t const hash_l = H0 (nonce_l, current);
 		uint const slab_l = slab (slabs_a, size_a, hash_l.low);
-		ulong const slot_l = slot (slabs_a, size_a, hash_l.low);
-		slabs[slab_l][slot_l] = current;
-		//printf ("[%llu] Writing current %lu to slab %lu slot %llu\n", get_global_id (0), current, slab_l, slot_l);
+		ulong const bucket_l = bucket (slabs_a, size_a, hash_l.low);
+		slabs[slab_l][bucket_l] = current;
+		//printf ("[%llu] Writing current %lu to slab %lu bucket %llu\n", get_global_id (0), current, slab_l, bucket_l);
 	}
 }

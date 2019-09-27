@@ -11,8 +11,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set(CMAKE_CXX_EXTENSIONS OFF)
 
-# add_compile_options(-Wall -Wextra -pedantic)
-# add_definitions (-DNP_VALUE_SIZE=NP_SIZE_LARGE)
+add_compile_options(-Wall -Wextra -pedantic)
 
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
@@ -61,9 +60,12 @@ add_library (nano_pow
 	include/nano_pow/opencl_driver.hpp
 	include/nano_pow/uint128.hpp
 	include/nano_pow/xoroshiro128starstar.hpp
+	include/nano_pow/tuning.hpp
+	src/driver.cpp
 	src/cpp_driver.cpp
 	src/opencl_driver.cpp
 	src/opencl_program.cpp
+	src/tuning.cpp
 )
 
 target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -44,29 +44,33 @@ public:
 	bool memory_set (size_t memory) override;
 	std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
 	void dump () const override;
+	driver_type type () const override
+	{
+		return driver_type::CPP;
+	}
 
 private:
-	/**
-		 * Populates memory with `count` pre-images
-		 *
-		 * These preimages are used as the RHS to the summing problem
-		 * basically does:
-		 *     slab_a[hash(x) % size_a] = x
-		 *
-		 * @param count How many slots in slab_a to fill
-		 * @param begin starting value to hash
-		 */
+	/*
+	 * Populates memory with `count` pre-images
+	 *
+	 * These preimages are used as the RHS to the summing problem
+	 * basically does:
+	 *     slab_a[hash(x) % size_a] = x
+	 *
+	 * @param count How many buckets to fill in slab_a
+	 * @param begin starting value to hash
+	 */
 	void fill_impl (uint64_t const count, uint64_t const begin = 0);
 	void fill () override;
 
-	/**
-		 * Searches for a solution to difficulty problem
-		 *
-		 * Generates `count` LHS hashes and searches for associated RHS hashes already in the slab
-		 *
-		 * @param count How many slots in slab_a to fill
-		 * @param begin starting value to hash
-		 */
+	/*
+	 * Searches for a solution to difficulty problem
+	 *
+	 * Generates `count` LHS hashes and searches for associated RHS hashes already in the slab
+	 *
+	 * @param count How many buckets to fill in slab_a
+	 * @param begin starting value to hash
+	 */
 	void search_impl (size_t thread_id);
 	std::array<uint64_t, 2> search () override;
 	std::atomic<uint64_t> current{ 0 };
