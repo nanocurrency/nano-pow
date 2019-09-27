@@ -8,10 +8,6 @@
 #define MAP_NOCACHE (0)
 #endif
 
-namespace
-{
-}
-
 namespace nano_pow
 {
 bool memory_available (size_t & /* memory */)
