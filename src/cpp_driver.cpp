@@ -334,11 +334,6 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::solve (std::array<uint64_t, 2> non
 	return nano_pow::driver::solve (nonce);
 }
 
-void nano_pow::cpp_driver::dump () const
-{
-	std::cerr << "Hardware threads: " << std::to_string (std::thread::hardware_concurrency ()) << std::endl;
-}
-
 bool nano_pow::cpp_driver::memory_set (size_t memory)
 {
 	assert (memory > 0);
@@ -548,4 +543,9 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::result_get ()
 {
 	std::array<uint64_t, 2> result_l = { result_0.load (), result_1.load () };
 	return result_l;
+}
+
+void nano_pow::cpp_driver::dump () const
+{
+	std::cerr << "Hardware threads: " << std::to_string (std::thread::hardware_concurrency ()) << std::endl;
 }
