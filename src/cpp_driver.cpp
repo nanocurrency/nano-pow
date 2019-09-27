@@ -466,18 +466,6 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 	return result_get ();
 }
 
-std::array<uint64_t, 2> nano_pow::driver::solve (std::array<uint64_t, 2> nonce)
-{
-	(void)nonce;
-	std::array<uint64_t, 2> result_l = { 0, 0 };
-	while (result_l[1] == 0)
-	{
-		fill ();
-		result_l = search ();
-	}
-	return result_l;
-}
-
 void nano_pow::thread_pool::barrier ()
 {
 	std::unique_lock<std::mutex> lock (mutex);
