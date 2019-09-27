@@ -95,7 +95,7 @@ void nano_pow::opencl_driver::initialize (unsigned short platform_id, unsigned s
 	// Platform
 	if (platform_id >= environment.platforms.size ())
 	{
-		throw OCLDriverException (OCLDriverError::init, cl::Error (CL_INVALID_PLATFORM));
+		throw OCLDriverException (OCLDriverExceptionOrigin::init, cl::Error (CL_INVALID_PLATFORM));
 	}
 	try
 	{
@@ -104,12 +104,12 @@ void nano_pow::opencl_driver::initialize (unsigned short platform_id, unsigned s
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (OCLDriverError::init, err);
+		throw OCLDriverException (OCLDriverExceptionOrigin::init, err);
 	}
 	// Device
 	if (device_id >= devices.size ())
 	{
-		throw OCLDriverException (OCLDriverError::init, cl::Error (CL_DEVICE_NOT_FOUND));
+		throw OCLDriverException (OCLDriverExceptionOrigin::init, cl::Error (CL_DEVICE_NOT_FOUND));
 	}
 	try
 	{
@@ -122,7 +122,7 @@ void nano_pow::opencl_driver::initialize (unsigned short platform_id, unsigned s
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (OCLDriverError::init, err);
+		throw OCLDriverException (OCLDriverExceptionOrigin::init, err);
 	}
 	// Program
 	try
@@ -145,7 +145,7 @@ void nano_pow::opencl_driver::initialize (unsigned short platform_id, unsigned s
 	catch (cl::Error const & err)
 	{
 		auto details (program.getBuildInfo<CL_PROGRAM_BUILD_LOG> (selected_device));
-		throw OCLDriverException (OCLDriverError::build, err, details);
+		throw OCLDriverException (OCLDriverExceptionOrigin::build, err, details);
 	}
 }
 
@@ -187,8 +187,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 	assert (memory % sizeof (uint32_t) == 0);
 
 	// The minimum max alloc size is defined in the OpenCL standard as 1/4 of the global memory size
-	static unsigned constexpr max_slabs{ 4 };
-	auto number_slabs = memory > max_alloc_size ? 4 : 1;
+	unsigned const number_slabs = memory > max_alloc_size ? 4 : 1;
 
 	slab_size = memory / number_slabs;
 	slab_entries = memory / sizeof (uint32_t);
@@ -207,7 +206,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 		fill_impl.setArg (4, number_slabs);
 		search_impl.setArg (4, number_slabs);
 
-		for (auto i{ 0 }; i < number_slabs; ++i)
+		for (unsigned i{ 0 }; i < number_slabs; ++i)
 		{
 			slabs.emplace_back (cl::Buffer (context, CL_MEM_READ_WRITE, slab_size));
 			search_impl.setArg (5 + i, slabs[i]);
@@ -221,7 +220,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (OCLDriverError::memory_set, err);
+		throw OCLDriverException (OCLDriverExceptionOrigin::memory_set, err);
 	}
 	return false;
 }
@@ -244,7 +243,7 @@ void nano_pow::opencl_driver::fill ()
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (OCLDriverError::fill, err);
+		throw OCLDriverException (OCLDriverExceptionOrigin::fill, err);
 	}
 	if (verbose)
 	{
@@ -259,7 +258,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 	std::array<uint64_t, 2> result = { 0, 0 };
 	uint32_t thread_count (this->threads);
 	auto start = std::chrono::steady_clock::now ();
-	auto max_current (0x0000FFFFFFFFFFFF - thread_count * stepping);
+	auto const max_current (0x0000FFFFFFFFFFFFULL - thread_count * stepping);
 	try
 	{
 		while (result[1] == 0 && current <= max_current)
@@ -274,7 +273,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (OCLDriverError::search, err);
+		throw OCLDriverException (OCLDriverExceptionOrigin::search, err);
 	}
 	if (verbose)
 	{
@@ -293,7 +292,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::solve (std::array<uint64_t, 2> 
 	}
 	catch (cl::Error const & err)
 	{
-		throw OCLDriverException (OCLDriverError::setup, err);
+		throw OCLDriverException (OCLDriverExceptionOrigin::setup, err);
 	}
 	return nano_pow::driver::solve (nonce);
 }

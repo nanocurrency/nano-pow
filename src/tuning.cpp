@@ -11,7 +11,7 @@ size_t nano_pow::solve_many (nano_pow::driver & driver_a, size_t const count_a)
 	}
 	auto duration = (std::chrono::steady_clock::now () - start).count ();
 	return duration;
-};
+}
 
 bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, size_t const initial_memory_a, size_t const initial_threads_a, size_t & best_memory_a)
 {
@@ -39,7 +39,7 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 	 * Start at the recommended difficulty/2 + 1 lookup size
 	 * Go down and then up in memory until a worse configuration is found in both directions
 	 */
-	auto best_duration = std::chrono::system_clock::duration::max ().count ();
+	size_t best_duration = std::chrono::system_clock::duration::max ().count ();
 	driver_a.memory_set (memory);
 	best_memory_a = memory;
 	best_duration = solve_many (driver_a, count_a);
@@ -134,7 +134,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 	/*
 	 * Find the best memory configuration for this difficulty
 	 */
-	auto best_duration = std::chrono::system_clock::duration::max ().count ();
+	size_t best_duration = std::chrono::system_clock::duration::max ().count ();
 	while (ok)
 	{
 		try

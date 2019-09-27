@@ -121,16 +121,22 @@ uint8_t * out, const size_t outlen)
 	{
 		case 7:
 			b |= ((uint64_t)in[6]) << 48;
+			/* FALLTHRU */
 		case 6:
 			b |= ((uint64_t)in[5]) << 40;
+			/* FALLTHRU */
 		case 5:
 			b |= ((uint64_t)in[4]) << 32;
+			/* FALLTHRU */
 		case 4:
 			b |= ((uint64_t)in[3]) << 24;
+			/* FALLTHRU */
 		case 3:
 			b |= ((uint64_t)in[2]) << 16;
+			/* FALLTHRU */
 		case 2:
 			b |= ((uint64_t)in[1]) << 8;
+			/* FALLTHRU */
 		case 1:
 			b |= ((uint64_t)in[0]);
 			break;
@@ -192,6 +198,7 @@ NP_INLINE static nano_pow::uint128_t hash (std::array<uint64_t, 2> nonce_a, uint
 {
 	nano_pow::uint128_t result;
 	auto error (siphash (reinterpret_cast<uint8_t const *> (&item_a), sizeof (item_a), reinterpret_cast<uint8_t const *> (nonce_a.data ()), reinterpret_cast<uint8_t *> (&result), sizeof (result)));
+	(void)error;
 	assert (!error);
 	/* Siphash writes to result in memory order.
 	   This means the LSB in written before the MSB
@@ -428,6 +435,7 @@ void nano_pow::cpp_driver::fill ()
 {
 	auto start = std::chrono::steady_clock::now ();
 	threads.execute ([this](size_t thread_id, size_t total_threads) {
+		(void)thread_id;
 		auto count (fill_count ());
 		fill_impl (count / total_threads, current.fetch_add (count / total_threads));
 	});
@@ -442,6 +450,7 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 {
 	auto start = std::chrono::steady_clock::now ();
 	threads.execute ([this](size_t thread_id, size_t total_threads) {
+		(void)total_threads;
 		search_impl (thread_id);
 	});
 	threads.barrier ();
@@ -450,17 +459,6 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 		std::cout << "Searched in " << std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::steady_clock::now () - start).count () << " ms" << std::endl;
 	}
 	return result_get ();
-}
-
-std::array<uint64_t, 2> nano_pow::driver::solve (std::array<uint64_t, 2> nonce)
-{
-	std::array<uint64_t, 2> result_l = { 0, 0 };
-	while (result_l[1] == 0)
-	{
-		fill ();
-		result_l = search ();
-	}
-	return result_l;
 }
 
 void nano_pow::thread_pool::barrier ()

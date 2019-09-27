@@ -8,7 +8,7 @@
 
 namespace nano_pow
 {
-enum class OCLDriverError
+enum class OCLDriverExceptionOrigin
 {
 	unknown = 0,
 	init,
@@ -18,23 +18,23 @@ enum class OCLDriverError
 	fill,
 	search
 };
-inline const char * to_string (OCLDriverError const err)
+inline const char * to_string (OCLDriverExceptionOrigin const err)
 {
 	switch (err)
 	{
-		case OCLDriverError::unknown:
+		case OCLDriverExceptionOrigin::unknown:
 			return "Unknown";
-		case OCLDriverError::init:
+		case OCLDriverExceptionOrigin::init:
 			return "Init";
-		case OCLDriverError::build:
+		case OCLDriverExceptionOrigin::build:
 			return "Build";
-		case OCLDriverError::setup:
+		case OCLDriverExceptionOrigin::setup:
 			return "Setup";
-		case OCLDriverError::memory_set:
+		case OCLDriverExceptionOrigin::memory_set:
 			return "Memory Set";
-		case OCLDriverError::fill:
+		case OCLDriverExceptionOrigin::fill:
 			return "Fill";
-		case OCLDriverError::search:
+		case OCLDriverExceptionOrigin::search:
 			return "Search";
 		default:
 			return "Invalid";
@@ -45,12 +45,12 @@ class OCLDriverException : public std::exception
 {
 private:
 	cl::Error cl_err_{ CL_SUCCESS };
-	const OCLDriverError err_origin_;
+	const OCLDriverExceptionOrigin err_origin_;
 	const char * err_string_{ "" };
 	const std::string err_details_;
 
 public:
-	OCLDriverException (const OCLDriverError origin, const cl::Error & cl_err = cl::Error (1), const std::string details = "") :
+	OCLDriverException (const OCLDriverExceptionOrigin origin, const cl::Error & cl_err = cl::Error (1), const std::string details = "") :
 	cl_err_ (cl_err), err_origin_ (origin), err_string_ (to_string (cl_err.err ())), err_details_ (details)
 	{
 	}
@@ -131,5 +131,6 @@ private:
 	cl::Buffer nonce_buffer{ 0 };
 	uint32_t stepping{ 256 };
 	uint32_t current_fill{ 0 };
+	static unsigned constexpr max_slabs{ 4 };
 };
 }
