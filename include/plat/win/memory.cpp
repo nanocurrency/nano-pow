@@ -80,4 +80,9 @@ void free_page_memory (uint32_t * slab, size_t)
 		assert (success);
 	}
 }
+void discard (uint32_t * slab, size_t memory)
+{
+	auto result = VirtualAlloc(slab, memory, MEM_RESET, PAGE_READWRITE);
+	(void)result;
+}
 }

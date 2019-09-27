@@ -28,4 +28,8 @@ uint32_t * alloc (size_t memory, bool & error)
 	error |= (alloc == MAP_FAILED);
 	return reinterpret_cast<uint32_t *> (alloc);
 }
+void discard (uint32_t * slab, size_t memory)
+{
+	madvise (slab, memory, MADV_DONTNEED);
+}
 }

@@ -324,7 +324,9 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::solve (std::array<uint64_t, 2> non
 	current = 0;
 	this->nonce[0] = nonce[0];
 	this->nonce[1] = nonce[1];
-	return nano_pow::driver::solve (nonce);
+	auto result = nano_pow::driver::solve (nonce);
+	nano_pow::discard (slab.get (), size * 4);
+	return result;
 }
 
 void nano_pow::cpp_driver::dump () const
