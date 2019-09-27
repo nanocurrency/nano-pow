@@ -8,6 +8,12 @@
 
 namespace nano_pow
 {
+enum class driver_type
+{
+	CPP,
+	OPENCL
+};
+
 class driver
 {
 protected:
@@ -26,7 +32,8 @@ public:
 	virtual void dump () const = 0;
 	virtual void fill () = 0;
 	virtual std::array<uint64_t, 2> search () = 0;
-	virtual std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce);
+	virtual std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) = 0;
+	virtual driver_type type () const = 0;
 	void verbose_set (bool const v)
 	{
 		verbose = v;

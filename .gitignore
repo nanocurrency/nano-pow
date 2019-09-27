@@ -42,5 +42,11 @@ build/
 .vs/
 CMakeSettings.json
 
+# CMake
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+
 # Clang-format
 .clang-format

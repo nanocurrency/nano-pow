@@ -11,6 +11,7 @@ namespace nano_pow
 enum class OCLDriverError
 {
 	unknown = 0,
+	init,
 	build,
 	setup,
 	memory_set,
@@ -23,6 +24,8 @@ inline const char * to_string (OCLDriverError const err)
 	{
 		case OCLDriverError::unknown:
 			return "Unknown";
+		case OCLDriverError::init:
+			return "Init";
 		case OCLDriverError::build:
 			return "Build";
 		case OCLDriverError::setup:
@@ -47,13 +50,8 @@ private:
 	const std::string err_details_;
 
 public:
-	OCLDriverException (const cl::Error & cl_err, const OCLDriverError origin, const std::string details) :
+	OCLDriverException (const OCLDriverError origin, const cl::Error & cl_err = cl::Error (1), const std::string details = "") :
 	cl_err_ (cl_err), err_origin_ (origin), err_string_ (to_string (cl_err.err ())), err_details_ (details)
-	{
-	}
-
-	OCLDriverException (const cl::Error & cl_err, const OCLDriverError origin) :
-	OCLDriverException (cl_err, origin, "")
 	{
 	}
 
@@ -96,22 +94,28 @@ public:
 class opencl_driver : public driver
 {
 public:
-	opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0);
+	opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0, bool initialize = true);
+	void initialize (unsigned short platform_id, unsigned short device_id);
 	void difficulty_set (nano_pow::uint128_t difficulty_a) override;
 	nano_pow::uint128_t difficulty_get () const override;
 	void threads_set (unsigned threads) override;
 	size_t threads_get () const override;
+	size_t max_threads ();
 	bool memory_set (size_t memory) override;
-	std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
-	void dump () const override;
-
-private:
 	void fill () override;
 	std::array<uint64_t, 2> search () override;
+	std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
+	void dump () const override;
+	driver_type type () const override
+	{
+		return driver_type::OPENCL;
+	}
+
+private:
 	opencl_environment environment;
 	cl::Context context;
 	cl::Program program;
-	uint32_t threads;
+	uint32_t threads{ 8192 };
 	nano_pow::uint128_t difficulty;
 	nano_pow::uint128_t difficulty_inv;
 	std::vector<cl::Buffer> slabs{ 0 };
