@@ -1,6 +1,6 @@
 This is an optimized C++ implementation of Nano PoW intended for use as a rate-limiting, Quality of Service mechanism on the Nano network.
 
-![Nano PoW](assets/pow-mark-dark.png)
+![Nano PoW](assets/nano-pow-logo.png)
 
 Nano PoW is an authentication-free, rate limiting proof-of-work algorithm designed to be memory-hard. It provides a minimal proof size and fast verification while maximizing the time-area-product. Nano PoW was designed by Colin LeMahieu.
 
