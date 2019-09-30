@@ -444,12 +444,13 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l (slab.get ());
+	size_t constexpr max_48bit{ (1ULL << 48) - 1 };
 	while (result_0 == 0)
 	{
 		std::array<uint64_t, 2> result_l = { 0, 0 };
 		for (uint32_t j (0), m (stepping); result_l[1] == 0 && j < m; ++j)
 		{
-			uint64_t rhs = prng.next () & ((1ULL << 48) - 1); // 48 bit solution part
+			uint64_t rhs = prng.next () & max_48bit; // 48 bit solution part
 			auto hash_l (::H1 (nonce_l, rhs));
 			uint64_t lhs = slab_l[bucket (size_l, 0 - static_cast<uint64_t> (hash_l))];
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
