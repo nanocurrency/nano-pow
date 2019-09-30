@@ -18,22 +18,25 @@ TEST (nano_pow, difficulty_128)
 
 TEST (cpp_driver, solve)
 {
-	std::array<uint64_t, 2> nonce = { 0, 0 };
+	std::array<uint64_t, 2> nonce { 0, 0 };
 	nano_pow::cpp_driver driver;
-	driver.memory_set (1ULL << 16);
+	ASSERT_FALSE (driver.memory_set (1ULL << 16));
 	driver.difficulty_set (nano_pow::bit_difficulty (32));
-	driver.solve (nonce);
-	auto result (driver.result_get ());
+	auto result (driver.solve (nonce));
 	auto difficulty (nano_pow::difficulty (nonce, result));
 	ASSERT_NE (static_cast<nano_pow::uint128_t> (0), difficulty);
-	ASSERT_TRUE (nano_pow::passes (nonce, result, nano_pow::bit_difficulty (32)));
-	ASSERT_FALSE (nano_pow::passes (nonce, result, nano_pow::bit_difficulty (70)));
+	auto passing_difficulty (nano_pow::bit_difficulty (32));
+	ASSERT_GE (difficulty, passing_difficulty);
+	ASSERT_TRUE (nano_pow::passes (nonce, result, passing_difficulty));
+	auto failing_difficulty (nano_pow::bit_difficulty (70));
+	ASSERT_LT (difficulty, failing_difficulty);
+	ASSERT_FALSE (nano_pow::passes (nonce, result, failing_difficulty));
 }
 
 TEST (opencl_driver, solve)
 {
 	bool opencl_available{ true };
-	std::array<uint64_t, 2> nonce = { 0, 0 };
+	std::array<uint64_t, 2> nonce { 0, 0 };
 	nano_pow::opencl_driver driver (0, 0, false);
 	try
 	{
@@ -46,7 +49,7 @@ TEST (opencl_driver, solve)
 	}
 	if (opencl_available)
 	{
-		driver.memory_set (1ULL << 16);
+		ASSERT_FALSE (driver.memory_set (1ULL << 16));
 		driver.difficulty_set (nano_pow::bit_difficulty (32));
 		auto result = driver.solve (nonce);
 		auto difficulty (nano_pow::difficulty (nonce, result));
