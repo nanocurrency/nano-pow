@@ -72,9 +72,9 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 			       << "\n\t\t"
 			       << "Compiler available: " << (device.getInfo<CL_DEVICE_COMPILER_AVAILABLE> () ? "true" : "false")
 			       << "\n\t\t"
-			       << "Global mem size: " << ::to_megabytes (device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> ()) << " MB"
+			       << "Global mem size: " << nano_pow::to_megabytes (device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> ()) << " MB"
 			       << "\n\t\t"
-			       << "Max mem alloc size: " << ::to_megabytes (device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> ()) << " MB"
+			       << "Max mem alloc size: " << nano_pow::to_megabytes (device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> ()) << " MB"
 			       << "\n\t\t"
 			       << "Compute units available: " << device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS> ()
 			       << std::endl;
@@ -187,7 +187,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 {
 	assert (memory > 0);
 	assert ((memory & (memory - 1)) == 0);
-	assert (memory <= (nano_pow::lookup_to_entries (32))); // 16GB limit
+	assert (memory <= nano_pow::lookup_to_entries (32)); // 16GB limit
 
 	// The minimum max alloc size is defined in the OpenCL standard as 1/4 of the global memory size
 	unsigned const number_slabs = memory > max_alloc_size ? 4 : 1;
@@ -197,7 +197,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 
 	if (verbose)
 	{
-		std::cout << "Memory set to " << number_slabs << " slab(s) of " << to_megabytes (slab_size) << "MB each" << std::endl;
+		std::cout << "Memory set to " << number_slabs << " slab(s) of " << nano_pow::to_megabytes (slab_size) << "MB each" << std::endl;
 	}
 	try
 	{

@@ -360,7 +360,7 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 {
 	assert (memory > 0);
 	assert ((memory & (memory - 1)) == 0);
-	assert (memory <= (nano_pow::lookup_to_entries (32))); // 16GB limit
+	assert (memory <= nano_pow::lookup_to_entries (32)); // 16GB limit
 	size = nano_pow::memory_to_entries (memory);
 	bool error = false;
 	size_t available = std::numeric_limits<uint32_t>::max ();
@@ -384,7 +384,7 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 		}
 		else if (verbose)
 		{
-			std::cout << "Memory set to " << ::to_megabytes (memory) << "MB" << std::endl;
+			std::cout << "Memory set to " << nano_pow::to_megabytes (memory) << "MB" << std::endl;
 		}
 	}
 

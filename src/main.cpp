@@ -43,7 +43,7 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, nano_pow::uint1
 	driver_a.difficulty_set (difficulty);
 	if (driver_a.memory_set (memory))
 	{
-		std::cerr << "Failed to allocate " << ::to_megabytes (memory) << "MB" << std::endl;
+		std::cerr << "Failed to allocate " << nano_pow::to_megabytes (memory) << "MB" << std::endl;
 		exit (1);
 	}
 	std::cout << "Starting profile" << std::endl;
@@ -94,7 +94,7 @@ void tune (nano_pow::driver * driver_a, nano_pow::uint128_t difficulty, unsigned
 		size_t best_memory{ 0 };
 		if (!nano_pow::tune (*reinterpret_cast<nano_pow::cpp_driver *> (driver_a), count, initial_memory, initial_threads, best_memory, std::cerr))
 		{
-			std::cerr << "Tuning results:\nRecommended memory\t" << ::to_megabytes (best_memory) << "MB" << std::endl;
+			std::cerr << "Tuning results:\nRecommended memory\t" << nano_pow::to_megabytes (best_memory) << "MB" << std::endl;
 		}
 	}
 	else if (driver_a->type () == nano_pow::driver_type::OPENCL)
@@ -102,7 +102,7 @@ void tune (nano_pow::driver * driver_a, nano_pow::uint128_t difficulty, unsigned
 		size_t max_memory{ 0 }, best_memory{ 0 }, best_threads{ 0 };
 		if (!nano_pow::tune (*reinterpret_cast<nano_pow::opencl_driver *> (driver_a), count, initial_memory, initial_threads, max_memory, best_memory, best_threads, std::cerr))
 		{
-			std::cerr << "Tuning results:\nMaximum memory\t\t" << ::to_megabytes (max_memory) << "MB\nRecommended memory\t" << ::to_megabytes (best_memory) << "MB\nRecommended threads\t" << best_threads << std::endl;
+			std::cerr << "Tuning results:\nMaximum memory\t\t" << nano_pow::to_megabytes (max_memory) << "MB\nRecommended memory\t" << nano_pow::to_megabytes (best_memory) << "MB\nRecommended threads\t" << best_threads << std::endl;
 		}
 	}
 	else
@@ -207,7 +207,7 @@ int main (int argc, char ** argv)
 					auto threads_l (threads != 0 ? threads : driver->threads_get ());
 					auto driver_difficulty (nano_pow::bit_difficulty (difficulty));
 					auto threshold (nano_pow::reverse (driver_difficulty));
-					std::cout << "Profiling threads: " << std::to_string (threads_l) << " lookup: " << std::to_string (::to_megabytes (nano_pow::entries_to_memory (lookup_entries))) << "MB threshold: " << to_string_hex128 (threshold) << " difficulty: " << to_string_hex128 (driver_difficulty) << " (" << to_string_hex64 (nano_pow::difficulty_128_to_64 (driver_difficulty)) << ")" << std::endl;
+					std::cout << "Profiling threads: " << std::to_string (threads_l) << " lookup: " << std::to_string (nano_pow::to_megabytes (nano_pow::entries_to_memory (lookup_entries))) << "MB threshold: " << to_string_hex128 (threshold) << " difficulty: " << to_string_hex128 (driver_difficulty) << " (" << to_string_hex64 (nano_pow::difficulty_128_to_64 (driver_difficulty)) << ")" << std::endl;
 					profile (*driver, threads, driver_difficulty, nano_pow::entries_to_memory (lookup_entries), count);
 				}
 				else if (operation == "profile_validation")
@@ -223,7 +223,7 @@ int main (int argc, char ** argv)
 						lookup = 32;
 						lookup_entries = nano_pow::lookup_to_entries (lookup);
 					}
-					std::cout << "Tuning for difficulty " << difficulty << " starting with " << threads_l << " threads and " << ::to_megabytes (nano_pow::entries_to_memory (lookup_entries)) << "MB memory " << std::endl;
+					std::cout << "Tuning for difficulty " << difficulty << " starting with " << threads_l << " threads and " << nano_pow::to_megabytes (nano_pow::entries_to_memory (lookup_entries)) << "MB memory " << std::endl;
 					std::cout << "This may take a while..." << std::endl;
 					tune (driver.get (), nano_pow::reverse (threshold), count, threads_l, nano_pow::entries_to_memory (lookup_entries));
 				}
