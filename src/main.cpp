@@ -1,6 +1,6 @@
+#include <nano_pow/conversions.hpp>
 #include <nano_pow/cpp_driver.hpp>
 #include <nano_pow/opencl_driver.hpp>
-#include <nano_pow/pow.hpp>
 #include <nano_pow/tuning.hpp>
 
 #include <cxxopts.hpp>
@@ -42,7 +42,7 @@ uint64_t profile (nano_pow::driver & driver_a, unsigned threads, nano_pow::uint1
 	driver_a.difficulty_set (difficulty);
 	if (driver_a.memory_set (memory))
 	{
-		std::cerr << "Failed to allocate " << memory / (1024 * 1024) << "MB" << std::endl;
+		std::cerr << "Failed to allocate " << ::to_megabytes (memory) << "MB" << std::endl;
 		exit (1);
 	}
 	std::cout << "Starting profile" << std::endl;
@@ -93,7 +93,7 @@ void tune (nano_pow::driver * driver_a, nano_pow::uint128_t difficulty, unsigned
 		size_t best_memory{ 0 };
 		if (!nano_pow::tune (*reinterpret_cast<nano_pow::cpp_driver *> (driver_a), count, initial_memory, initial_threads, best_memory, std::cerr))
 		{
-			std::cerr << "Tuning results:\nRecommended memory\t" << best_memory / (1024 * 1024) << "MB" << std::endl;
+			std::cerr << "Tuning results:\nRecommended memory\t" << ::to_megabytes (best_memory) << "MB" << std::endl;
 		}
 	}
 	else if (driver_a->type () == nano_pow::driver_type::OPENCL)
@@ -101,7 +101,7 @@ void tune (nano_pow::driver * driver_a, nano_pow::uint128_t difficulty, unsigned
 		size_t max_memory{ 0 }, best_memory{ 0 }, best_threads{ 0 };
 		if (!nano_pow::tune (*reinterpret_cast<nano_pow::opencl_driver *> (driver_a), count, initial_memory, initial_threads, max_memory, best_memory, best_threads, std::cerr))
 		{
-			std::cerr << "Tuning results:\nMaximum memory\t\t" << max_memory / (1024 * 1024) << "MB\nRecommended memory\t" << best_memory / (1024 * 1024) << "MB\nRecommended threads\t" << best_threads << std::endl;
+			std::cerr << "Tuning results:\nMaximum memory\t\t" << ::to_megabytes (max_memory) << "MB\nRecommended memory\t" << ::to_megabytes (best_memory) << "MB\nRecommended threads\t" << best_threads << std::endl;
 		}
 	}
 	else
@@ -184,7 +184,7 @@ int main (int argc, char ** argv)
 					std::cerr << "Incorrect lookup" << std::endl;
 					return -1;
 				}
-				auto lookup_entries (1ULL << lookup);
+				auto lookup_entries (nano_pow::lookup_to_entries (lookup));
 				auto count (parsed["count"].as<unsigned> ());
 				unsigned threads (0);
 				if (parsed.count ("threads"))
@@ -205,8 +205,8 @@ int main (int argc, char ** argv)
 				{
 					auto threads_l (threads != 0 ? threads : driver->threads_get ());
 					auto threshold (nano_pow::reverse (nano_pow::bit_difficulty (difficulty)));
-					std::cout << "Profiling threads: " << std::to_string (threads_l) << " lookup: " << std::to_string (lookup_entries / (1024 * 1024) * 4) << "MB threshold: " << to_string_hex128 (threshold) << std::endl;
-					profile (*driver, threads, nano_pow::reverse (threshold), lookup_entries * sizeof (uint32_t), count);
+					std::cout << "Profiling threads: " << std::to_string (threads_l) << " lookup: " << std::to_string (::to_megabytes (nano_pow::entries_to_memory (lookup_entries))) << "MB threshold: " << to_string_hex128 (threshold) << std::endl;
+					profile (*driver, threads, nano_pow::reverse (threshold), nano_pow::entries_to_memory (lookup_entries), count);
 				}
 				else if (operation == "profile_validation")
 					profile_validate (std::max (1000000U, count));
@@ -219,11 +219,11 @@ int main (int argc, char ** argv)
 					if (parsed.count ("lookup") == 0 && driver->type () == nano_pow::driver_type::OPENCL)
 					{
 						lookup = 32;
-						lookup_entries = 1ULL << lookup;
+						lookup_entries = nano_pow::lookup_to_entries (lookup);
 					}
-					std::cout << "Tuning for difficulty " << difficulty << " starting with " << threads_l << " threads and " << std::to_string (lookup_entries / (1024 * 1024) * 4) << "MB memory " << std::endl;
+					std::cout << "Tuning for difficulty " << difficulty << " starting with " << threads_l << " threads and " << ::to_megabytes (nano_pow::entries_to_memory (lookup_entries)) << "MB memory " << std::endl;
 					std::cout << "This may take a while..." << std::endl;
-					tune (driver.get (), nano_pow::reverse (threshold), count, threads_l, lookup_entries * sizeof (uint32_t));
+					tune (driver.get (), nano_pow::reverse (threshold), count, threads_l, nano_pow::entries_to_memory (lookup_entries));
 				}
 				else
 				{

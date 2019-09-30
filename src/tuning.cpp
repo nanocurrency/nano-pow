@@ -1,3 +1,4 @@
+#include <nano_pow/conversions.hpp>
 #include <nano_pow/tuning.hpp>
 
 #include <sstream>
@@ -29,18 +30,16 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 {
 	bool error{ false };
 
-	auto megabytes = [](auto const memory) { return memory / (1024 * 1024); };
-
 	//clang-format off
-	auto try_memory_set = [&driver_a, &stream, &error, &megabytes](size_t const memory) {
+	auto try_memory_set = [&driver_a, &stream, &error](size_t const memory) {
 		if (driver_a.memory_set (memory))
 		{
 			size_t available{ 0 };
 			auto checked (!nano_pow::memory_available (available));
-			stream << "Failed to allocate " << megabytes (memory) << "MB." << std::endl;
+			stream << "Failed to allocate " << ::to_megabytes (memory) << "MB." << std::endl;
 			if (checked)
 			{
-				stream << "Only " << megabytes (available) << "MB available" << std::endl;
+				stream << "Only " << ::to_megabytes (available) << "MB available" << std::endl;
 			}
 			error = true;
 		}
@@ -52,8 +51,8 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 	};
 	//clang-format on
 
-	size_t constexpr min_memory = (1ULL << 18) * 4;
-	size_t constexpr max_memory = (1ULL << 32) * 4;
+	size_t const min_memory = nano_pow::entries_to_memory (nano_pow::lookup_to_entries (18));
+	size_t const max_memory = nano_pow::entries_to_memory (nano_pow::lookup_to_entries (32));
 	size_t memory (initial_memory_a);
 	driver_a.threads_set (initial_threads_a);
 
@@ -77,7 +76,7 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 	while (!error && memory >= min_memory)
 	{
 		duration = solve_many (driver_a, count_a);
-		stream << driver_a.threads_get () << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
+		stream << driver_a.threads_get () << " threads " << ::to_megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
 		if (duration < best_duration)
 		{
 			best_duration = duration;
@@ -95,7 +94,7 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 	while (!error && memory <= max_memory && !try_memory_set (memory))
 	{
 		duration = solve_many (driver_a, count_a);
-		stream << driver_a.threads_get () << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
+		stream << driver_a.threads_get () << " threads " << ::to_megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
 		if (duration < best_duration)
 		{
 			best_duration = duration;
@@ -107,15 +106,13 @@ bool nano_pow::tune (nano_pow::cpp_driver & driver_a, unsigned const count_a, si
 		}
 		memory *= 2;
 	}
-	stream << "Found best memory " << megabytes (best_memory_a) << "MB" << std::endl;
+	stream << "Found best memory " << ::to_megabytes (best_memory_a) << "MB" << std::endl;
 	return false;
 }
 
 bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a, size_t const initial_memory_a, size_t const initial_threads_a, size_t & max_memory_a, size_t & best_memory_a, size_t & best_threads_a, std::ostream & stream)
 {
-	auto megabytes = [](auto const memory) { return memory / (1024 * 1024); };
-
-	size_t constexpr min_memory = (1ULL << 18) * 4;
+	size_t const min_memory = nano_pow::entries_to_memory (nano_pow::lookup_to_entries (18));
 	auto max_threads (driver_a.max_threads ());
 	stream << "Maximum device threads " << max_threads << std::endl;
 
@@ -142,18 +139,18 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 		}
 		catch (OCLDriverException const & err)
 		{
-			stream << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
+			stream << ::to_megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
 			memory /= 2;
 			if (memory < min_memory)
 			{
-				stream << "Reached minimum memory " << megabytes (memory) << "MB" << std::endl;
+				stream << "Reached minimum memory " << ::to_megabytes (memory) << "MB" << std::endl;
 				break;
 			}
 		}
 	}
 	if (!error)
 	{
-		stream << "Found max memory " << megabytes (memory) << "MB" << std::endl;
+		stream << "Found max memory " << ::to_megabytes (memory) << "MB" << std::endl;
 		max_memory_a = memory;
 	}
 
@@ -167,7 +164,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 		{
 			driver_a.memory_set (memory);
 			auto duration = solve_many (driver_a, count_a);
-			stream << threads << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
+			stream << threads << " threads " << ::to_megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
 			if (duration < best_duration)
 			{
 				best_duration = duration;
@@ -181,14 +178,14 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 		}
 		catch (OCLDriverException const & err)
 		{
-			stream << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
+			stream << ::to_megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
 			error = true;
 		}
 	}
 	if (!error)
 	{
 		best_memory_a = memory;
-		stream << "Found best memory " << megabytes (best_memory_a) << "MB" << std::endl;
+		stream << "Found best memory " << ::to_megabytes (best_memory_a) << "MB" << std::endl;
 		driver_a.memory_set (best_memory_a);
 	}
 
@@ -202,7 +199,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 		{
 			driver_a.threads_set (threads);
 			auto duration = solve_many (driver_a, count_a);
-			stream << threads << " threads " << megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
+			stream << threads << " threads " << ::to_megabytes (memory) << "MB average " << duration * 1e-6 / count_a << "ms" << std::endl;
 			if (duration < best_duration)
 			{
 				best_duration = duration;
@@ -216,7 +213,7 @@ bool nano_pow::tune (nano_pow::opencl_driver & driver_a, unsigned const count_a,
 		}
 		catch (OCLDriverException const & err)
 		{
-			stream << threads << " threads, " << megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
+			stream << threads << " threads, " << ::to_megabytes (memory) << "MB FAIL :: " << err.origin () << " :: " << err.what () << std::endl;
 			error = true;
 		}
 	}
