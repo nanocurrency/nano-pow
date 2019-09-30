@@ -1,17 +1,65 @@
-A simple Proof-of-Work scheme based on the subset-sum-problem
+This is an optimized C++ implementation of Nano PoW intended for use as a rate-limiting, Quality of Service mechanism on the Nano network.
 
-# Installation
+![Nano PoW](assets/pow-mark-dark.png)
+
+Nano PoW is an authentication-free, rate limiting proof-of-work algorithm designed to be memory-hard. It provides a minimal proof size and fast verification while maximizing the time-area-product. Nano PoW was designed by Colin LeMahieu.
+
+## Algorithm details
+
+Based on the [subset sum problem](https://en.wikipedia.org/wiki/Subset_sum_problem), the Nano PoW proof is a 2 number solution (x,y), each of N-bits, which are a solution to the equation H0(x) + H1(y)=0 mod 2^D, where D<2N is a tuned difficulty parameter and H0, H1 are preimage resistant hash functions keyed by a problem nonce P.
+
+This implementation optimizes solution finding using a lookup table with two steps:
+
+1. Randomly filling a lookup table with x values
+1. Efficiently searching for potential solutions using a y value
+
+![Nano PoW](assets/nano-pow-fill-search-animation.gif)
+
+The key to this optimization lies in the ability to compare a single y attempt against all stored x candidates in constant time. We’re able to do this by radix-sorting x candidates in to buckets according to LSB(H0(x)). When we’re making a y attempt, we can calculate the unique bucket which might contain a solution by rewriting the solution equation to: H0(x)=0-H1(y) mod 2^D and we know the only place a candidate solution can be is in the bucket LSB(0-H1(y)).
+
+![Index and values for solutions](assets/nano-pow-index-value-table.png)
+
+**Optimizing lookup table size**  
+The optimal size of the lookup table is a function of the problem difficulty which determines an optimal M-factor while factoring in the diminishing returns from a high table load factor. Each fill requires an H0 computation and a memory write. Each attempt requires 1 H1 hash, a memory read, and another H0 hash in order to reconstitute the full hash of the value retrieved.
+
+## Design considerations
+
+**Simple hash algorithm**  
+We want to maximize the memory access overhead compared to the compute time overhead, so we want the simplest hash function that both produces uniformly random output and is also preimage resistant. Siphash is extremely easy to implement and provides both of the guarantees we need.
+
+**Lookup versus hash table**  
+Since the key we’re storing is already uniformly random there’s no need to calculate an additional hashcode for the key, we can use the value itself. Since we can reconstitute the full key by hashing a bucket’s value, we can avoid storing the key entirely by choosing a lookup table instead of a hash table that would store the full value of both. 
+
+**High load factor**  
+To make the best use of allocated memory we want to maximize the table’s load factor taking into consideration the diminishing returns from filling as collisions increase.
+
+**LSB-zero-bit difficulty**  
+We designed the solution equation to seek 0-bits in the LSB of hash sums in order to get a number that can directly index radix buckets by the bits required.
+
+**Junk and data-race immune**  
+Since there’s no guarantee that any particular bucket will contain an initialized value, the algorithm will proceed even in the face of junk data, data races, or data glitches. This means the entire algorithm can proceed without thread synchronization or atomic memory operations in any phase.
+
+More details on the reference implementation can be found in the Nano PoW - The Details Medium article.
+
+## Performance
+TBD
+
+## Bounties?
+TBD
+
+
+## Installation
 
 ```
 git clone --recursive git@github.com:nanocurrency/ssp-pow.git
 ```
 
-## Dependencies
+### Dependencies
 
 * boost >=1.67
 
 
-## Build
+### Build
 
 ```
 mkdir build
@@ -20,50 +68,8 @@ cmake ..
 make
 ./ssp_pow_driver --help
 ```
-## Run benchmark
+### Run benchmark
 
 ```
 ./ssp_pow_driver --driver cpp --threads 16
 ```
-
-# Algorithms
-Description of Algortihms
-
-## cpp_driver.cpp
-```
-build$ ./ssp_pow_driver --driver cpp --threads 16
-Initializing...
-Starting...
-cdf4a3e0=H0(022e8719)+320b5c20=H1(01bb40ea)=0340000000000000 solution ms: 11388
-e7032b4d=H0(01f62747)+18fcd4b3=H1(01853b90)=e230000000000000 solution ms: 10531
-bc93388c=H0(0083cb74)+436cc774=H1(023e7644)=1440000000000000 solution ms: 6680
-0fa63119=H0(0302cae0)+f059cee7=H1(0328f5f5)=7c20000000000000 solution ms: 15450
-d9c9381f=H0(09a4c1f1)+2636c7e1=H1(025d6c04)=3f10000000000000 solution ms: 36286
-1bdf31c1=H0(01e33156)+e420ce3f=H1(02bc8433)=67e0000000000000 solution ms: 12187
-a798b35f=H0(024df0bd)+58674ca1=H1(018727a2)=4ba0000000000000 solution ms: 13734
-3b409164=H0(02beff6c)+c4bf6e9c=H1(00d237ab)=b520000000000000 solution ms: 14783
-df8cba66=H0(08a4a8a4)+2073459a=H1(023fd452)=2160000000000000 solution ms: 34043
-fc5b6204=H0(0055a2c0)+03a49dfc=H1(03c90c96)=b910000000000000 solution ms: 7402
-e172e6f7=H0(0173ce5a)+1e8d1909=H1(02a2faa0)=0830000000000000 solution ms: 10805
-5b3b0535=H0(03cc5b92)+a4c4facb=H1(02e75ea8)=3c40000000000000 solution ms: 18306
-b6b7f976=H0(07d30a5f)+4948068a=H1(0119a636)=0690000000000000 solution ms: 31406
-f68c4c74=H0(024fd102)+0973b38c=H1(005f435e)=36b0000000000000 solution ms: 13579
-02d7a8c1=H0(0c3ff368)+fd28573f=H1(02b73045)=ce80000000000000 solution ms: 45393
-4ffbbed4=H0(01473351)+b004412c=H1(00f951d5)=a030000000000000 solution ms: 10465
-Average solution time: 18277
-```
-
-# Performance
-The following
-*  i7-8550U CPU @ 1.80GHz × 8
-
-Configuration paramters
-
-* 4 threads
-* 16 Nonces
-* 
-
-|         Driver | Average Solution Time (mS) | Memory (MB)| Commit Hash|
--------------------------------------------------------------------------
-| cpp_driver.cpp | 18277                      |      260M  | 419678c2   |
-|
