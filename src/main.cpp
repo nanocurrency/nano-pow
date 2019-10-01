@@ -228,7 +228,7 @@ int main (int argc, char ** argv)
 				}
 				else
 				{
-					std::cerr << "Invalid operation. Available: {gtest, dump, profile, profile_validation}" << std::endl;
+					std::cerr << "Invalid operation. Available: {gtest, dump, profile, profile_validation, tune}" << std::endl;
 					result = -1;
 				}
 			}
