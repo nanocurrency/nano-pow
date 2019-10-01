@@ -1,6 +1,6 @@
-This is an optimized C++ implementation of Nano PoW intended for use as a rate-limiting, Quality of Service mechanism on the Nano network.
+<img src="assets/nano-pow-logo.png" alt="Nano PoW logo" align="center" width="560"/>
 
-![Nano PoW](assets/nano-pow-logo.png)
+This is an optimized C++ implementation of Nano PoW intended for use as a rate-limiting, Quality of Service mechanism on the Nano network.
 
 Nano PoW is an authentication-free, rate limiting proof-of-work algorithm designed to be memory-hard. It provides a minimal proof size and fast verification while maximizing the time-area-product. Nano PoW was designed by Colin LeMahieu.
 
@@ -13,11 +13,11 @@ This implementation optimizes solution finding using a lookup table with two ste
 1. Randomly filling a lookup table with x values
 1. Efficiently searching for potential solutions using a y value
 
-![Nano PoW](assets/nano-pow-fill-search-animation.gif)
+<img src="assets/nano-pow-fill-search-animation.gif" alt="Nano PoW" align="center" width="480"/>
 
 The key to this optimization lies in the ability to compare a single y attempt against all stored x candidates in constant time. We’re able to do this by radix-sorting x candidates in to buckets according to LSB(H0(x)). When we’re making a y attempt, we can calculate the unique bucket which might contain a solution by rewriting the solution equation to: H0(x)=0-H1(y) mod 2^D and we know the only place a candidate solution can be is in the bucket LSB(0-H1(y)).
 
-![Index and values for solutions](assets/nano-pow-index-value-table.png)
+<img src="assets/nano-pow-index-value-table.png" alt="Index and values for solutions"/>
 
 **Optimizing lookup table size**  
 The optimal size of the lookup table is a function of the problem difficulty which determines an optimal M-factor while factoring in the diminishing returns from a high table load factor. Each fill requires an H0 computation and a memory write. Each attempt requires 1 H1 hash, a memory read, and another H0 hash in order to reconstitute the full hash of the value retrieved.
