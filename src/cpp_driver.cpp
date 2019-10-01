@@ -201,11 +201,6 @@ NP_INLINE static nano_pow::uint128_t hash (std::array<uint64_t, 2> nonce_a, uint
 	auto error (siphash (reinterpret_cast<uint8_t const *> (&item_a), sizeof (item_a), reinterpret_cast<uint8_t const *> (nonce_a.data ()), reinterpret_cast<uint8_t *> (&result), sizeof (result)));
 	(void)error;
 	assert (!error);
-	/* Siphash writes to result in memory order.
-	   This means the LSB in written before the MSB
-	   We swap the upper half with the lower half so
-	   the lower half contains the last-written random data. */
-	result = (result >> 64) | (result << 64);
 	return result;
 }
 
