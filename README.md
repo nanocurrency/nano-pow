@@ -73,7 +73,7 @@ Verify that compilation was successful by running the tests
 ./nano_pow_driver
 ```
 
-### Usage
+## Usage
 
 The following arguments are accepted by `nano_pow_driver`:
 
@@ -89,7 +89,7 @@ The following arguments are accepted by `nano_pow_driver`:
 | `device` | Defines the device for the OpenCL driver | - | 0 |
 | `verbose` | Display more messages | `true`, `false` | `false` |
 
-#### Tuning
+### Tuning
 
 The tuning option helps finding the best configuration for a driver and target difficulty.
 
@@ -98,7 +98,7 @@ Example (can take some time):
 ./nano_pow_driver --driver opencl --operation tune --difficulty 60 --count 6
 ```
 
-#### Profiling
+### Profiling
 
 ```
 ./nano_pow_driver --driver opencl --operation profile --difficulty 60
