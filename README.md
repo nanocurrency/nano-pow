@@ -2,25 +2,29 @@
 
 This is an optimized C++ implementation of Nano PoW intended for use as a rate-limiting, Quality of Service mechanism on the Nano network.
 
-Nano PoW is an authentication-free, rate limiting proof-of-work algorithm designed to be memory-hard. It provides a minimal proof size and fast verification while maximizing the time-area-product. Nano PoW was designed by Colin LeMahieu.
+Nano PoW is an authentication-free, rate limiting proof-of-work algorithm designed to be memory-hard. It provides a minimal proof size and fast verification while maximizing the generation time-area-product. Nano PoW was designed by Colin LeMahieu.
 
 ## Algorithm details
 
-Based on the [subset sum problem](https://en.wikipedia.org/wiki/Subset_sum_problem), the Nano PoW proof is a 2 number solution (x,y), each of N-bits, which are a solution to the equation H0(x) + H1(y)=0 mod 2^D, where D<2N is a tuned difficulty parameter and H0, H1 are preimage resistant hash functions keyed by a problem nonce P.
+<img src="assets/nano-pow-simple-formula.png" alt="Nano PoW Formula" width="500"/>
+
+Based on the [subset sum problem](https://en.wikipedia.org/wiki/Subset_sum_problem), the Nano PoW proof is a 2 number solution (_x_,_y_), each of N-bits, which are a solution to the equation H0(_x_) + H1(_y_)=0 mod 2^D, where D<2N is a tuned difficulty parameter and H0, H1 are preimage resistant hash functions keyed by a problem nonce P.
 
 This implementation optimizes solution finding using a lookup table with two steps:
 
-1. Randomly filling a lookup table with x values
-1. Efficiently searching for potential solutions using a y value
+1. Randomly filling a lookup table with _x_ values
+1. Efficiently searching for potential solutions using _y_ values
 
 <img src="assets/nano-pow-fill-search-animation.gif" alt="Nano PoW" align="justify" width="500"/>
 
-The key to this optimization lies in the ability to compare a single y attempt against all stored x candidates in constant time. We’re able to do this by radix-sorting x candidates in to buckets according to LSB(H0(x)). When we’re making a y attempt, we can calculate the unique bucket which might contain a solution by rewriting the solution equation to: H0(x)=0-H1(y) mod 2^D and we know the only place a candidate solution can be is in the bucket LSB(0-H1(y)).
+The key to this optimization lies in the ability to compare a single y attempt against all stored _x_ candidates in constant time. We’re able to do this by radix-sorting _x_ candidates in to buckets according to LSB(H0(_x_)). When we’re making a _y_ attempt, we can calculate the unique bucket which might contain a solution by rewriting the solution equation to: H0(_x_)=0-H1(_y_) mod 2^D and we know the only place a candidate solution can be is in the bucket LSB(0-H1(_y_)).
 
 <img src="assets/nano-pow-index-value-table.png" alt="Index and values for solutions" height="180"/>
 
+If the table is filled with M values, we're able to compare a single y attempt against M x candidates with a single, constant time computation and a memory lookup. We call this multiplicative effect the M-factor.
+
 **Optimizing lookup table size**  
-The optimal size of the lookup table is a function of the problem difficulty which determines an optimal M-factor while factoring in the diminishing returns from a high table load factor. Each fill requires an H0 computation and a memory write. Each attempt requires 1 H1 hash, a memory read, and another H0 hash in order to reconstitute the full hash of the value retrieved.
+The optimal size of the lookup table is a function of the problem difficulty which determines an optimal M-factor while factoring in the diminishing returns from a high table load factor. Each fill requires an H0 computation and a memory write. Each attempt requires one H1 hash, a memory read, and another H0 hash in order to reconstitute the full hash of the value retrieved.
 
 ## Design considerations
 
