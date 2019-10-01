@@ -187,7 +187,7 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 {
 	assert (memory > 0);
 	assert ((memory & (memory - 1)) == 0);
-	assert (memory <= nano_pow::lookup_to_entries (32)); // 16GB limit
+	assert (memory / nano_pow::entry_size <= nano_pow::lookup_to_entries (32)); // 16GB limit
 
 	// The minimum max alloc size is defined in the OpenCL standard as 1/4 of the global memory size
 	unsigned const number_slabs = memory > max_alloc_size ? 4 : 1;

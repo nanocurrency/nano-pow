@@ -353,10 +353,10 @@ std::array<uint64_t, 2> nano_pow::cpp_driver::solve (std::array<uint64_t, 2> non
 
 bool nano_pow::cpp_driver::memory_set (size_t memory)
 {
+	size = nano_pow::memory_to_entries (memory);
 	assert (memory > 0);
 	assert ((memory & (memory - 1)) == 0);
-	assert (memory <= nano_pow::lookup_to_entries (32)); // 16GB limit
-	size = nano_pow::memory_to_entries (memory);
+	assert (size <= nano_pow::lookup_to_entries (32)); // 16GB limit
 	bool error = false;
 	size_t available = std::numeric_limits<uint32_t>::max ();
 	// Memory availability checking
