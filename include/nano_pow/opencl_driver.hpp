@@ -8,30 +8,33 @@
 
 namespace nano_pow
 {
-enum class OCLDriverError
+enum class OCLDriverExceptionOrigin
 {
 	unknown = 0,
+	init,
 	build,
 	setup,
 	memory_set,
 	fill,
 	search
 };
-inline const char * to_string (OCLDriverError const err)
+inline const char * to_string (OCLDriverExceptionOrigin const err)
 {
 	switch (err)
 	{
-		case OCLDriverError::unknown:
+		case OCLDriverExceptionOrigin::unknown:
 			return "Unknown";
-		case OCLDriverError::build:
+		case OCLDriverExceptionOrigin::init:
+			return "Init";
+		case OCLDriverExceptionOrigin::build:
 			return "Build";
-		case OCLDriverError::setup:
+		case OCLDriverExceptionOrigin::setup:
 			return "Setup";
-		case OCLDriverError::memory_set:
+		case OCLDriverExceptionOrigin::memory_set:
 			return "Memory Set";
-		case OCLDriverError::fill:
+		case OCLDriverExceptionOrigin::fill:
 			return "Fill";
-		case OCLDriverError::search:
+		case OCLDriverExceptionOrigin::search:
 			return "Search";
 		default:
 			return "Invalid";
@@ -42,18 +45,13 @@ class OCLDriverException : public std::exception
 {
 private:
 	cl::Error cl_err_{ CL_SUCCESS };
-	const OCLDriverError err_origin_;
+	const OCLDriverExceptionOrigin err_origin_;
 	const char * err_string_{ "" };
 	const std::string err_details_;
 
 public:
-	OCLDriverException (const cl::Error & cl_err, const OCLDriverError origin, const std::string details) :
+	OCLDriverException (const OCLDriverExceptionOrigin origin, const cl::Error & cl_err = cl::Error (1), const std::string details = "") :
 	cl_err_ (cl_err), err_origin_ (origin), err_string_ (to_string (cl_err.err ())), err_details_ (details)
-	{
-	}
-
-	OCLDriverException (const cl::Error & cl_err, const OCLDriverError origin) :
-	OCLDriverException (cl_err, origin, "")
 	{
 	}
 
@@ -96,22 +94,29 @@ public:
 class opencl_driver : public driver
 {
 public:
-	opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0);
+	opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0, bool initialize = true);
+	void initialize (unsigned short platform_id, unsigned short device_id);
 	void difficulty_set (nano_pow::uint128_t difficulty_a) override;
 	nano_pow::uint128_t difficulty_get () const override;
 	void threads_set (unsigned threads) override;
 	size_t threads_get () const override;
+	size_t max_threads ();
 	bool memory_set (size_t memory) override;
-	std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
-	void dump () const override;
-
-private:
+	void memory_reset () override;
 	void fill () override;
 	std::array<uint64_t, 2> search () override;
+	std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
+	void dump () const override;
+	driver_type type () const override
+	{
+		return driver_type::OPENCL;
+	}
+
+private:
 	opencl_environment environment;
 	cl::Context context;
 	cl::Program program;
-	uint32_t threads;
+	uint32_t threads{ 8192 };
 	nano_pow::uint128_t difficulty;
 	nano_pow::uint128_t difficulty_inv;
 	std::vector<cl::Buffer> slabs{ 0 };
@@ -127,5 +132,6 @@ private:
 	cl::Buffer nonce_buffer{ 0 };
 	uint32_t stepping{ 256 };
 	uint32_t current_fill{ 0 };
+	static unsigned constexpr max_slabs{ 4 };
 };
 }

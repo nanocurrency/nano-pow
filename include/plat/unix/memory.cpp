@@ -10,6 +10,12 @@
 
 namespace nano_pow
 {
+bool memory_available (size_t & /* memory */)
+{
+	// Unavailable
+	return true;
+}
+
 void memory_init ()
 {
 	// Empty
