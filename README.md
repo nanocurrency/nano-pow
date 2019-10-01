@@ -6,7 +6,7 @@ Nano PoW is an authentication-free, rate limiting proof-of-work algorithm design
 
 ## Algorithm details
 
-<img src="assets/nano-pow-simple-formula.png" alt="Nano PoW Formula" width="500"/>
+<img src="assets/nano-pow-simple-formula.png" alt="Nano PoW Formula" width="400"/>
 
 Based on the [subset sum problem](https://en.wikipedia.org/wiki/Subset_sum_problem), the Nano PoW proof is a 2 number solution (_x_,_y_), each of N-bits, which are a solution to the equation H0(_x_) + H1(_y_)=0 mod 2^D, where D<2N is a tuned difficulty parameter and H0, H1 are preimage resistant hash functions keyed by a problem nonce P.
 
@@ -19,7 +19,7 @@ This implementation optimizes solution finding using a lookup table with two ste
 
 The key to this optimization lies in the ability to compare a single y attempt against all stored _x_ candidates in constant time. We’re able to do this by radix-sorting _x_ candidates in to buckets according to LSB(H0(_x_)). When we’re making a _y_ attempt, we can calculate the unique bucket which might contain a solution by rewriting the solution equation to: H0(_x_)=0-H1(_y_) mod 2^D and we know the only place a candidate solution can be is in the bucket LSB(0-H1(_y_)).
 
-<img src="assets/nano-pow-index-value-table.png" alt="Index and values for solutions" height="180"/>
+<img src="assets/nano-pow-index-value-table.png" alt="Index and values for solutions" height="150"/>
 
 If the table is filled with M values, we're able to compare a single y attempt against M x candidates with a single, constant time computation and a memory lookup. We call this multiplicative effect the M-factor.
 
