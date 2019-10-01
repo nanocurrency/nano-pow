@@ -1,3 +1,4 @@
+#include <nano_pow/conversions.hpp>
 #include <nano_pow/opencl_driver.hpp>
 #include <nano_pow/pow.hpp>
 
@@ -71,9 +72,9 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 			       << "\n\t\t"
 			       << "Compiler available: " << (device.getInfo<CL_DEVICE_COMPILER_AVAILABLE> () ? "true" : "false")
 			       << "\n\t\t"
-			       << "Global mem size: " << device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> () / (1024 * 1024) << " MB"
+			       << "Global mem size: " << nano_pow::to_megabytes (device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE> ()) << " MB"
 			       << "\n\t\t"
-			       << "Max mem alloc size: " << device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> () / (1024 * 1024) << " MB"
+			       << "Max mem alloc size: " << nano_pow::to_megabytes (device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE> ()) << " MB"
 			       << "\n\t\t"
 			       << "Compute units available: " << device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS> ()
 			       << std::endl;
@@ -184,23 +185,23 @@ size_t nano_pow::opencl_driver::max_threads ()
 
 bool nano_pow::opencl_driver::memory_set (size_t memory)
 {
-	assert (memory % sizeof (uint32_t) == 0);
+	assert (memory > 0);
+	assert ((memory & (memory - 1)) == 0);
+	assert (memory <= nano_pow::lookup_to_entries (32)); // 16GB limit
 
 	// The minimum max alloc size is defined in the OpenCL standard as 1/4 of the global memory size
 	unsigned const number_slabs = memory > max_alloc_size ? 4 : 1;
 
 	slab_size = memory / number_slabs;
-	slab_entries = memory / sizeof (uint32_t);
-	assert (slab_entries <= 0x0000000100000000); // 16GB limit
+	slab_entries = nano_pow::memory_to_entries (memory);
 
 	if (verbose)
 	{
-		std::cout << "Memory set to " << number_slabs << " slab(s) of " << slab_size / (1024 * 1024) << "MB each" << std::endl;
+		std::cout << "Memory set to " << number_slabs << " slab(s) of " << nano_pow::to_megabytes (slab_size) << "MB each" << std::endl;
 	}
 	try
 	{
-		slabs.clear ();
-		current_fill = 0;
+		memory_reset ();
 		fill_impl.setArg (0, slab_entries);
 		search_impl.setArg (0, slab_entries);
 		fill_impl.setArg (4, number_slabs);
@@ -223,6 +224,12 @@ bool nano_pow::opencl_driver::memory_set (size_t memory)
 		throw OCLDriverException (OCLDriverExceptionOrigin::memory_set, err);
 	}
 	return false;
+}
+
+void nano_pow::opencl_driver::memory_reset ()
+{
+	slabs.clear ();
+	current_fill = 0;
 }
 
 void nano_pow::opencl_driver::fill ()
@@ -258,12 +265,13 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 	std::array<uint64_t, 2> result = { 0, 0 };
 	uint32_t thread_count (this->threads);
 	auto start = std::chrono::steady_clock::now ();
-	auto const max_current (0x0000FFFFFFFFFFFFULL - thread_count * stepping);
+	size_t constexpr max_48bit{ (1ULL << 48) - 1 };
+	auto const max_current (max_48bit - thread_count * stepping);
 	try
 	{
 		while (result[1] == 0 && current <= max_current)
 		{
-			search_impl.setArg (3, (current & 0x0000FFFFFFFFFFFF)); // 48 bit solution part
+			search_impl.setArg (3, (current & max_48bit));
 			current += thread_count * stepping;
 			queue.enqueueNDRangeKernel (search_impl, cl::NullRange, cl::NDRange (thread_count));
 			queue.enqueueReadBuffer (result_buffer, false, 0, sizeof (uint64_t) * 2, &result, nullptr, &events[0]);

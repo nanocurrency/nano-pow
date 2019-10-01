@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set(CMAKE_CXX_EXTENSIONS OFF)
 
-if (~WIN32)
+if (NOT WIN32)
 	add_compile_options(-Wall -Wextra -pedantic)
 endif ()
 
@@ -53,18 +53,20 @@ include_directories (cxxopts/include)
 
 add_library (nano_pow
 	${PLATFORM_SOURCE}
-	include/nano_pow/plat.hpp
-	include/nano_pow/pow.hpp
-	include/nano_pow/driver.hpp
+	include/nano_pow/conversions.hpp
 	include/nano_pow/cpp_driver.hpp
+	include/nano_pow/driver.hpp
 	include/nano_pow/memory.hpp
 	include/nano_pow/opencl.hpp
 	include/nano_pow/opencl_driver.hpp
+	include/nano_pow/plat.hpp
+	include/nano_pow/pow.hpp
+	include/nano_pow/tuning.hpp
 	include/nano_pow/uint128.hpp
 	include/nano_pow/xoroshiro128starstar.hpp
-	include/nano_pow/tuning.hpp
-	src/driver.cpp
+
 	src/cpp_driver.cpp
+	src/driver.cpp
 	src/opencl_driver.cpp
 	src/opencl_program.cpp
 	src/tuning.cpp

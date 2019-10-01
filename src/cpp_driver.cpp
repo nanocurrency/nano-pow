@@ -1,3 +1,4 @@
+#include <nano_pow/conversions.hpp>
 #include <nano_pow/cpp_driver.hpp>
 #include <nano_pow/plat.hpp>
 #include <nano_pow/pow.hpp>
@@ -297,7 +298,7 @@ static bool passes_sum (nano_pow::uint128_t const sum_a, nano_pow::uint128_t dif
 bool nano_pow::passes (std::array<uint64_t, 2> nonce_a, std::array<uint64_t, 2> const solution_a, nano_pow::uint128_t difficulty_a)
 {
 	// Solution is limited to 32 + 48 bits
-	assert (solution_a[0] <= std::numeric_limits<uint32_t>::max () && solution_a[1] <= 0x0000FFFFFFFFFFFF);
+	assert (solution_a[0] <= std::numeric_limits<uint32_t>::max () && solution_a[1] <= (1ULL << 48) - 1);
 	auto passed (passes_sum (sum (nonce_a, solution_a), difficulty_a));
 	return passed;
 }
@@ -359,19 +360,40 @@ bool nano_pow::cpp_driver::memory_set (size_t memory)
 {
 	assert (memory > 0);
 	assert ((memory & (memory - 1)) == 0);
-	size = memory / sizeof (uint32_t);
-	assert (size <= 0x0000000100000000); // 16GB limit
+	assert (memory <= nano_pow::lookup_to_entries (32)); // 16GB limit
+	size = nano_pow::memory_to_entries (memory);
 	bool error = false;
-	slab = std::unique_ptr<uint32_t, std::function<void(uint32_t *)>> (nano_pow::alloc (memory, error), [size = this->size](uint32_t * slab) { free_page_memory (slab, size); });
-	if (error)
+	size_t available = std::numeric_limits<uint32_t>::max ();
+	// Memory availability checking
+	// Only Windows is supported
+	if (!nano_pow::memory_available (available) && available < memory)
 	{
-		std::cerr << "Error while creating memory buffer" << std::endl;
+		memory_reset ();
+		if (!nano_pow::memory_available (available) && available < memory)
+		{
+			error = true;
+			std::cerr << "Insufficient memory available" << std::endl;
+		}
 	}
-	else if (verbose)
+	if (!error)
 	{
-		std::cout << "Memory set to " << memory / (1024 * 1024) << "MB" << std::endl;
+		slab = std::unique_ptr<uint32_t, std::function<void(uint32_t *)>> (nano_pow::alloc (memory, error), [size = this->size](uint32_t * slab) { free_page_memory (slab, size); });
+		if (error)
+		{
+			std::cerr << "Error while creating memory buffer" << std::endl;
+		}
+		else if (verbose)
+		{
+			std::cout << "Memory set to " << nano_pow::to_megabytes (memory) << "MB" << std::endl;
+		}
 	}
+
 	return error;
+}
+
+void nano_pow::cpp_driver::memory_reset ()
+{
+	slab.reset ();
 }
 
 void nano_pow::cpp_driver::threads_set (unsigned threads)
@@ -422,12 +444,13 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l (slab.get ());
+	size_t constexpr max_48bit{ (1ULL << 48) - 1 };
 	while (result_0 == 0)
 	{
 		std::array<uint64_t, 2> result_l = { 0, 0 };
 		for (uint32_t j (0), m (stepping); result_l[1] == 0 && j < m; ++j)
 		{
-			uint64_t rhs = prng.next () & 0x0000FFFFFFFFFFFF; // 48 bit solution part
+			uint64_t rhs = prng.next () & max_48bit; // 48 bit solution part
 			auto hash_l (::H1 (nonce_l, rhs));
 			uint64_t lhs = slab_l[bucket (size_l, 0 - static_cast<uint64_t> (hash_l))];
 			auto sum (::H0 (nonce_l, lhs) + hash_l);
@@ -455,8 +478,7 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 void nano_pow::cpp_driver::fill ()
 {
 	auto start = std::chrono::steady_clock::now ();
-	threads.execute ([this](size_t thread_id, size_t total_threads) {
-		(void)thread_id;
+	threads.execute ([this](size_t /* thread_id */, size_t total_threads) {
 		auto count (fill_count ());
 		fill_impl (count / total_threads, current.fetch_add (count / total_threads));
 	});
@@ -470,8 +492,7 @@ void nano_pow::cpp_driver::fill ()
 std::array<uint64_t, 2> nano_pow::cpp_driver::search ()
 {
 	auto start = std::chrono::steady_clock::now ();
-	threads.execute ([this](size_t thread_id, size_t total_threads) {
-		(void)total_threads;
+	threads.execute ([this](size_t thread_id, size_t /* total_threads */) {
 		search_impl (thread_id);
 	});
 	threads.barrier ();

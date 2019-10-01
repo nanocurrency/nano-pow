@@ -42,6 +42,7 @@ public:
 	void threads_set (unsigned threads) override;
 	size_t threads_get () const override;
 	bool memory_set (size_t memory) override;
+	void memory_reset () override;
 	std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) override;
 	void dump () const override;
 	driver_type type () const override
