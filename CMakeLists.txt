@@ -77,7 +77,7 @@ target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 if (${NANO_POW_TEST})
 	add_executable (nano_pow_driver
-		src/gtest_driver.cpp
+		src/testing.cpp
 		src/main.cpp
 		cxxopts/include/cxxopts.hpp)
 
