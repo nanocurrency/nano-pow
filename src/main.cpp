@@ -211,7 +211,9 @@ int main (int argc, char ** argv)
 					profile (*driver, threads, driver_difficulty, nano_pow::entries_to_memory (lookup_entries), count);
 				}
 				else if (operation == "profile_validation")
-					profile_validate (std::max (1000000U, count));
+				{
+					profile_validate (std::max (10000000U, count));
+				}
 				else if (operation == "tune")
 				{
 					auto threshold (nano_pow::reverse (nano_pow::bit_difficulty (difficulty)));
