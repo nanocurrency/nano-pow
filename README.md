@@ -51,25 +51,58 @@ TBD
 ## Installation
 
 ```
-git clone --recursive git@github.com:nanocurrency/ssp-pow.git
+git clone --recursive https://github.com/nanocurrency/nano-pow.git
 ```
 
-### Dependencies
+### Requirements
 
-* boost >=1.67
+An OpenCL SDK is required.
 
+### Building
 
-### Build
+Nano PoW uses CMAKE to build a static library and a binary. A shared library will be built in the future instead, to be used as an ABI. Execute the following commands to build the Nano PoW library and the testing binary using CMAKE:
 
-```
-mkdir build
-cd build
-cmake ..
+```bash
+cmake -DCMAKE_BUILD_TYPE=Release -DNANO_POW_TEST=On .
 make
-./ssp_pow_driver --help
 ```
-### Run benchmark
+
+Verify that compilation was successful by running the tests
+
+```bash
+./nano_pow_driver
+```
+
+### Usage
+
+The following arguments are accepted by `nano_pow_driver`:
+
+| Parameter | Description | Possible Values | Default Value |
+|---|---|---|---|
+| `driver` | Specifies which test driver to use | `cpp`, `opencl` | `cpp` |
+| `operation` | Specify which operation to perform | `gtest`, `dump`, `profile`, `profile_validation`, `tune` | `gtest` |
+| `difficulty` | Target solution difficulty | 1 - 127 | 52 |
+| `threads` | Number of device threads to use to find a solution | - | Number of CPU threads for the `cpp` driver, 8192 for `opencl` |
+| `lookup` | Scale of lookup table (N). Table contains 2^N entries | 1 - 32 | `floor(difficulty / 2) + 1` |
+| `count` | How many problems to solve | - | 16 |
+| `platform` | Defines the platform for the OpenCL driver | - | 0 |
+| `device` | Defines the device for the OpenCL driver | - | 0 |
+| `verbose` | Display more messages | `true`, `false` | `false` |
+
+#### Tuning
+
+The tuning option helps finding the best configuration for a driver and target difficulty.
+
+Example (can take some time):
+```
+./nano_pow_driver --driver opencl --operation tune --difficulty 60 --count 6
+```
+
+#### Profiling
 
 ```
-./ssp_pow_driver --driver cpp --threads 16
+./nano_pow_driver --driver opencl --operation profile --difficulty 60
 ```
+
+## API Documentation
+TBD
