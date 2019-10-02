@@ -44,7 +44,7 @@ We designed the solution equation to seek 0-bits in the LSB of hash sums in orde
 **Junk and data-race immune**  
 Since there’s no guarantee that any particular bucket will contain an initialized value, the algorithm will proceed even in the face of junk data, data races, or data glitches. This means the entire algorithm can proceed without thread synchronization or atomic memory operations in any phase.
 
-<img src="assets/nanopow-gh-header.png" alt="Nano PoW" align="right" width="320"/>
+<img src="assets/nanopow-gh-header.png" alt="Nano PoW" align="right" width="280"/>
 
 More details on the reference implementation can be found in the  
 [Nano PoW - The Details Medium article](https://medium.com/nanocurrency/nano-pow-the-details-ba22a9092d6f).
