@@ -60,7 +60,7 @@ The table below lists the performance, in mean time to generate and validate a p
 | **GPU** Intel HD Graphics 530 (8192T) | 8GB DDR4-2133 CL15 | Ubuntu 18.04 | 39s | - | - |
 | **GPU** NVIDIA GTX 1070 (16384T) | 8GB GDDR5 | Ubuntu 18.04 | 1.8s | - | - |
 | **GPU** NVIDIA GTX 1080Ti (16384T) | 11GB GDDR5X | Ubuntu 18.04 | 1.7s | 2.3s | - |
-| **GPU** NVIDIA Tesla V100 SMX2 Google Cloud (32768T) | 16GB HBM2 | 1s | 1.4s | - |
+| **GPU** NVIDIA Tesla V100 SMX2 Google Cloud (32768T) | 16GB HBM2 | - | 1s | 1.4s | - |
 | **GPU** AMD RX 480 (131072T) | 8GB GDDR5 | Ubuntu 18.04 | 2s | 6.2s | - |
 | **GPU** AMD Vega 64 (262144T) | 8GB HBM2 | Windows 10 | 0.78s | 7.8s | - |
 | **GPU** AMD Radeon VII (524288T) | 16GB HBM2 | Ubuntu 18.04 | 0.55s | 6.2s | - |
