@@ -33,7 +33,7 @@ src/opencl_program.cpp
 *.exe
 *.out
 *.app
-nano_pow_driver/
+nano_pow_driver
 
 # Build
 build/
