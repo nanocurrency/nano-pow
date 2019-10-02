@@ -48,7 +48,7 @@ More details on the reference implementation can be found in the Nano PoW - The 
 
 ## Performance
 
-The table below lists the performance, in mean time to generate and validate a proof, for selected CPUs and GPUs. Devices use the optimal number of threads (T), and 2MB pages (where possible). All numbers were obtained for difficulty `60`. The memory used refers to the size of the lookup table - 4GB corresponds to `lookup` 30, 8GB to `lookup` 31. Results are blank where the required memory exceeds the available memory.
+The table below lists the performance, in mean time to generate and validate a proof, for selected CPUs and GPUs. Devices use the optimal number of threads (T), and 2MB pages (where possible). All numbers were obtained for `difficulty` 60. The memory used refers to the size of the lookup table - 4GB corresponds to `lookup` 30, 8GB to `lookup` 31. Results are blank where the required memory exceeds the available memory.
 
 | Device | Memory | OS | Generation 4GB | Generation 8GB | Validation |
 |---|---|---|---|---|---|
