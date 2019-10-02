@@ -65,10 +65,6 @@ The table below lists the performance, in mean time to generate and validate a p
 | **GPU** AMD Vega 64 (262144T) | 8GB HBM2 | Windows 10 | 0.78s | 7.8s | - |
 | **GPU** AMD Radeon VII (524288T) | 16GB HBM2 | Ubuntu 18.04 | 0.55s | 6.2s | - |
 
-## Bounties?
-TBD
-
-
 ## Installation
 
 ```
