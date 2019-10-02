@@ -122,4 +122,5 @@ Example (can take some time):
 ```
 
 ## API Documentation
-TBD
+
+Documentation for the API is still pending and will be updated here in the future.
