@@ -52,19 +52,19 @@ The table below lists the performance, in mean time to generate and validate a p
 
 | Device | Memory | OS | Generation 4GB | Generation 8GB | Validation |
 |---|---|---|---|---|---|
-| CPU AMD Ryzen 2700X (16T) | 16GB DDR4-3400 CL16 | Windows 10 | 38s | 52s | 84ns |
-| CPU AMD Ryzen 3600 (12T) | 16GB DDR4-3600 CL16 | Windows 10 | 47s | 45s | 78ns |
-| CPU AMD Ryzen 3900X (24T) | 16GB DDR4-2400 CL17 | Ubuntu 18.04 | 24s | 25s | 37ns |
-| CPU Intel i5-6600 (4T) | 8GB DDR4-2133 CL15 | Ubuntu 18.04 | 80s | - | 43ns |
-| CPU Intel i7-6700 (8T) | 16GB DDR4-2133 CL15 | Ubuntu 16.04 | 77s | 62s | 51ns |
-| GPU Intel HD Graphics 530 (8192T) | 8GB DDR4-2133 CL15 | Ubuntu 18.04 | 39s | - | - |
-| GPU NVIDIA GTX 1070 (16384T) | 8GB GDDR5 | Ubuntu 18.04 | 1.8s | - | - |
-| GPU NVIDIA GTX 1080 (8192T) | 8GB GDDR5X | Ubuntu 16.04 | 2.3s | - | - |
-| GPU NVIDIA GTX 1080Ti (16384T) | 11GB GDDR5X | Ubuntu 18.04 | 1.7s | 2.3s | - |
-| GPU NVIDIA Tesla V100 SMX2 Google Cloud (32768T) | 16GB HBM2 | 1s | 1.4s | - |
-| GPU AMD RX 480 (131072T) | 8GB GDDR5 | Ubuntu 18.04 | 2s | 6.2s | - |
-| GPU AMD Vega 64 (262144T) | 8GB HBM2 | Windows 10 | 0.78s | 7.8s | - |
-| GPU AMD Radeon VII (524288T) | 16GB HBM2 | Ubuntu 18.04 | 0.55s | 6.2s | - |
+| **CPU** AMD Ryzen 2700X (16T) | 16GB DDR4-3400 CL16 | Windows 10 | 38s | 52s | 84ns |
+| **CPU** AMD Ryzen 3600 (12T) | 16GB DDR4-3600 CL16 | Windows 10 | 47s | 45s | 78ns |
+| **CPU** AMD Ryzen 3900X (24T) | 16GB DDR4-2400 CL17 | Ubuntu 18.04 | 24s | 25s | 37ns |
+| **CPU** Intel i5-6600 (4T) | 8GB DDR4-2133 CL15 | Ubuntu 18.04 | 80s | - | 43ns |
+| **CPU** Intel i7-6700 (8T) | 16GB DDR4-2133 CL15 | Ubuntu 16.04 | 77s | 62s | 51ns |
+| **GPU** Intel HD Graphics 530 (8192T) | 8GB DDR4-2133 CL15 | Ubuntu 18.04 | 39s | - | - |
+| **GPU** NVIDIA GTX 1070 (16384T) | 8GB GDDR5 | Ubuntu 18.04 | 1.8s | - | - |
+| **GPU** NVIDIA GTX 1080 (8192T) | 8GB GDDR5X | Ubuntu 16.04 | 2.3s | - | - |
+| **GPU** NVIDIA GTX 1080Ti (16384T) | 11GB GDDR5X | Ubuntu 18.04 | 1.7s | 2.3s | - |
+| **GPU** NVIDIA Tesla V100 SMX2 Google Cloud (32768T) | 16GB HBM2 | 1s | 1.4s | - |
+| **GPU** AMD RX 480 (131072T) | 8GB GDDR5 | Ubuntu 18.04 | 2s | 6.2s | - |
+| **GPU** AMD Vega 64 (262144T) | 8GB HBM2 | Windows 10 | 0.78s | 7.8s | - |
+| **GPU** AMD Radeon VII (524288T) | 16GB HBM2 | Ubuntu 18.04 | 0.55s | 6.2s | - |
 
 ## Bounties?
 TBD
