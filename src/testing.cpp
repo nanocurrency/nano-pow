@@ -18,7 +18,7 @@ TEST (nano_pow, difficulty_128)
 
 TEST (cpp_driver, solve)
 {
-	std::array<uint64_t, 2> nonce { 0, 0 };
+	std::array<uint64_t, 2> nonce{ 0, 0 };
 	nano_pow::cpp_driver driver;
 	ASSERT_FALSE (driver.memory_set (1ULL << 16));
 	driver.difficulty_set (nano_pow::bit_difficulty (32));
@@ -36,7 +36,7 @@ TEST (cpp_driver, solve)
 TEST (opencl_driver, solve)
 {
 	bool opencl_available{ true };
-	std::array<uint64_t, 2> nonce { 0, 0 };
+	std::array<uint64_t, 2> nonce{ 0, 0 };
 	nano_pow::opencl_driver driver (0, 0, false);
 	try
 	{

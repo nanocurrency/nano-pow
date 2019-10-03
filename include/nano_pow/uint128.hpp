@@ -378,8 +378,8 @@ using uint128_t = integers128::uint128;
 
 namespace nano_pow
 {
-	nano_pow::uint128_t difficulty_64_to_128 (uint64_t difficulty_a);
-	uint64_t difficulty_128_to_64 (nano_pow::uint128_t difficulty_a);
+nano_pow::uint128_t difficulty_64_to_128 (uint64_t difficulty_a);
+uint64_t difficulty_128_to_64 (nano_pow::uint128_t difficulty_a);
 }
 
 #endif

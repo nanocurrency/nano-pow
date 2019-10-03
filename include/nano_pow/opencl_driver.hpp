@@ -94,6 +94,7 @@ public:
 class opencl_driver : public driver
 {
 public:
+	~opencl_driver ();
 	opencl_driver (unsigned short platform_id = 0, unsigned short device_id = 0, bool initialize = true);
 	void initialize (unsigned short platform_id, unsigned short device_id);
 	void difficulty_set (nano_pow::uint128_t difficulty_a) override;

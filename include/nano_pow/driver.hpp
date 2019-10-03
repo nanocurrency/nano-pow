@@ -3,6 +3,7 @@
 #include <nano_pow/uint128.hpp>
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -18,6 +19,7 @@ class driver
 {
 protected:
 	bool verbose{ false };
+	std::atomic<bool> cancel{ false };
 
 public:
 	virtual ~driver () = default;
@@ -44,6 +46,10 @@ public:
 	virtual std::array<uint64_t, 2> search () = 0;
 	virtual std::array<uint64_t, 2> solve (std::array<uint64_t, 2> nonce) = 0;
 	virtual driver_type type () const = 0;
+	void cancel_current ()
+	{
+		cancel = true;
+	}
 	void verbose_set (bool const v)
 	{
 		verbose = v;
