@@ -80,8 +80,11 @@ struct context
 			case np_err_difficulty_invalid:
 				error.message = "Invalid difficulty";
 				break;
+			case no_err_work_invalid_memory_size:
+				error.message = "Invalid memory size";
+				break;
 			default:
-				error.message = "Unknown";
+				error.message = "Unknown error";
 		}
 	}
 
