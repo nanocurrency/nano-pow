@@ -91,13 +91,17 @@ if __name__ == "__main__":
     # 256MB table size
     np_work_set_table_size(context, work, 1024 * 1024 * 256)
     np_solve (context, ocl, work)
+
+    difficulty = ctypes.c_uint64()
+    np_work_get_difficulty (context, work, ctypes.byref(difficulty))
+
+    # Validate work against a given difficulty
+    np_work_set_difficulty(context, work, 0xffffc00000000000)
     assert np_validate (context, work) == True
 
     s0 = ctypes.c_uint64()
     s1 = ctypes.c_uint64()
-    difficulty = ctypes.c_uint64()
     np_work_get_solution (context, work, ctypes.byref(s0), ctypes.byref(s1))
-    np_work_get_difficulty (context, work, ctypes.byref(difficulty))
     print ("Solution: {} + {}, difficulty {}".format(hex(s0.value), hex(s1.value), hex(difficulty.value)))
 
     np_work_destroy(context, work)
