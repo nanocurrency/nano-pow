@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.4)
-project (nano-pow)
+project (nano-pow VERSION 1.0.0 DESCRIPTION "Nano Proof-of-Work")
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
@@ -51,8 +51,9 @@ endif ()
 
 include_directories (cxxopts/include)
 
-add_library (nano_pow
+add_library (nano_pow SHARED
 	${PLATFORM_SOURCE}
+	include/nano_pow/c_api.h
 	include/nano_pow/conversions.hpp
 	include/nano_pow/cpp_driver.hpp
 	include/nano_pow/driver.hpp
@@ -65,6 +66,7 @@ add_library (nano_pow
 	include/nano_pow/uint128.hpp
 	include/nano_pow/xoroshiro128starstar.hpp
 
+	src/c_api.cpp
 	src/cpp_driver.cpp
 	src/driver.cpp
 	src/opencl_driver.cpp
@@ -72,8 +74,11 @@ add_library (nano_pow
 	src/tuning.cpp
 )
 
-target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries (nano_pow ${OpenCL_LIBRARY})
+
 target_include_directories (nano_pow PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+set_target_properties (nano_pow PROPERTIES VERSION ${PROJECT_VERSION})
 
 if (${NANO_POW_TEST})
 	add_executable (nano_pow_driver
