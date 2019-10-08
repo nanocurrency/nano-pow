@@ -82,6 +82,11 @@ void nano_pow::opencl_environment::dump (std::ostream & stream)
 	}
 }
 
+nano_pow::opencl_driver::~opencl_driver ()
+{
+	cancel_current ();
+}
+
 nano_pow::opencl_driver::opencl_driver (unsigned short platform_id, unsigned short device_id, bool initialize)
 {
 	if (initialize)
@@ -240,7 +245,7 @@ void nano_pow::opencl_driver::fill ()
 	auto start = std::chrono::steady_clock::now ();
 	try
 	{
-		while (current < current_fill + slab_entries)
+		while (!cancel && current < current_fill + slab_entries)
 		{
 			fill_impl.setArg (3, static_cast<uint32_t> (current));
 			queue.enqueueNDRangeKernel (fill_impl, cl::NullRange, cl::NDRange (thread_count));
@@ -270,7 +275,7 @@ std::array<uint64_t, 2> nano_pow::opencl_driver::search ()
 	auto const max_current (max_48bit - thread_count * stepping);
 	try
 	{
-		while (result[1] == 0 && current <= max_current)
+		while (!cancel && result[1] == 0 && current <= max_current)
 		{
 			search_impl.setArg (3, (current & max_48bit));
 			current += thread_count * stepping;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <nano_pow/driver.hpp>
 #include <nano_pow/cpp_driver.hpp>
+#include <nano_pow/driver.hpp>
 #include <nano_pow/opencl_driver.hpp>
 
 namespace nano_pow

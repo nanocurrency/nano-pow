@@ -338,6 +338,7 @@ difficulty_inv (::reverse (difficulty_m))
 
 nano_pow::cpp_driver::~cpp_driver ()
 {
+	cancel_current ();
 	threads_set (0);
 }
 
@@ -425,10 +426,13 @@ void nano_pow::cpp_driver::fill_impl (uint64_t const count, uint64_t const begin
 	auto size_l (size);
 	auto nonce_l (nonce);
 	auto slab_l (slab.get ());
-	for (uint64_t current (begin), end (current + count); current < end; ++current)
+	for (uint64_t current (begin), end (current + count); !cancel && current < end;)
 	{
-		uint32_t current_32 (static_cast<uint32_t> (current));
-		slab_l[bucket (size_l, static_cast<uint64_t> (::H0 (nonce_l, current_32)))] = current_32;
+		for (auto stepping_end (current + stepping); current < stepping_end; ++current)
+		{
+			uint32_t current_32 (static_cast<uint32_t> (current));
+			slab_l[bucket (size_l, static_cast<uint64_t> (::H0 (nonce_l, current_32)))] = current_32;
+		}
 	}
 }
 
@@ -440,7 +444,7 @@ void nano_pow::cpp_driver::search_impl (size_t thread_id)
 	auto nonce_l (nonce);
 	auto slab_l (slab.get ());
 	size_t constexpr max_48bit{ (1ULL << 48) - 1 };
-	while (result_0 == 0)
+	while (!cancel && result_0 == 0)
 	{
 		std::array<uint64_t, 2> result_l = { 0, 0 };
 		for (uint32_t j (0), m (stepping); result_l[1] == 0 && j < m; ++j)

@@ -91,4 +91,4 @@ public:
 	std::array<uint64_t, 2> nonce{ { 0, 0 } };
 	std::array<uint64_t, 2> result_get ();
 };
-}
+} // namespace nano_pow
