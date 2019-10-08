@@ -11,13 +11,17 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(NANO_POW_ASAN_INT "Enable ASan+UBSan+Integer overflow" OFF)
+option(NANO_POW_ASAN "Enable ASan+UBSan" OFF)
+option(NANO_POW_TSAN "Enable TSan" OFF)
+
 if (NOT WIN32)
 	add_compile_options(-Wall -Wextra -pedantic)
 endif ()
 
+# Linker flags
 if (APPLE)
 	set (PLATFORM_LINK_FLAGS "-framework OpenCL")
-	SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINK_FLAGS}" )
 else ()
 	if (WIN32)
 		set (PLATFORM_LINK_FLAGS "")
@@ -28,6 +32,28 @@ else ()
 	include_directories (${OpenCL_INCLUDE_DIRS})
 	link_directories (${OpenCL_LIBRARY})
 endif ()
+
+# Sanitizer flags
+if (WIN32)
+	if (${NANO_POW_TSAN} OR ${NANO_POW_ASAN} OR ${NANO_POW_ASAN_INT})
+		message (WARNING "Cannot use TSAN or ASAN on Windows, sanitizers ignored")
+	endif()
+else ()
+	if (${NANO_POW_ASAN} OR ${NANO_POW_ASAN_INT})
+		if (${NANO_POW_ASAN_INT})
+			add_compile_options(-fsanitize=address,undefined,integer)
+			set (PLATFORM_LINK_FLAGS "${PLATFORM_LINK_FLAGS} -fsanitize=address,undefined,integer")
+		else ()
+			add_compile_options(-fsanitize=address,undefined)
+			set (PLATFORM_LINK_FLAGS "${PLATFORM_LINK_FLAGS} -fsanitize=address,undefined")
+		endif()
+	elseif (${NANO_POW_TSAN})
+		add_compile_options(-fsanitize=thread)
+		set (PLATFORM_LINK_FLAGS "${PLATFORM_LINK_FLAGS} -fsanitize=thread")
+	endif()
+endif ()
+
+set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${PLATFORM_LINK_FLAGS}" )
 
 add_custom_command (
 	OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/opencl_program.cpp
