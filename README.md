@@ -1,5 +1,7 @@
 <img src="assets/nano-pow-logo.png" alt="Nano PoW" align="center" width="600"/>
 
+# WARNING: this project is now defunct and in archive mode.
+
 # Nano PoW
 Nano PoW is an authentication-free, rate limiting proof-of-work algorithm designed to be memory-hard. It provides a minimal proof size and fast verification while maximizing the generation time-area-product. Nano PoW was designed by Colin LeMahieu.
 
